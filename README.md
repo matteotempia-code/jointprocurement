@@ -1,105 +1,69 @@
 # Joint Procurement OS — Anteo × Coopselios
 
-An enterprise procurement workspace that separates canonical products from supplier offers and combines each user’s role with an explicit organization scope. The current release is the first working vertical slice and uses PostgreSQL data end to end.
+MVP operativo database-backed per acquisti di struttura governati. La milestone corrente ha riprogettato il prodotto in italiano attorno alle decisioni di RSA, Area Manager, Procurement, Finance ed Executive.
 
-## What exists
+## What works
 
-- Six demo personas with cookie-based switching and role-aware navigation
-- Central scope resolution for `ORGANIZATION`, `AREA`, and `FACILITY`
-- Database-backed catalog with search, category/preferred filters, and sorting
-- Canonical product detail with supplier offer comparison
-- Procurement product, price-list, supplier, and comparison views
-- Area-scoped facilities and facility detail
-- Organization tree and user assignment view
-- Executive Control Tower and honest Finance future state
-- Responsive shell, tables/cards, loading, empty, error, and out-of-scope states
+- Six demo personas, role navigation and organization/area/facility scope
+- Operational RSA, Area, Procurement, Finance and Executive dashboards
+- Catalogo da 156 prodotti e 468 offerte, Product 360, storico prezzi e documenti locali
+- Persistent cart, budget impact and purchase request submission
+- Rule-based policy, auto approval, Area/Procurement approvals
+- Atomic multi-supplier PO generation and downloadable local PDF
+- Orders, partial/full receiving, discrepancies and quality issues
+- Supplier directory/360 with measured delivery KPIs
+- Structured audit trail and responsive workflows
+- Ricerca globale, preferiti, liste ricorrenti e riordino
+- Richieste fuori catalogo, workspace consegne e non conformità con risoluzione
+- Category 360, deleghe temporanee e cockpit operativi attention-first
 
-## Tech stack
+AI import, invoices, three-way matching, sourcing and supplier portal are not implemented.
 
-- Next.js 16 App Router and React 19
-- TypeScript in strict mode
-- Tailwind CSS 4 plus project CSS tokens/components
-- Prisma 7 with `@prisma/adapter-pg`
-- Local PostgreSQL
-- Node’s built-in test runner through `tsx`
+## Stack
 
-## Local setup
+Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, Prisma 7 PostgreSQL adapter, local PostgreSQL and Playwright.
 
-Requirements: Node.js, npm, and a running PostgreSQL instance. Install dependencies and configure `.env`:
+## Start locally
 
-```bash
-npm install
-```
+    npm install
+    npx prisma migrate deploy
+    npm run db:seed
+    npm run dev
 
-```text
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/joint_procurement_os"
-```
-
-Start the application:
-
-```bash
-npm run dev
-```
-
-Open `http://localhost:3000`.
-
-## Database setup
-
-Apply checked-in migrations:
-
-```bash
-npx prisma migrate deploy
-```
-
-Generate the Prisma client after schema changes:
-
-```bash
-npx prisma generate
-```
-
-## Seed
-
-The idempotent demo seed replaces only the project’s demo dataset and creates two organizations, four facilities, six users, three suppliers, three products, three active price lists, and five supplier offers.
-
-```bash
-npm run db:seed
-```
-
-All names, identifiers, prices, and files are invented demo data.
+Open http://localhost:3000. DATABASE_URL in .env must point to local database joint_procurement_os.
 
 ## Demo users
 
-| User | Role | Scope |
+| Persona | Role | Scope |
 | --- | --- | --- |
-| Lucia Ferri | RSA Director | RSA Aurora (Facility) |
-| Andrea Riva | Area Manager | Area Piemonte (Area) |
-| Giulia Bianchi | Joint Procurement Manager | Anteo Demo (Organization) |
-| Marco Villa | Procurement Administrator | Anteo Demo (Organization) |
-| Elena Conti | Finance Controller | Anteo Demo (Organization) |
-| Davide Romano | Executive Sponsor | Anteo Demo (Organization) |
+| Lucia Ferri | RSA Director | RSA Aurora |
+| Andrea Riva | Area Manager | Area Piemonte |
+| Giulia Bianchi | Joint Procurement Manager | Anteo Demo |
+| Marco Villa | Procurement Administrator | Anteo Demo |
+| Elena Conti | Finance Controller | Anteo Demo |
+| Davide Romano | Executive Sponsor | Anteo Demo |
 
-## How to switch role
+Use View as in the demo sidebar. Selection is an HTTP-only cookie validated by a Server Action.
 
-Use **View as** under the **Demo environment** label in the desktop sidebar or mobile navigation drawer. Selection is stored in an HTTP-only, same-site cookie. A server action validates the selected database user and redirects to that role’s home. This adapter is isolated in `src/lib/auth.ts` and can be replaced by enterprise authentication later.
+## Demo flow
 
-## Architecture overview
+As Lucia: Catalog → search Guanto nitrile senza polvere M → Product 360 → Add → Cart → Create purchase request. Small requests auto-approve and generate supplier POs. Larger requests appear in Andrea’s Approvals inbox. Return as Lucia to Orders, open a PO and Receive delivery; partial quantities and issues are supported.
 
-Server Components load data directly through the singleton in `src/lib/prisma.ts`; credentials never enter the client bundle. `getCurrentDemoUser()` resolves user, active assignment, role, organization, and scope. Route entry points enforce allowed roles, while `resolveScope()` centralizes operational boundaries. Pricing helpers normalize preferred and lowest-offer comparisons without inventing volume assumptions.
+## Dataset
 
-See [Architecture](docs/ARCHITECTURE.md) and [Feature register](docs/FEATURE_REGISTER.md).
+The idempotent fictional seed creates 2 organizations, 3 legal entities, 5 areas, 14 facilities, 18 cost centers, 20 suppliers, 8 categories, 104 products, 208 offers, 20 price lists, 16 budgets, 30 requisitions, 20 POs, 15 receipts and 5 quality issues.
 
-## Current milestone
+## Quality
 
-Foundation + first vertical slice: Organization + Identity + Scope + Product + Supplier Offer + Price List + role-based UX. Purchasing workflows are intentionally absent.
+    npx prisma validate
+    npm run db:seed
+    npm run lint
+    npm test
+    npm run build
+    npm run qa:browser
 
-Quality commands:
+See docs/ARCHITECTURE.md and docs/FEATURE_REGISTER.md.
 
-```bash
-npm run lint
-npm test
-npm run build
-```
+## Milestone
 
-## Next milestone
-
-Recommended next: governed price-list ingestion with staging, validation, canonical-product matching, review/approval, and audit history. Shopping, requisition, budget, PO, receiving, and invoice features remain outside the current milestone.
+Operative Buying MVP / V1. Recommended next milestone: invoice ingestion and governed three-way matching. Smart AI Import remains separate.

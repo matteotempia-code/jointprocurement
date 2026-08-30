@@ -1,0 +1,2 @@
+export function calculateBudget(approved:number,committed:number,actual:number,reserved=0){return{approved,reserved,committed,actual,available:approved-committed-actual-reserved,utilization:approved?((committed+actual)/approved)*100:0};}
+export function determineReceiptStatus(ordered:number,received:number,hasIssue:boolean){if(hasIssue)return "ISSUE";if(received>=ordered)return "RECEIVED";return "PARTIALLY_RECEIVED";}

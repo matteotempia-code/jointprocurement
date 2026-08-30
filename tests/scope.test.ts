@@ -15,7 +15,7 @@ test("demo facility and area assignments resolve to their exact seeded scope", a
   const facility = await prisma.facility.findUnique({ where: { id: lucia?.scopeId ?? "" } });
   const area = await prisma.area.findUnique({ where: { id: andrea?.scopeId ?? "" }, include: { facilities: true } });
   assert.equal(facility?.name, "RSA Aurora");
-  assert.deepEqual(area?.facilities.map((f) => f.name).sort(), ["RSA Aurora", "Residenza San Michele"]);
+  assert.deepEqual(area?.facilities.map((f) => f.name).sort(), ["Casa Serena", "RSA Aurora", "Residenza San Michele"]);
 });
 
 test.after(async () => { await prisma.$disconnect(); });

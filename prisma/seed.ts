@@ -1,457 +1,86 @@
 import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type IssueType, type RequisitionStatus } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) });
+const now = new Date("2026-08-30T09:00:00Z");
+const day = 86_400_000;
+const money = (n: number) => Math.round(n * 100) / 100;
 
-const prisma = new PrismaClient({ adapter });
+const catalog = [
+  ["DISPOSABLES","Dispositivi monouso","Guanti",["Guanto nitrile senza polvere M — 100 pezzi","Guanto nitrile senza polvere L — 100 pezzi","Guanto nitrile blu S — 100 pezzi","Mascherina chirurgica tipo IIR — 50 pezzi","Garza sterile 10 × 10 cm — 100 pezzi","Cerotto in rotolo 5 m × 2,5 cm","Siringa sterile 10 ml — 100 pezzi","Ago ipodermico 21G — 100 pezzi","Bicchiere monouso 200 ml — 100 pezzi","Telino assorbente 60 × 90 cm — 30 pezzi","Copriscarpa monouso — 100 pezzi","Camice visitatore TNT — 10 pezzi","Rotolo lettino medico 60 cm"]],
+  ["INCONTINENCE","Incontinenza","Assorbenza",["Pannolone mutandina giorno M — 30 pezzi","Pannolone mutandina notte M — 30 pezzi","Pannolone mutandina giorno L — 30 pezzi","Pannolone mutandina notte L — 30 pezzi","Pannolone a cintura M — 28 pezzi","Pannolone a cintura L — 28 pezzi","Pants assorbente M — 14 pezzi","Pants assorbente L — 14 pezzi","Pants assorbente XL — 14 pezzi","Sagomato anatomico maxi — 30 pezzi","Traversa 60 × 60 cm — 30 pezzi","Traversa 60 × 90 cm — 30 pezzi","Mutandina elasticizzata rete L — 25 pezzi"]],
+  ["CLEANING","Detergenza","Superfici",["Detergente professionale superfici — 5 L","Disinfettante superfici pronto uso — 750 ml","Detergente pavimenti agrumato — 5 L","Sgrassatore cucina — 750 ml","Detergente vetri — 750 ml","Candeggina professionale — 5 L","Detersivo lavatrice liquido — 10 L","Ammorbidente concentrato — 5 L","Detergente lavastoviglie — 6 kg","Brillantante lavastoviglie — 5 L","Sacchi rifiuti 110 L — 20 pezzi","Panno microfibra blu — 10 pezzi","Spugna abrasiva professionale — 10 pezzi"]],
+  ["PERSONAL_CARE","Igiene persona","Cura corpo",["Sapone mani delicato — 5 L","Bagno doccia pH neutro — 1 L","Shampoo delicato — 1 L","Crema barriera protettiva — 200 ml","Olio detergente — 500 ml","Salviette detergenti — 80 pezzi","Spugne saponate monouso — 20 pezzi","Dentifricio delicato — 75 ml","Spazzolino morbido","Deodorante roll-on neutro — 50 ml","Crema corpo idratante — 500 ml","Schiuma detergente senza risciacquo — 400 ml","Manopola presaponata — 20 pezzi"]],
+  ["FOOD","Alimentari","Dispensa",["Pasta di semola formato corto — 5 kg","Riso parboiled — 5 kg","Passata di pomodoro — 6 × 700 g","Olio extravergine di oliva — 5 L","Fette biscottate monoporzione — 120 pezzi","Confettura albicocca monoporzione — 100 pezzi","Biscotti secchi monoporzione — 100 pezzi","Tè deteinato — 100 filtri","Camomilla — 100 filtri","Brodo vegetale granulare — 1 kg","Farina tipo 00 — 5 kg","Zucchero semolato — 10 × 1 kg","Acqua naturale — 6 × 1,5 L"]],
+  ["STATIONERY","Cancelleria","Ufficio",["Carta A4 80 g — 5 risme","Penna a sfera blu — 50 pezzi","Pennarello indelebile nero — 12 pezzi","Cartellina tre lembi blu — 25 pezzi","Busta a foratura A4 — 100 pezzi","Etichette adesive 70 × 37 mm — 2400 pezzi","Toner laser nero compatibile","Post-it 76 × 76 mm — 12 blocchi","Registro protocollo A4","Punti metallici 24/6 — 10 scatole","Nastro adesivo trasparente — 10 rotoli","Buste bianche 11 × 23 cm — 500 pezzi","Raccoglitore protocollo dorso 8 cm"]],
+  ["MAINTENANCE","Manutenzione","Ricambi",["Lampadina LED E27 10 W — 10 pezzi","Batteria alcalina AA — 24 pezzi","Batteria alcalina AAA — 24 pezzi","Nastro isolante nero — 10 rotoli","Silicone sanitario bianco — 12 cartucce","Filtro climatizzatore universale","Rubinetto temporizzato lavabo","Flessibile doccia rinforzato 150 cm","Set cacciaviti isolati — 6 pezzi","Guarnizioni assortite — 100 pezzi","Spray lubrificante tecnico — 400 ml","Fascette nylon 200 mm — 100 pezzi","Multipresa 6 posti con interruttore"]],
+  ["PPE","DPI","Protezione",["Mascherina FFP2 NR — 20 pezzi","Occhiale protettivo trasparente","Visiera protettiva regolabile","Camice protettivo tipo 4B L","Camice protettivo tipo 4B XL","Cuffia monouso blu — 100 pezzi","Grembiule impermeabile — 50 pezzi","Calzatura antiscivolo bianca 39","Calzatura antiscivolo bianca 42","Guanto antitaglio livello C — 12 paia","Tappi auricolari — 200 paia","Semimaschera riutilizzabile","Filtro combinato ABEK — 4 pezzi"]],
+  ["NUTRITION","Nutrizione speciale","Integratori",["Bevanda nutrizionale vaniglia 200 ml","Bevanda nutrizionale cacao 200 ml","Addensante istantaneo 300 g","Preparato proteico neutro 400 g","Acqua gelificata limone 24 vasetti","Dessert iperproteico vaniglia 4 pezzi","Crema cereali istantanea 500 g","Purea mela monoporzione 48 pezzi","Biscotto solubile 600 g","Integratore fibra 250 g","Bevanda reidratante arancia 500 ml","Preparato budino proteico 400 g","Maltodestrine polvere 500 g"]],
+  ["LINEN","Biancheria","Tessili",["Lenzuolo piano cotone bianco","Lenzuolo con angoli singolo","Federa cotone bianco 50 × 80 cm","Traversa lavabile impermeabile","Telo bagno spugna bianco","Asciugamano viso spugna bianco","Coperta ignifuga singola","Coprimaterasso impermeabile","Bavaglia adulto lavabile","Sacco lavanderia idrosolubile","Divisa operatore casacca blu M","Divisa operatore pantalone blu M","Tenda doccia antibatterica"]],
+  ["KITCHEN","Cucina","Attrezzature cucina",["Contenitore gastronorm 1/2 inox","Coperchio gastronorm 1/2","Caraffa graduata 2 litri","Tagliere HACCP rosso","Tagliere HACCP verde","Coltello cucina professionale 20 cm","Mestolo inox 30 cm","Vassoio isotermico completo","Bicchiere policarbonato 250 ml","Piatto piano melamina bianco","Pellicola alimentare professionale","Carta forno 50 metri","Guanto forno termico lungo"]],
+  ["MOBILITY","Ausili","Mobilità",["Bastone regolabile anatomico","Tripode regolabile leggero","Deambulatore pieghevole due ruote","Cuscino antidecubito viscoelastico","Alzawater con braccioli","Sedia doccia regolabile","Tavolino servitore inclinabile","Cintura trasferimento assistito","Pedaliera riabilitativa compatta","Disco girevole trasferimento","Maniglione bagno 45 cm","Tappeto antiscivolo doccia","Protezione sponda letto imbottita"]],
+] as const;
+const brands = ["DemoCare","SereniPlus","CleanDemo","VitaSoft","TavolaViva","OfficeLeaf","Fixora","SafeLine","NutriVivo","TessilCare","CucinaPro","Mobilis"];
+const supplierNames = ["Alfa Medical","CareSupply","CleanPro Italia","NordCare Distribution","Vita Facility","Linea Igiene","Medika Network","Servizi & Forniture","EcoSan Pro","Tavola Comune","Office Bridge","ManuTech","Protezione Più","Adriatica Supply","Piemonte Medical","Emilia Facility","Lombarda Cura","Delta Professional","Aurora Trade","Unione Forniture","NutriSalus","Tessili Comunità","Kitchen Service","Mobilità Serena","Centro Ausili Italia"];
 
-async function main() {
-  // --- Cleanup demo data ---
-  await prisma.supplierOffer.deleteMany();
-  await prisma.priceList.deleteMany();
-  await prisma.canonicalProduct.deleteMany();
-  await prisma.category.deleteMany();
-  await prisma.supplier.deleteMany();
-  await prisma.userAssignment.deleteMany();
-  await prisma.role.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.costCenter.deleteMany();
-  await prisma.facility.deleteMany();
-  await prisma.area.deleteMany();
-  await prisma.legalEntity.deleteMany();
-  await prisma.organization.deleteMany();
+function packaging(name:string,category:string){const lower=name.toLowerCase();let quantity=1,uom="PIECE",label="pezzo",purchase="PACK";const pieces=lower.match(/(?:—|-)\s*(\d+)\s*(?:pezzi|filtri|paia|vasetti|blocchi|rotoli|cartucce|risme|scatole)/);if(pieces){quantity=Number(pieces[1]);uom=lower.includes("filtri")?"FILTER":lower.includes("paia")?"PAIR":lower.includes("rotoli")?"ROLL":"PIECE";label=uom==="FILTER"?"filtro":uom==="PAIR"?"paio":uom==="ROLL"?"rotolo":"pezzo";}const multi=lower.match(/(\d+)\s*[×x]\s*([\d,.]+)\s*(l|ml|kg|g)/);const single=lower.match(/(?:—|-)\s*([\d,.]+)\s*(l|ml|kg|g)\b/);const measure=multi??single;if(measure){const count=multi?Number(measure[1]):1,value=Number((multi?measure[2]:measure[1]).replace(",",".")),unit=multi?measure[3]:measure[2];if(unit==="l"||unit==="ml"){quantity=count*value*(unit==="ml"?.001:1);uom="L";label="litro";purchase=multi?"CASE":"BOTTLE"}else{quantity=count*value*(unit==="g"?.001:1);uom="KG";label="kg";purchase=multi?"CASE":"PACK"}}if(lower.includes("tanica")||(/\b5 l\b/.test(lower)&&category==="CLEANING"))purchase="CAN";if(lower.includes("confezione")||pieces)purchase="BOX";return{purchaseUom:purchase,unitsPerPackage:quantity,consumptionUom:uom,consumptionUomLabel:label,packageDescription:uom==="L"?`${quantity.toLocaleString("it-IT")} litri per ${purchase==="CASE"?"cartone":"confezione"}`:uom==="KG"?`${quantity.toLocaleString("it-IT")} kg per confezione`:`Confezione da ${quantity} ${quantity===1?label:label==="pezzo"?"pezzi":label==="filtro"?"filtri":label==="paio"?"paia":label+"i"}`};}
+function attributes(name:string,code:string,p:number,pack:ReturnType<typeof packaging>){const size=/\b(XL|L|M|S|39|42)\b/.exec(name)?.[1];if(code==="DISPOSABLES")return{material:name.toLowerCase().includes("nitrile")?"Nitrile":"TNT medicale",size:size??"Unica",color:name.toLowerCase().includes("blu")?"Blu":"Azzurro",powderFree:true,aql:"1,5",latexFree:true,sterile:name.toLowerCase().includes("sterile"),ceMarking:"CE",piecesPerPackage:pack.unitsPerPackage};if(code==="CLEANING")return{volumeLiters:pack.consumptionUom==="L"?pack.unitsPerPackage:null,ph:7+(p%4),dilution:p%3===0?"1:50":"Pronto uso",surfaces:["Pavimenti","Superfici lavabili"],fragrance:p%2?"Neutra":"Agrumi",haccp:p%3===0};if(code==="INCONTINENCE")return{size:size??"M",absorption:p%2?"Notte":"Giorno",piecesPerPackage:pack.unitsPerPackage,latexFree:true};if(code==="PPE")return{material:"Materiale tecnico certificato",size:size??"Unica",ceMarking:"CE",certified:true,piecesPerPackage:pack.unitsPerPackage};if(code==="FOOD")return{weightKg:pack.consumptionUom==="KG"?pack.unitsPerPackage:null,volumeLiters:pack.consumptionUom==="L"?pack.unitsPerPackage:null,filtersPerPackage:pack.consumptionUom==="FILTER"?pack.unitsPerPackage:null,storage:"Luogo fresco e asciutto"};return{professionalUse:true,storage:"Ambiente asciutto",piecesPerPackage:pack.consumptionUom==="PIECE"?pack.unitsPerPackage:null};}
 
-  // --- Organizations ---
-  const anteo = await prisma.organization.create({
-    data: {
-      name: "Anteo Demo",
-    },
-  });
-
-  const coopselios = await prisma.organization.create({
-    data: {
-      name: "Coopselios Demo",
-    },
-  });
-
-  // --- Legal Entities ---
-  const anteoEntity = await prisma.legalEntity.create({
-    data: {
-      name: "Anteo Impresa Sociale Demo",
-      organizationId: anteo.id,
-    },
-  });
-
-  const coopEntity = await prisma.legalEntity.create({
-    data: {
-      name: "Coopselios Demo Entity",
-      organizationId: coopselios.id,
-    },
-  });
-
-  // --- Areas ---
-  const piemonte = await prisma.area.create({
-    data: {
-      name: "Area Piemonte",
-      legalEntityId: anteoEntity.id,
-    },
-  });
-
-  const lombardia = await prisma.area.create({
-    data: {
-      name: "Area Lombardia",
-      legalEntityId: anteoEntity.id,
-    },
-  });
-
-  const emilia = await prisma.area.create({
-    data: {
-      name: "Area Emilia-Romagna",
-      legalEntityId: coopEntity.id,
-    },
-  });
-
-  // --- Facilities ---
-  const rsaAurora = await prisma.facility.create({
-    data: {
-      name: "RSA Aurora",
-      areaId: piemonte.id,
-    },
-  });
-
-  const sanMichele = await prisma.facility.create({
-    data: {
-      name: "Residenza San Michele",
-      areaId: piemonte.id,
-    },
-  });
-
-  const villaSerena = await prisma.facility.create({
-    data: {
-      name: "Villa Serena",
-      areaId: lombardia.id,
-    },
-  });
-
-  const rsaGiardini = await prisma.facility.create({
-    data: {
-      name: "RSA Giardini",
-      areaId: emilia.id,
-    },
-  });
-
-  // --- Cost Centers ---
-  await prisma.costCenter.createMany({
-    data: [
-      {
-        code: "AUR-001",
-        name: "Assistenza",
-        facilityId: rsaAurora.id,
-      },
-      {
-        code: "AUR-002",
-        name: "Servizi generali",
-        facilityId: rsaAurora.id,
-      },
-      {
-        code: "SM-001",
-        name: "Assistenza",
-        facilityId: sanMichele.id,
-      },
-      {
-        code: "VS-001",
-        name: "Assistenza",
-        facilityId: villaSerena.id,
-      },
-      {
-        code: "RG-001",
-        name: "Assistenza",
-        facilityId: rsaGiardini.id,
-      },
-    ],
-  });
-
-  // --- Roles ---
-  const roleRsaDirector = await prisma.role.create({
-    data: {
-      code: "RSA_DIRECTOR",
-      name: "RSA Director",
-      description: "Responsabile operativo della struttura",
-    },
-  });
-
-  const roleAreaManager = await prisma.role.create({
-    data: {
-      code: "AREA_MANAGER",
-      name: "Area Manager",
-      description: "Responsabile di area e approvatore",
-    },
-  });
-
-  const roleProcurement = await prisma.role.create({
-    data: {
-      code: "PROCUREMENT_MANAGER",
-      name: "Joint Procurement Manager",
-      description: "Responsabile procurement comune",
-    },
-  });
-
-  const roleAdmin = await prisma.role.create({
-    data: {
-      code: "PROCUREMENT_ADMIN",
-      name: "Procurement Administrator",
-      description: "Amministratore della piattaforma",
-    },
-  });
-
-  const roleFinance = await prisma.role.create({
-    data: {
-      code: "FINANCE_CONTROLLER",
-      name: "Finance Controller",
-      description: "Controllo fatture e budget",
-    },
-  });
-
-  const roleExecutive = await prisma.role.create({
-    data: {
-      code: "EXECUTIVE_SPONSOR",
-      name: "Executive Sponsor",
-      description: "Vista executive e controllo sintetico",
-    },
-  });
-
-  // --- Users ---
-  const lucia = await prisma.user.create({
-    data: {
-      email: "lucia.ferri@demo.local",
-      name: "Lucia Ferri",
-    },
-  });
-
-  const andrea = await prisma.user.create({
-    data: {
-      email: "andrea.riva@demo.local",
-      name: "Andrea Riva",
-    },
-  });
-
-  const giulia = await prisma.user.create({
-    data: {
-      email: "giulia.bianchi@demo.local",
-      name: "Giulia Bianchi",
-    },
-  });
-
-  const marco = await prisma.user.create({
-    data: {
-      email: "marco.villa@demo.local",
-      name: "Marco Villa",
-    },
-  });
-
-  const elena = await prisma.user.create({
-    data: {
-      email: "elena.conti@demo.local",
-      name: "Elena Conti",
-    },
-  });
-
-  const davide = await prisma.user.create({
-    data: {
-      email: "davide.romano@demo.local",
-      name: "Davide Romano",
-    },
-  });
-
-  // --- Assignments ---
-  await prisma.userAssignment.createMany({
-    data: [
-      {
-        userId: lucia.id,
-        roleId: roleRsaDirector.id,
-        organizationId: anteo.id,
-        scopeType: "FACILITY",
-        scopeId: rsaAurora.id,
-        approvalLimit: 5000,
-      },
-      {
-        userId: andrea.id,
-        roleId: roleAreaManager.id,
-        organizationId: anteo.id,
-        scopeType: "AREA",
-        scopeId: piemonte.id,
-        approvalLimit: 20000,
-      },
-      {
-        userId: giulia.id,
-        roleId: roleProcurement.id,
-        organizationId: anteo.id,
-        scopeType: "ORGANIZATION",
-        scopeId: anteo.id,
-        approvalLimit: 50000,
-      },
-      {
-        userId: marco.id,
-        roleId: roleAdmin.id,
-        organizationId: anteo.id,
-        scopeType: "ORGANIZATION",
-        scopeId: anteo.id,
-      },
-      {
-        userId: elena.id,
-        roleId: roleFinance.id,
-        organizationId: anteo.id,
-        scopeType: "ORGANIZATION",
-        scopeId: anteo.id,
-      },
-      {
-        userId: davide.id,
-        roleId: roleExecutive.id,
-        organizationId: anteo.id,
-        scopeType: "ORGANIZATION",
-        scopeId: anteo.id,
-      },
-    ],
-  });
-
-  // --- Suppliers ---
-  const alfaMedical = await prisma.supplier.create({
-    data: {
-      name: "Alfa Medical",
-      vatNumber: "IT10000000001",
-    },
-  });
-
-  const careSupply = await prisma.supplier.create({
-    data: {
-      name: "CareSupply",
-      vatNumber: "IT10000000002",
-    },
-  });
-
-  const cleanPro = await prisma.supplier.create({
-    data: {
-      name: "CleanPro Italia",
-      vatNumber: "IT10000000003",
-    },
-  });
-
-  // --- Categories ---
-  const medical = await prisma.category.create({
-    data: {
-      code: "MEDICAL",
-      name: "Medical disposables",
-    },
-  });
-
-  const cleaning = await prisma.category.create({
-    data: {
-      code: "CLEANING",
-      name: "Cleaning",
-    },
-  });
-
-  // --- Products ---
-  const gloveM = await prisma.canonicalProduct.create({
-    data: {
-      name: "Guanto nitrile senza polvere - M - 100 pezzi",
-      description: "Guanto monouso nitrile, taglia M",
-      brand: "DemoCare",
-      ean: "8000000000011",
-      uom: "BOX",
-      categoryId: medical.id,
-    },
-  });
-
-  const gloveL = await prisma.canonicalProduct.create({
-    data: {
-      name: "Guanto nitrile senza polvere - L - 100 pezzi",
-      description: "Guanto monouso nitrile, taglia L",
-      brand: "DemoCare",
-      ean: "8000000000012",
-      uom: "BOX",
-      categoryId: medical.id,
-    },
-  });
-
-  const detergent5L = await prisma.canonicalProduct.create({
-    data: {
-      name: "Detergente professionale superfici - 5L",
-      description: "Detergente concentrato per superfici",
-      brand: "CleanDemo",
-      ean: "8000000000021",
-      uom: "TANICA",
-      categoryId: cleaning.id,
-    },
-  });
-
-  // --- Price Lists ---
-  const alfaList = await prisma.priceList.create({
-    data: {
-      name: "Alfa Medical - Listino 2027",
-      supplierId: alfaMedical.id,
-      validFrom: new Date("2027-01-01"),
-      validUntil: new Date("2027-12-31"),
-      active: true,
-      sourceFile: "AlfaMedical_Listino_2027.pdf",
-    },
-  });
-
-  const careList = await prisma.priceList.create({
-    data: {
-      name: "CareSupply - Listino 2027",
-      supplierId: careSupply.id,
-      validFrom: new Date("2027-01-01"),
-      validUntil: new Date("2027-12-31"),
-      active: true,
-      sourceFile: "CareSupply_Listino_2027.xlsx",
-    },
-  });
-
-  const cleanList = await prisma.priceList.create({
-    data: {
-      name: "CleanPro - Listino 2027",
-      supplierId: cleanPro.id,
-      validFrom: new Date("2027-01-01"),
-      validUntil: new Date("2027-12-31"),
-      active: true,
-      sourceFile: "CleanPro_Listino_2027.xlsx",
-    },
-  });
-
-  // --- Offers ---
-  await prisma.supplierOffer.createMany({
-    data: [
-      {
-        supplierId: alfaMedical.id,
-        canonicalProductId: gloveM.id,
-        priceListId: alfaList.id,
-        supplierSku: "AM-GNM-100",
-        packageSize: 100,
-        unitPrice: 3.72,
-        normalizedUnitPrice: 0.0372,
-        preferred: true,
-      },
-      {
-        supplierId: careSupply.id,
-        canonicalProductId: gloveM.id,
-        priceListId: careList.id,
-        supplierSku: "CS-NIT-M",
-        packageSize: 100,
-        unitPrice: 4.18,
-        normalizedUnitPrice: 0.0418,
-        preferred: false,
-      },
-      {
-        supplierId: alfaMedical.id,
-        canonicalProductId: gloveL.id,
-        priceListId: alfaList.id,
-        supplierSku: "AM-GNL-100",
-        packageSize: 100,
-        unitPrice: 3.78,
-        normalizedUnitPrice: 0.0378,
-        preferred: true,
-      },
-      {
-        supplierId: careSupply.id,
-        canonicalProductId: gloveL.id,
-        priceListId: careList.id,
-        supplierSku: "CS-NIT-L",
-        packageSize: 100,
-        unitPrice: 4.24,
-        normalizedUnitPrice: 0.0424,
-        preferred: false,
-      },
-      {
-        supplierId: cleanPro.id,
-        canonicalProductId: detergent5L.id,
-        priceListId: cleanList.id,
-        supplierSku: "CP-SURF-5L",
-        packageSize: 5,
-        unitPrice: 10.90,
-        normalizedUnitPrice: 2.18,
-        preferred: true,
-      },
-    ],
-  });
-
-  console.log("Seed completato.");
-  console.log("Organizations:", 2);
-  console.log("Facilities:", 4);
-  console.log("Users:", 6);
-  console.log("Suppliers:", 3);
-  console.log("Products:", 3);
+async function clear() {
+  await prisma.approvalDelegation.deleteMany(); await prisma.outOfCatalogRequest.deleteMany(); await prisma.shoppingListItem.deleteMany(); await prisma.shoppingList.deleteMany(); await prisma.favorite.deleteMany();
+  await prisma.auditEvent.deleteMany(); await prisma.qualityIssue.deleteMany(); await prisma.receiptLine.deleteMany(); await prisma.receipt.deleteMany();
+  await prisma.purchaseOrderLine.deleteMany(); await prisma.purchaseOrder.deleteMany(); await prisma.approvalRequest.deleteMany(); await prisma.purchaseRequisitionLine.deleteMany(); await prisma.purchaseRequisition.deleteMany();
+  await prisma.cartLine.deleteMany(); await prisma.cart.deleteMany(); await prisma.budget.deleteMany(); await prisma.offerPriceHistory.deleteMany(); await prisma.supplierOffer.deleteMany(); await prisma.priceList.deleteMany();
+  await prisma.canonicalProduct.deleteMany(); await prisma.category.deleteMany(); await prisma.supplier.deleteMany(); await prisma.userAssignment.deleteMany(); await prisma.role.deleteMany(); await prisma.user.deleteMany();
+  await prisma.costCenter.deleteMany(); await prisma.facility.deleteMany(); await prisma.area.deleteMany(); await prisma.legalEntity.deleteMany(); await prisma.organization.deleteMany();
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
-
+async function main() {
+  await clear();
+  const anteo=await prisma.organization.create({data:{name:"Anteo Demo"}}); const coop=await prisma.organization.create({data:{name:"Coopselios Demo"}});
+  const entities=await Promise.all([["Anteo Impresa Sociale Demo",anteo.id],["Anteo Servizi Demo",anteo.id],["Coopselios Nord Demo",coop.id],["Coopselios Centro Demo",coop.id]].map(([name,organizationId])=>prisma.legalEntity.create({data:{name,organizationId}})));
+  const areas=await Promise.all([["Area Piemonte",0],["Area Lombardia",0],["Area Liguria",1],["Area Emilia-Romagna",2],["Area Veneto",2],["Area Toscana",3]].map(([name,e])=>prisma.area.create({data:{name:String(name),legalEntityId:entities[Number(e)].id}})));
+  const facilityData=[["RSA Aurora",0],["Residenza San Michele",0],["Casa Serena",0],["Villa Serena",1],["Residenza Naviglio",1],["Casa Brianza",1],["Centro Levante",2],["Villa degli Ulivi",2],["Residenza del Porto",2],["RSA Giardini",3],["Residenza Ducale",3],["Casa del Reno",3],["Villa Laguna",4],["Residenza Arena",4],["Casa Marca",4],["Villa Arno",5],["Residenza Medicea",5],["Casa delle Colline",5]] as const;
+  const cities=["Torino","Novara","Asti","Milano","Pavia","Monza","Genova","Savona","La Spezia","Reggio Emilia","Parma","Bologna","Venezia","Verona","Treviso","Firenze","Prato","Siena"];
+  const facilities=await Promise.all(facilityData.map(([name,a],i)=>prisma.facility.create({data:{name,areaId:areas[a].id,address:"Via delle Comunità "+(i+1)+", "+cities[i]}})));
+  const centers=[]; for(let i=0;i<facilities.length;i++){centers.push(await prisma.costCenter.create({data:{facilityId:facilities[i].id,code:"CC-"+String(i+1).padStart(3,"0"),name:"Assistenza e cura"}})); if(i<9) centers.push(await prisma.costCenter.create({data:{facilityId:facilities[i].id,code:"SG-"+String(i+1).padStart(3,"0"),name:"Servizi generali"}}));}
+  const roleDefs=[["RSA_DIRECTOR","RSA Director"],["AREA_MANAGER","Area Manager"],["PROCUREMENT_MANAGER","Joint Procurement Manager"],["PROCUREMENT_ADMIN","Procurement Administrator"],["FINANCE_CONTROLLER","Finance Controller"],["EXECUTIVE_SPONSOR","Executive Sponsor"]] as const;
+  const roles=Object.fromEntries(await Promise.all(roleDefs.map(async ([code,name])=>[code,await prisma.role.create({data:{code,name,description:name+" demo"}})])));
+  const userDefs=[["Lucia Ferri","lucia.ferri@demo.local"],["Andrea Riva","andrea.riva@demo.local"],["Giulia Bianchi","giulia.bianchi@demo.local"],["Marco Villa","marco.villa@demo.local"],["Elena Conti","elena.conti@demo.local"],["Davide Romano","davide.romano@demo.local"]] as const;
+  const users=await Promise.all(userDefs.map(([name,email])=>prisma.user.create({data:{name,email}})));
+  const facilityRequesters=await Promise.all([["Paola Neri","paola.neri@demo.local"],["Roberto Sala","roberto.sala@demo.local"],["Marta De Luca","marta.deluca@demo.local"],["Stefano Greco","stefano.greco@demo.local"],["Chiara Fontana","chiara.fontana@demo.local"]].map(([name,email])=>prisma.user.create({data:{name,email}})));
+  void facilityRequesters;
+  const assignDefs=[[0,"RSA_DIRECTOR","FACILITY",facilities[0].id,5000],[1,"AREA_MANAGER","AREA",areas[0].id,20000],[2,"PROCUREMENT_MANAGER","ORGANIZATION",anteo.id,50000],[3,"PROCUREMENT_ADMIN","ORGANIZATION",anteo.id,null],[4,"FINANCE_CONTROLLER","ORGANIZATION",anteo.id,null],[5,"EXECUTIVE_SPONSOR","ORGANIZATION",anteo.id,null]] as const;
+  const assignments=await Promise.all(assignDefs.map(([u,r,scopeType,scopeId,approvalLimit])=>prisma.userAssignment.create({data:{userId:users[u].id,roleId:roles[r].id,organizationId:anteo.id,scopeType,scopeId,approvalLimit}})));
+  const suppliers=await Promise.all(supplierNames.map((name,i)=>prisma.supplier.create({data:{name,vatNumber:"IT"+String(10000000001+i),contactEmail:"ordini"+(i+1)+"@supplier.demo",contactPhone:"+39 011 555 "+(1000+i),address:"Via Fornitori Demo "+(i+1)+", Torino",paymentTerms:i%3===0?"Bonifico 60 giorni data fattura":"Bonifico 30 giorni data fattura",deliveryTerms:"Franco destino",minimumOrderValue:150+i%5*50,freeShippingThreshold:500+i%4*250,commercialContact:{name:"Sara Demo",email:`commerciale${i+1}@supplier.demo`,phone:`+39 011 410 ${1100+i}`},orderContact:{name:"Ufficio ordini",email:`ordini${i+1}@supplier.demo`,phone:`+39 011 420 ${1200+i}`},qualityContact:{name:"Qualità forniture",email:`qualita${i+1}@supplier.demo`,phone:`+39 011 430 ${1300+i}`},certificationPath:"/documents/certificazione-demo.pdf",commercialDocumentPath:"/documents/dichiarazione-conformita-demo.pdf",qualityDocumentPath:"/documents/scheda-tecnica-demo.pdf",active:true}})));
+  const categories=await Promise.all(catalog.map(([code,name])=>prisma.category.create({data:{code,name}})));
+  const lists=await Promise.all([...suppliers,...suppliers.slice(0,5)].map((s,i)=>prisma.priceList.create({data:{name:s.name+" — "+(i<25?"Listino operativo 2026":"Revisione estate 2026"),supplierId:s.id,validFrom:new Date(i<25?"2026-01-01":"2026-07-01"),validUntil:new Date("2026-12-31"),active:true,sourceFile:"listino-"+String(i+1).padStart(2,"0")+"-2026.xlsx"}})));
+  const products=[]; const offers=[];
+  for(let c=0;c<catalog.length;c++) for(let p=0;p<catalog[c][3].length;p++){
+    const name=catalog[c][3][p],pack=packaging(name,catalog[c][0]); const base=2.5+c*2.2+p*.73; const product=await prisma.canonicalProduct.create({data:{name,description:name+". Referenza professionale demo.",shortDescription:"Selezionato per uso professionale in struttura.",longDescription:"Referenza demo con confezionamento, confronto fornitori e tracciabilità documentale verificabili.",brand:brands[c],manufacturer:brands[c]+" Manufacturing Demo",manufacturerSku:catalog[c][0].slice(0,3)+"-"+String(p+1).padStart(3,"0"),ean:"8001"+c+String(p).padStart(7,"0"),uom:pack.purchaseUom,purchaseUom:pack.purchaseUom,unitsPerPackage:pack.unitsPerPackage,consumptionUom:pack.consumptionUom,consumptionUomLabel:pack.consumptionUomLabel,categoryId:categories[c].id,subcategory:catalog[c][2],packageDescription:pack.packageDescription,technicalAttributes:attributes(name,catalog[c][0],p,pack),imagePath:"/products/"+catalog[c][0].toLowerCase()+".svg",datasheetPath:p<7?"/documents/scheda-tecnica-demo.pdf":null,safetySheetPath:c===2&&p<7?"/documents/scheda-sicurezza-demo.pdf":null,certificationPath:[0,7].includes(c)&&p<7?"/documents/certificazione-demo.pdf":null,declarationPath:p<5?"/documents/dichiarazione-conformita-demo.pdf":null,active:true}}); products.push(product);
+    for(let o=0;o<2;o++){const si=(c*3+p+o*5)%19; const price=money(base*(o?1.08+(p%4)*.025:1)); const normalized=money(price/(p%4+1)); const offer=await prisma.supplierOffer.create({data:{supplierId:suppliers[si].id,canonicalProductId:product.id,priceListId:lists[si].id,supplierSku:String(si+1).padStart(2,"0")+"-"+catalog[c][0].slice(0,3)+"-"+String(p+1).padStart(3,"0"),packageSize:p%4+1,packageUnit:product.uom,unitPrice:price,normalizedUnitPrice:normalized,moq:o?2:1,leadTimeDays:2+(p+o*3)%9,taxRate:c===4?10:22,validFrom:new Date("2026-01-01"),validUntil:new Date("2026-12-31"),preferred:o===0,active:true,availabilityStatus:p%11===0&&o===1?"LIMITED":"IN_STOCK",contractReference:o===0?"CTR-2026-"+catalog[c][0]:null}}); offers.push(offer); await prisma.offerPriceHistory.createMany({data:[.94,.97,1].map((m,k)=>({supplierOfferId:offer.id,price:money(price*m),normalizedPrice:money(normalized*m),effectiveAt:new Date(2026,k*3,1)}))});}
+  }
+  for(let i=0;i<products.length;i++){const product=products[i],si=(i*7+11)%25,price=money((3+i*.31)*1.11),normalized=money(price/(i%4+1));const offer=await prisma.supplierOffer.create({data:{supplierId:suppliers[si].id,canonicalProductId:product.id,priceListId:lists[si].id,supplierSku:"ALT-"+String(i+1).padStart(4,"0"),packageSize:i%4+1,packageUnit:product.uom,unitPrice:price,normalizedUnitPrice:normalized,moq:2,leadTimeDays:4+i%8,taxRate:i%12===4?10:22,validFrom:new Date("2026-07-01"),validUntil:new Date("2026-12-31"),preferred:false,active:true,availabilityStatus:i%13===0?"LIMITED":"IN_STOCK"}});offers.push(offer);await prisma.offerPriceHistory.createMany({data:[.92,.96,1].map((m,k)=>({supplierOfferId:offer.id,price:money(price*m),normalizedPrice:money(normalized*m),effectiveAt:new Date(2026,k*3,1)}))});}
+  for(let i=0;i<42;i++){const f=facilities[i%facilities.length]; await prisma.budget.create({data:{organizationId:anteo.id,legalEntityId:entities[i%entities.length].id,areaId:f.areaId,facilityId:f.id,costCenterId:centers.find(x=>x.facilityId===f.id)!.id,categoryId:i<categories.length?categories[i].id:null,periodStart:new Date("2026-01-01"),periodEnd:new Date("2026-12-31"),approvedAmount:18000+i*1850,actualAmount:3200+i*240,status:"ACTIVE"}});}
+  for(const offer of offers){const product=products.find(p=>p.id===offer.canonicalProductId)!;const factor=Number(product.unitsPerPackage);const normalized=Number(offer.unitPrice)/factor;await prisma.supplierOffer.update({where:{id:offer.id},data:{normalizedUnitPrice:normalized,packageSize:factor,packageUnit:product.purchaseUom}});const history=await prisma.offerPriceHistory.findMany({where:{supplierOfferId:offer.id},orderBy:{effectiveAt:"asc"}});for(const point of history)await prisma.offerPriceHistory.update({where:{id:point.id},data:{normalizedPrice:Number(point.price)/factor}});}
+  const historyProducts=products.slice(0,40);for(const product of historyProducts){const productOffers=offers.filter(o=>o.canonicalProductId===product.id);for(const offer of productOffers){await prisma.offerPriceHistory.deleteMany({where:{supplierOfferId:offer.id}});await prisma.offerPriceHistory.createMany({data:Array.from({length:12},(_,month)=>{const current=Number(offer.unitPrice),factor=Number(product.unitsPerPackage),season=1.08-month*.006+(month%4===0?.012:0);return{supplierOfferId:offer.id,price:money(current*season),normalizedPrice:current*season/factor,effectiveAt:new Date(2025,8+month,1)}})});}}
+  const issueTypes:IssueType[]=["MISSING","DAMAGED","WRONG_ITEM","QUALITY","PACKAGING"];
+  for(let i=0;i<110;i++){const facility=facilities[i%facilities.length],center=centers.find(x=>x.facilityId===facility.id)!,offer=offers[(i*3)%offers.length],product=products[(i*3)%products.length],quantity=5+i%8,subtotal=money(Number(offer.unitPrice)*quantity),tax=money(subtotal*Number(offer.taxRate)/100),total=money(subtotal+tax),approved=i<85,status:RequisitionStatus=approved?"APPROVED":i<101?"PENDING_APPROVAL":i<106?"REJECTED":"CLARIFICATION_REQUESTED",supplier=suppliers.find(s=>s.id===offer.supplierId)!;
+    const req=await prisma.purchaseRequisition.create({data:{requisitionNumber:"PR-2026-"+String(i+1).padStart(6,"0"),requesterId:users[0].id,organizationId:anteo.id,facilityId:facility.id,costCenterId:center.id,status,subtotal,taxTotal:tax,total,justification:i%4===0?"Ripristino scorta minima di reparto":null,requiredByDate:new Date(now.getTime()+(10+i%6)*day),policyDecision:i%5===0?"AREA_MANAGER_APPROVAL":"AUTO_APPROVE",policyExplanation:i%5===0?"Importo soggetto a revisione Area Manager.":"Acquisto da catalogo entro budget e limite autonomo.",policyEvaluation:{rules:["CATALOG","WITHIN_BUDGET"],seeded:true},budgetBefore:22000-i*200,budgetAfter:22000-i*200-total,submittedAt:new Date(now.getTime()-(50-i)*day),approvedAt:approved?new Date(now.getTime()-(49-i)*day):null,rejectedAt:status==="REJECTED"?new Date(now.getTime()-5*day):null,lines:{create:{canonicalProductId:product.id,supplierOfferId:offer.id,descriptionSnapshot:product.name,supplierSnapshot:supplier.name,supplierSkuSnapshot:offer.supplierSku,quantity,unitPrice:offer.unitPrice,normalizedUnitPrice:offer.normalizedUnitPrice,taxRate:offer.taxRate,lineTotal:subtotal}}}});
+    if(i%5===0) await prisma.approvalRequest.create({data:{requisitionId:req.id,approverUserId:users[1].id,approverAssignmentId:assignments[1].id,status:approved?"APPROVED":status==="REJECTED"?"REJECTED":status==="CLARIFICATION_REQUESTED"?"CLARIFICATION_REQUESTED":"PENDING",level:1,reason:"Sopra limite autonomo della struttura",decisionNote:approved?"Approvato nel contesto del budget disponibile.":null,requestedAt:new Date(now.getTime()-(50-i)*day),decidedAt:approved?new Date(now.getTime()-(49-i)*day):null}});
+    if(approved){const po=await prisma.purchaseOrder.create({data:{poNumber:"PO-2026-"+String(i+1).padStart(6,"0"),requisitionId:req.id,supplierId:supplier.id,organizationId:anteo.id,facilityId:facility.id,deliveryLocation:facility.address!,status:i<5?"ISSUE":i<15?"RECEIVED":i<18?"PARTIALLY_RECEIVED":"ISSUED",subtotal,taxTotal:tax,total,issuedAt:new Date(now.getTime()-(48-i)*day),expectedDeliveryDate:new Date(now.getTime()-(40-i)*day),supplierAcknowledgedAt:new Date(now.getTime()-(47-i)*day),lines:{create:{canonicalProductId:product.id,descriptionSnapshot:product.name,supplierSkuSnapshot:offer.supplierSku,quantity,unitPrice:offer.unitPrice,taxRate:offer.taxRate,lineTotal:subtotal}}},include:{lines:true}});
+      if(i<15){const received=i<5?quantity-1:quantity;const receipt=await prisma.receipt.create({data:{receiptNumber:"GR-2026-"+String(i+1).padStart(6,"0"),purchaseOrderId:po.id,facilityId:facility.id,receivedById:users[0].id,receivedAt:new Date(now.getTime()-(39-i)*day),status:i<5?"WITH_ISSUES":"COMPLETE",notes:i<5?"Ricezione con anomalia registrata.":"Consegna verificata.",lines:{create:{purchaseOrderLineId:po.lines[0].id,quantityOrdered:quantity,quantityReceived:received,quantityAccepted:i<5?received-1:received,quantityRejected:i<5?1:0}}},include:{lines:true}});if(i<5)await prisma.qualityIssue.create({data:{receiptLineId:receipt.lines[0].id,purchaseOrderLineId:po.lines[0].id,issueType:issueTypes[i],severity:i===3?"HIGH":"MEDIUM",affectedQuantity:1,description:["Unità mancante.","Confezione danneggiata.","Articolo errato.","Qualità da verificare.","Imballo compromesso."][i],status:i<2?"RESOLVED":"OPEN",resolvedAt:i<2?new Date(now.getTime()-30*day):null}});}
+    }
+    await prisma.auditEvent.create({data:{actorUserId:users[0].id,entityType:"PURCHASE_REQUISITION",entityId:req.id,action:"REQUISITION_CREATED",metadata:{seeded:true,requisitionNumber:req.requisitionNumber}}});
+  }
+  const ordersWithoutReceipt=await prisma.purchaseOrder.findMany({where:{receipts:{none:{}}},include:{lines:true},take:50,orderBy:{issuedAt:"asc"}});
+  for(let i=0;i<ordersWithoutReceipt.length;i++){const po=ordersWithoutReceipt[i],partial=i%7===0,quantity=Number(po.lines[0].quantity),received=partial?Math.max(1,quantity-1):quantity;const receipt=await prisma.receipt.create({data:{receiptNumber:"GR-2026-"+String(100+i).padStart(6,"0"),purchaseOrderId:po.id,facilityId:po.facilityId,receivedById:users[0].id,receivedAt:new Date(now.getTime()-(20-i%18)*day),status:partial?"PARTIAL":"COMPLETE",notes:partial?"Consegna parziale, saldo atteso.":"Consegna verificata.",lines:{create:{purchaseOrderLineId:po.lines[0].id,quantityOrdered:quantity,quantityReceived:received,quantityAccepted:received,quantityRejected:0}}},include:{lines:true}});await prisma.purchaseOrder.update({where:{id:po.id},data:{status:partial?"PARTIALLY_RECEIVED":"RECEIVED"}});if(i<10){await prisma.qualityIssue.create({data:{receiptLineId:receipt.lines[0].id,purchaseOrderLineId:po.lines[0].id,issueType:issueTypes[i%issueTypes.length],severity:i%4===0?"HIGH":"MEDIUM",affectedQuantity:1,description:["Quantità inferiore al documento di trasporto.","Imballo esterno danneggiato.","Referenza consegnata non corrispondente.","Prestazione qualitativa da verificare.","Confezione non integra."][i%5],status:i<4?"RESOLVED":i<7?"UNDER_REVIEW":"OPEN",resolutionType:i<4?"replacement":null,resolutionNote:i<4?"Sostituzione concordata con il fornitore.":null,resolvedAt:i<4?new Date(now.getTime()-(4-i)*day):null}});}}
+  await prisma.favorite.createMany({data:products.slice(0,12).map(p=>({userId:users[0].id,facilityId:facilities[0].id,canonicalProductId:p.id}))});
+  const weekly=await prisma.shoppingList.create({data:{userId:users[0].id,facilityId:facilities[0].id,name:"Ordine settimanale igiene",description:"Scorta ricorrente per reparti e spazi comuni."}});await prisma.shoppingListItem.createMany({data:products.slice(0,6).map((p,i)=>({shoppingListId:weekly.id,canonicalProductId:p.id,quantity:4+i}))});
+  const care=await prisma.shoppingList.create({data:{userId:users[0].id,facilityId:facilities[0].id,name:"Dotazione mensile assistenza",description:"Materiali ricorrenti per l’assistenza quotidiana."}});await prisma.shoppingListItem.createMany({data:products.slice(13,19).map((p,i)=>({shoppingListId:care.id,canonicalProductId:p.id,quantity:3+i}))});
+  await prisma.approvalDelegation.create({data:{delegatorId:users[1].id,delegateId:users[2].id,organizationId:anteo.id,scopeType:"AREA",scopeId:areas[0].id,approvalLimit:15000,validFrom:new Date("2026-08-15"),validUntil:new Date("2026-09-15"),active:true}});
+  await prisma.outOfCatalogRequest.createMany({data:[{requestNumber:"FC-2026-000001",requesterId:users[0].id,organizationId:anteo.id,facilityId:facilities[0].id,categoryId:categories[6].id,needDescription:"Ricambio specifico per sollevatore di reparto",quantity:2,estimatedAmount:480,suggestedSupplier:"Centro Ausili Italia",justification:"Ripristino urgente dell’attrezzatura di mobilizzazione",status:"UNDER_REVIEW"},{requestNumber:"FC-2026-000002",requesterId:users[0].id,organizationId:anteo.id,facilityId:facilities[0].id,categoryId:categories[3].id,needDescription:"Detergente dermatologico in formato professionale",quantity:12,estimatedAmount:210,justification:"Prodotto richiesto dal protocollo assistenziale interno",status:"SUBMITTED"}]});
+  console.log("Seed completo: "+facilities.length+" strutture, "+products.length+" prodotti, "+offers.length+" offerte, 110 richieste, 85 ordini.");
+}
+main().catch(e=>{console.error(e);process.exit(1)}).finally(()=>prisma.$disconnect());

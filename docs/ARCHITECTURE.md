@@ -1,33 +1,77 @@
 # Architecture
 
-## Domain model
+## Domain and scope
 
-The foundation preserves the hierarchy `Organization → LegalEntity → Area → Facility → CostCenter` and keeps identity separate from authorization. A `UserAssignment` combines `User + Role + Organization + Scope + Authority`; a role alone never implies global visibility.
+The hierarchy remains Organization → LegalEntity → Area → Facility → CostCenter. Authorization is an active UserAssignment: user, role, organization, scope and authority. resolveScope expands ORGANIZATION, AREA and FACILITY into permitted facility IDs. Pages and mutation actions validate roles server-side; resource pages additionally constrain facility or approver ownership.
 
-## Organization and scope
+## Procurement lifecycle
 
-`src/lib/scope.ts` resolves `ORGANIZATION`, `AREA`, and `FACILITY` assignments into a stable context with a label and permitted facility IDs. The Area Manager’s facility list and detail both use that resolution; direct navigation to a facility outside the area returns the shared unavailable view. Route-level role checks live in `src/lib/auth.ts`, providing a narrow seam for a future policy engine.
+Cart → PurchaseRequisition → Policy evaluation → ApprovalRequest when required → PurchaseOrder → Receipt → QualityIssue.
 
-## Canonical product vs supplier offer
+Cart state is persisted per user and facility. Submission snapshots product, supplier, SKU, price, normalized price and tax. A requisition expresses internal demand and its policy history; a PO is the external supplier commitment. They are deliberately separate records.
 
-`CanonicalProduct` is the normalized procurement identity. `SupplierOffer` carries supplier SKU, packaging, commercial price, normalized price, price-list provenance, and preferred status. Comparisons group offers only through the canonical product and use normalized price when present, falling back to unit price without manufacturing data.
+## Budget logic
 
-## Prisma data access
+- Approved: sum of active applicable budgets.
+- Reserved: submitted requisitions pending approval.
+- Committed: non-cancelled issued purchase orders.
+- Actual: seeded historical actual amount; invoice ingestion does not exist yet.
+- Available = Approved − Reserved − Committed − Actual.
+- Utilization = (Committed + Actual) / Approved.
 
-`src/lib/prisma.ts` owns one server-only `PrismaClient` using Prisma 7’s PostgreSQL driver adapter. Development reuses the instance through `globalThis` to avoid hot-reload connection churn. All queries run in Server Components or Server Actions; `DATABASE_URL` is never exposed to browser code.
+Values are derived rather than copied into mutable balance fields. A requisition snapshots budgetBefore and budgetAfter so historical policy context remains explainable.
 
-## Demo authentication
+## Policy engine
 
-The demo switcher submits a Server Action. It validates the database user, writes an HTTP-only same-site cookie, and redirects to the target role’s home. `getCurrentDemoUser()` is the only reader and defaults to Lucia Ferri when no cookie is present. Replacing this adapter with SSO should not change page data APIs.
+The central engine is deterministic:
 
-## Server/client boundaries
+1. Catalog, within budget and requester limit → AUTO_APPROVE.
+2. Within budget but above requester limit → AREA_MANAGER_APPROVAL.
+3. Out of budget → Area Manager approval and required justification.
+4. More than 25% above available budget or above Area Manager authority → PROCUREMENT_APPROVAL.
 
-Pages, layouts, policy checks, and data queries are Server Components. Client code is limited to the responsive navigation state, pathname highlighting, the select auto-submit interaction, and the error retry boundary. Serializable view data crosses those boundaries; Prisma objects do not.
+It returns outcome, reason, required role, explanation, evaluated rules and justification requirement. Submission persists the complete decision.
 
-## Future policy engine
+## Approval and supplier splitting
 
-The next authorization layer should map actions and resources to assignment context, return query predicates where possible, and deny direct-resource reads after scope resolution. It should retain route guards but add service-level enforcement and audit decisions.
+The approver is resolved from an active assignment. Final approval, requisition update, PO generation and audit share one Prisma transaction. PO generation groups lines by the snapshot offer supplier, producing one PO per supplier with independent totals and delivery dates.
 
-## Future AI ingestion layer
+## Receiving, quality and audit
 
-Price-list ingestion should be an asynchronous staged pipeline: source file → immutable artifact → extraction → schema validation → supplier/product matching → human exception review → approved price-list publication. Model output must remain evidence-linked and cannot write active offers without deterministic validation and an auditable approval step.
+A receipt records received, accepted and rejected quantities against PO lines. Cumulative quantities determine partial or full receipt; any discrepancy creates a QualityIssue and sets the PO to ISSUE. AuditEvent covers request creation, policy evaluation, approval request/decision, PO creation, receipt and issue opening.
+
+## Data and boundaries
+
+One server-only Prisma 7 PostgreSQL adapter serves all queries. Policy and transactions remain server-side. Server Actions validate identity and resource ownership; credentials and Prisma values never enter browser bundles.
+
+AI ingestion, invoices, three-way matching, RFQ/RFP, supplier portal and contracts remain outside V1.
+
+## Core hardening
+
+### UOM e normalizzazione
+
+CanonicalProduct distingue purchaseUom, descrizione confezione, unitsPerPackage, consumptionUom e relativa etichetta. `src/lib/pricing/normalization.ts` è l’unico servizio autorizzato a derivare prezzo d’acquisto, quantità normalizzata, prezzo per unità di consumo e testo umano. Offerte con conversione assente o UOM differenti sono dichiarate non confrontabili.
+
+### KPI canonici
+
+Le definizioni temporali e di stato vivono in `src/lib/procurement/kpi-definitions.ts`; le query scope-aware sono in `kpis.ts`. Home, consegne e control center devono consumare queste definizioni, così il conteggio e il drill-down riconciliano.
+
+### Presentazione e deleghe
+
+`technical-attributes.ts` traduce attributi tecnici secondo schemi per categoria; `status.ts` impedisce l’esposizione degli enum. `resolveApprover` seleziona prima l’approvatore naturale e poi una delega valida per date, scope, categoria e soglia, persistendo la motivazione e l’identificativo della delega.
+
+### Intelligence fornitore e categoria
+
+Le metriche fornitore riportano numerosità del campione insieme a puntualità, completezza e non conformità. Dipendenza e concentrazione usano regole esplicite basate sulla quota di spesa, mai score opachi. Le aggregazioni restano server-side e rispettano i facility ID risolti dallo scope.
+
+## Product recovery additions
+
+The recovered experience is Italian-first and decision-oriented. The shell exposes role-specific operational workspaces plus a global server-side search. RSA users get buying shortcuts (favorites and recurring lists), a dedicated request area, deliveries and non-conformities; Procurement gets category and issue workspaces. Product images are deliberately subordinate to commercial and technical information: the UI uses a restrained catalog identity rather than pretending that generated assets are product photography.
+
+`Favorite` is scoped by user, facility and canonical product. `ShoppingList` persists recurring facility demand independently from the cart; adding a list resolves the currently active preferred offer at action time. `OutOfCatalogRequest` captures an unmet need without inventing a product or supplier offer and routes it to Procurement review.
+
+`ApprovalDelegation` expresses a bounded transfer of authority: delegator, delegate, validity, scope and optional limit. This milestone persists and exposes delegations; the next policy revision should use them during approver resolution and preserve the selected delegation on `ApprovalRequest`.
+
+Quality issues now have a lifecycle (`OPEN → UNDER_REVIEW → RESOLVED → CLOSED`) with resolution type and note. Changes are transactional with an audit event. Deliveries are a derived operational view of scoped purchase orders and receipts, not a duplicate balance table.
+
+The expanded deterministic seed contains 2 organizations, 4 legal entities, 6 areas, 18 facilities, 27 cost centers, 25 suppliers, 12 categories, 156 canonical products, 468 offers, 30 price lists, 42 budgets, 110 requisitions and 85 purchase orders. Historical price points and operational history are stored in PostgreSQL; no chart uses random runtime values.
