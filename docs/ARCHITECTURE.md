@@ -75,3 +75,13 @@ The recovered experience is Italian-first and decision-oriented. The shell expos
 Quality issues now have a lifecycle (`OPEN → UNDER_REVIEW → RESOLVED → CLOSED`) with resolution type and note. Changes are transactional with an audit event. Deliveries are a derived operational view of scoped purchase orders and receipts, not a duplicate balance table.
 
 The expanded deterministic seed contains 2 organizations, 4 legal entities, 6 areas, 18 facilities, 27 cost centers, 25 suppliers, 12 categories, 156 canonical products, 468 offers, 30 price lists, 42 budgets, 110 requisitions and 85 purchase orders. Historical price points and operational history are stored in PostgreSQL; no chart uses random runtime values.
+
+## Last-mile core freeze
+
+`ProductActionsMenu` centralizza la disclosure di liste, confronto e dettaglio senza duplicare controlli nel Catalogo, nei Preferiti o in Prodotto 360. `ShoppingList.lastUsedAt` distingue modifica e utilizzo effettivo; le operazioni “salva carrello” e “crea da ordine” sono idempotenti per utente, struttura e nome, così QA e riordino non generano duplicati. Il seed assegna richieste, budget e ordini all’organizzazione della struttura e usa requester demo distribuiti. I test di cronologia impediscono sequenze richiesta/approvazione/PO/ricezione/non conformità temporalmente impossibili.
+
+## CSS e design system
+
+La precedente cascata globale (`globals.css`, `operative.css`, `hardening.css`, `recovery-mobile.css`) è stata sostituita da un unico entry point, `src/app/design-system.css`. Il file è organizzato per foundation, shell, primitives, commerce, workflow, intelligence e responsive. Token con prefisso `--jp-` sono la fonte canonica per colore, spazio, bordi, radius, shell e tipografia.
+
+Il responsive usa soltanto quattro breakpoint condivisi (1100, 900, 760 e 440 px). `PageHeader`, `Metric`, `StatusIndicator`, `DataTable`, `EmptyState`, `SearchField` e `ProductImage` restano primitive React; le action row e le disclosure sono primitive semantiche CSS. Gli inline style ammessi rappresentano esclusivamente valori derivati dai dati, come larghezze di progress bar e coordinate dell’atlante immagini.

@@ -17,6 +17,7 @@ export default async function ReceivePage({ params }: { params: Promise<{ id: st
     include: { supplier: true, lines: { include: { receiptLines: true } } },
   });
   if (!order) notFound();
+
   return <main>
     <PageHeader eyebrow="Ricezione merce" title="Registra consegna" description={`${order.poNumber} · ${order.supplier.name}`} />
     <form action={receiveOrder} className="receive-form">

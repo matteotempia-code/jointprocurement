@@ -1,2 +1,14 @@
 import { formatDate } from "@/lib/pricing";
-export function Timeline({events}:{events:{id:string;action:string;createdAt:Date;actor?:{name:string}|null;metadata:unknown}[]}){return <ol className="timeline">{events.map(e=><li key={e.id}><i/><div><strong>{e.action.replaceAll("_"," ")}</strong><span>{formatDate(e.createdAt)} · {e.actor?.name??"System"}</span></div></li>)}</ol>}
+import { statusLabel } from "@/lib/presentation/status";
+
+type TimelineEvent = {
+  id: string;
+  action: string;
+  createdAt: Date;
+  actor?: { name: string } | null;
+  metadata: unknown;
+};
+
+export function Timeline({ events }: { events: TimelineEvent[] }) {
+  return <ol className="timeline">{events.map((event) => <li key={event.id}><i /><div><strong>{statusLabel(event.action)}</strong><span>{formatDate(event.createdAt)} · {event.actor?.name ?? "Sistema"}</span></div></li>)}</ol>;
+}

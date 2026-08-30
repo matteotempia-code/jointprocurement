@@ -1,0 +1,1 @@
+ALTER TABLE "ShoppingList" ADD COLUMN "lastUsedAt" TIMESTAMP(3);

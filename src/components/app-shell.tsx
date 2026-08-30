@@ -18,7 +18,7 @@ export function AppShell({ children, navigation, switcher, identity }: { childre
       <nav aria-label="Navigazione principale">{navigation.map((item) => { const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href); return <Link key={item.href} href={item.href} className={active ? "active" : ""} onClick={() => setOpen(false)}>{item.label}</Link>; })}</nav>
       {identity}
     </aside>
-    {open && <button className="scrim" aria-label="Close navigation" onClick={() => setOpen(false)} />}
-    <main className="main-content"><div className="global-bar"><form action="/cerca"><label className="sr-only" htmlFor="global-q">Ricerca globale</label><input id="global-q" name="q" placeholder="Cerca prodotti, fornitori, richieste o ordini…"/><button>Cerca</button></form><span>Demo · dati fittizi</span></div>{children}</main>
+    {open && <button className="scrim" aria-label="Chiudi navigazione" onClick={() => setOpen(false)} />}
+    <div className="main-content"><div className="global-bar"><form action="/cerca"><label className="sr-only" htmlFor="global-q">Ricerca globale</label><input id="global-q" name="q" placeholder="Cerca prodotti, fornitori, richieste o ordini…"/><button>Cerca</button></form><span>Demo · dati fittizi</span></div>{children}</div>
   </div>;
 }

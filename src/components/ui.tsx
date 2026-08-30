@@ -11,19 +11,20 @@ export function Metric({ label, value, detail }: { label: string; value: ReactNo
 }
 
 export function StatusIndicator({ active, label }: { active: boolean; label?: string }) {
-  return <span className={`status ${active ? "status-active" : "status-inactive"}`}><i />{label ?? (active ? "Active" : "Inactive")}</span>;
+  return <span className={`status ${active ? "status-active" : "status-inactive"}`}><i />{label ?? (active ? "Attivo" : "Non attivo")}</span>;
 }
 
 export function ScopeBadge({ type, label }: { type: string; label: string }) {
-  return <span className="scope-badge"><small>{type}</small>{label}</span>;
+  const typeLabel = ({ ORGANIZATION: "Organizzazione", AREA: "Area", FACILITY: "Struttura" } as Record<string, string>)[type] ?? type;
+  return <span className="scope-badge"><small>{typeLabel}</small>{label}</span>;
 }
 
-export function EmptyState({ title, description }: { title: string; description: string }) {
-  return <div className="empty-state"><h2>{title}</h2><p>{description}</p></div>;
+export function EmptyState({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
+  return <div className="empty-state"><h2>{title}</h2><p>{description}</p>{action && <div className="empty-state-action">{action}</div>}</div>;
 }
 
-export function SearchField({ defaultValue, placeholder = "Search" }: { defaultValue?: string; placeholder?: string }) {
-  return <label className="search-field"><SearchIcon /><span className="sr-only">Search</span><input name="q" defaultValue={defaultValue} placeholder={placeholder} /></label>;
+export function SearchField({ defaultValue, placeholder = "Cerca" }: { defaultValue?: string; placeholder?: string }) {
+  return <label className="search-field"><SearchIcon /><span className="sr-only">Cerca</span><input name="q" defaultValue={defaultValue} placeholder={placeholder} /></label>;
 }
 
 export function DataTable({ children, label }: { children: ReactNode; label: string }) {
@@ -35,5 +36,5 @@ export function ProductLink({ id, name, detail }: { id: string; name: string; de
 }
 
 export function FutureButton({ children }: { children: ReactNode }) {
-  return <div className="future-action"><button disabled>{children}</button><span>Coming in next milestone</span></div>;
+  return <div className="future-action"><button disabled>{children}</button><span>Disponibile nella prossima fase</span></div>;
 }

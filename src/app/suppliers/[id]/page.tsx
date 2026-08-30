@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { DataTable, Metric, PageHeader, StatusIndicator } from "@/components/ui";
+import { DataTable, PageHeader, StatusIndicator } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatMoney, getComparablePrice } from "@/lib/pricing";
@@ -57,18 +57,19 @@ export default async function Supplier360({ params }: { params: Promise<{ id: st
       <div><span>Strutture servite</span><strong>{facilities.size}</strong></div>
       <div><span>Categorie</span><strong>{new Set(supplier.offers.map(({ canonicalProduct }) => canonicalProduct.categoryId)).size}</strong></div>
     </div>
-    <div className="metrics-grid four">
-      <Metric label="Spesa osservata" value={formatMoney(spend)} detail={`${share.toFixed(1)}% del totale`} />
-      <Metric label="Consegne puntuali" value={metrics.delivered >= 3 ? `${metrics.onTimeRate.toFixed(1)}%` : "Dati insufficienti"} detail={`su ${metrics.delivered} consegne`} />
-      <Metric label="Consegne complete" value={metrics.delivered >= 3 ? `${metrics.completeRate.toFixed(1)}%` : "Dati insufficienti"} detail={`su ${metrics.delivered} consegne`} />
-      <Metric label="Tasso di non conformità" value={metrics.delivered >= 3 ? `${metrics.issueRate.toFixed(1)}%` : "Dati insufficienti"} detail={`${metrics.issues} problemi registrati`} />
+    <div className="supplier-performance-strip">
+      <div><span>Spesa osservata</span><strong>{formatMoney(spend)}</strong><small>{share.toFixed(1)}% del totale</small></div>
+      <div><span>Consegne puntuali</span><strong>{metrics.delivered >= 3 ? `${metrics.onTimeRate.toFixed(1)}%` : "—"}</strong><small>{metrics.delivered >= 3 ? `Campione: ${metrics.delivered} consegne` : `Non valutabile · ${metrics.delivered} consegne`}</small></div>
+      <div><span>Consegne complete</span><strong>{metrics.delivered >= 3 ? `${metrics.completeRate.toFixed(1)}%` : "—"}</strong><small>{metrics.delivered >= 3 ? `Campione: ${metrics.delivered} consegne` : `Non valutabile · ${metrics.delivered} consegne`}</small></div>
+      <div><span>Non conformità</span><strong>{metrics.delivered >= 3 ? `${metrics.issueRate.toFixed(1)}%` : "—"}</strong><small>{metrics.delivered >= 3 ? `${metrics.issues} problemi su ${metrics.delivered} consegne` : `Non valutabile · ${metrics.issues} problemi`}</small></div>
     </div>
     <div className="supplier-analytics-grid">
       <section><p className="eyebrow">Andamento</p><h2>Spesa mensile</h2><div className="mini-bars">{monthly.map((month) => <div key={month.date.toISOString()}><i><b style={{ height: `${month.value / maxMonth * 100}%` }} /></i><span>{new Intl.DateTimeFormat("it-IT", { month: "short" }).format(month.date)}</span><small>{month.value ? formatMoney(month.value) : "—"}</small></div>)}</div></section>
       <section><p className="eyebrow">Dipendenza</p><h2>Copertura commerciale</h2><div className="dependency-note"><b>{singleSource} prodotti a fonte unica</b><span>{products.length - singleSource} prodotti con alternative</span><span>Fasce trasparenti: alta ≥25%, media ≥10% della spesa.</span></div></section>
     </div>
     <section><div className="section-heading"><div><p className="eyebrow">Posizione prezzo</p><h2>Listino prodotti</h2></div><span>{products.filter((p) => Math.abs(p.current - p.best) < .000001).length} al miglior prezzo</span></div>
-      <DataTable label="Prodotti del fornitore"><thead><tr><th>Prodotto</th><th>Categoria</th><th>Prezzo confezione</th><th>Prezzo normalizzato</th><th>Posizione</th><th>Convenzionato</th><th>Ultimo ordine</th><th>Spesa</th></tr></thead><tbody>{products.slice(0, 40).map(({ offer, current, best, spend: productSpend, last }) => { const normalized = normalizeOfferPrice(offer.canonicalProduct, offer); return <tr key={offer.id}><td><Link href={`/products/${offer.canonicalProductId}`}>{offer.canonicalProduct.name}</Link></td><td>{offer.canonicalProduct.category.name}</td><td>{formatMoney(Number(offer.unitPrice))}</td><td>{normalized.normalizedPrice != null ? `${formatCurrency(normalized.normalizedPrice, 4)} / ${normalized.consumptionLabel}` : "Non confrontabile"}</td><td>{Math.abs(current - best) < .000001 ? "Migliore" : `+${((current / best - 1) * 100).toFixed(1)}%`}</td><td>{offer.preferred ? "Sì" : "No"}</td><td>{last ? formatDate(last.issuedAt) : "Mai"}</td><td>{formatMoney(productSpend)}</td></tr>; })}</tbody></DataTable>
+      <DataTable label="Prodotti del fornitore"><thead><tr><th>Prodotto</th><th>Categoria</th><th>Prezzo confezione</th><th>Prezzo normalizzato</th><th>Posizione</th><th>Convenzionato</th><th>Ultimo ordine</th><th>Spesa</th></tr></thead><tbody>{products.slice(0, 12).map(({ offer, current, best, spend: productSpend, last }) => { const normalized = normalizeOfferPrice(offer.canonicalProduct, offer); return <tr key={offer.id}><td><Link href={`/products/${offer.canonicalProductId}`}>{offer.canonicalProduct.name}</Link></td><td>{offer.canonicalProduct.category.name}</td><td>{formatMoney(Number(offer.unitPrice))}</td><td>{normalized.normalizedPrice != null ? `${formatCurrency(normalized.normalizedPrice, 4)} / ${normalized.consumptionLabel}` : "Non confrontabile"}</td><td>{Math.abs(current - best) < .000001 ? "Migliore" : `+${((current / best - 1) * 100).toFixed(1)}%`}</td><td>{offer.preferred ? "Sì" : "No"}</td><td>{last ? formatDate(last.issuedAt) : "Mai"}</td><td>{formatMoney(productSpend)}</td></tr>; })}</tbody></DataTable>
+      {products.length > 12 && <p className="table-note">Sono mostrati i 12 prodotti più rilevanti su {products.length}. Usa la ricerca prodotti per consultare l’intero assortimento.</p>}
     </section>
     <div className="supplier-analytics-grid">
       <section><p className="eyebrow">Termini commerciali</p><h2>Condizioni correnti</h2><dl className="commercial-terms"><div><dt>Pagamento</dt><dd>{supplier.paymentTerms}</dd></div><div><dt>Consegna</dt><dd>{supplier.deliveryTerms}</dd></div><div><dt>Ordine minimo</dt><dd>{supplier.minimumOrderValue ? formatMoney(Number(supplier.minimumOrderValue)) : "—"}</dd></div><div><dt>Franco porto</dt><dd>{supplier.freeShippingThreshold ? formatMoney(Number(supplier.freeShippingThreshold)) : "—"}</dd></div></dl></section>

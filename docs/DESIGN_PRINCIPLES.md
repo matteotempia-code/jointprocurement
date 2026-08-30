@@ -19,3 +19,31 @@ Una pagina esiste per sostenere un’attività o una decisione. Budget, storico,
 ## Calma, densità e gerarchia
 
 Superfici chiare, bordi sottili, tipografia sobria e densità controllata. Il colore segnala significato; non decora. Su mobile, l’azione primaria e la verità economica precedono i dettagli progressivi.
+
+## One visual grammar
+
+Catalogo, workflow e intelligence condividono la stessa gerarchia di superfici, tipografia, azioni e stati. Il ruolo cambia il contenuto, non il linguaggio del prodotto.
+
+## Design tokens before page-specific styling
+
+Colore, spacing, radius, bordi e breakpoint nascono dai token. Una pagina non introduce una variante locale quando il significato è già coperto dal sistema.
+
+## Mobile is a product surface, not a breakpoint
+
+Il mobile ordina nuovamente informazioni e azioni: ricerca e acquisto per RSA, decisione per approvazioni, quantità e problemi per ricezione. Non è un desktop ristretto.
+
+## Every repeated pattern becomes a primitive
+
+Header, metriche, stati, tabelle, empty state, immagini prodotto e action row sono pattern condivisi. La ripetizione è un segnale di sistema, non un invito al copia-incolla.
+
+## Reference system, not reference imitation
+
+La reference definisce grammatica e qualità attesa. Il codice ne trasferisce principi e misure in componenti mantenibili, senza replicarne markup inline o limiti da concept.
+
+## Una pagina, una prossima azione
+
+Il prodotto non espone contemporaneamente ogni capacità disponibile. L’azione primaria coincide con il prossimo passo più probabile; alternative, confronto e organizzazione personale vengono rivelati progressivamente.
+
+## Zero non è un allarme
+
+Una metrica nulla non compete con un’eccezione reale. Le home operative comprimono gli stati senza attività in un messaggio positivo e dedicano peso visivo soltanto a ciò che richiede attenzione.
