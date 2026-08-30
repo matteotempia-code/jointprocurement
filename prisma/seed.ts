@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaClient, type IssueType, type RequisitionStatus } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { seedSmartImports } from "./seed-smart-import";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) });
 const now = new Date("2026-08-30T09:00:00Z");
@@ -28,10 +29,12 @@ function packaging(name:string,category:string){const lower=name.toLowerCase();l
 function attributes(name:string,code:string,p:number,pack:ReturnType<typeof packaging>){const size=/\b(XL|L|M|S|39|42)\b/.exec(name)?.[1];if(code==="DISPOSABLES")return{material:name.toLowerCase().includes("nitrile")?"Nitrile":"TNT medicale",size:size??"Unica",color:name.toLowerCase().includes("blu")?"Blu":"Azzurro",powderFree:true,aql:"1,5",latexFree:true,sterile:name.toLowerCase().includes("sterile"),ceMarking:"CE",piecesPerPackage:pack.unitsPerPackage};if(code==="CLEANING")return{volumeLiters:pack.consumptionUom==="L"?pack.unitsPerPackage:null,ph:7+(p%4),dilution:p%3===0?"1:50":"Pronto uso",surfaces:["Pavimenti","Superfici lavabili"],fragrance:p%2?"Neutra":"Agrumi",haccp:p%3===0};if(code==="INCONTINENCE")return{size:size??"M",absorption:p%2?"Notte":"Giorno",piecesPerPackage:pack.unitsPerPackage,latexFree:true};if(code==="PPE")return{material:"Materiale tecnico certificato",size:size??"Unica",ceMarking:"CE",certified:true,piecesPerPackage:pack.unitsPerPackage};if(code==="FOOD")return{weightKg:pack.consumptionUom==="KG"?pack.unitsPerPackage:null,volumeLiters:pack.consumptionUom==="L"?pack.unitsPerPackage:null,filtersPerPackage:pack.consumptionUom==="FILTER"?pack.unitsPerPackage:null,storage:"Luogo fresco e asciutto"};return{professionalUse:true,storage:"Ambiente asciutto",piecesPerPackage:pack.consumptionUom==="PIECE"?pack.unitsPerPackage:null};}
 
 async function clear() {
+  await prisma.importFieldCorrection.deleteMany(); await prisma.importedFieldValue.deleteMany(); await prisma.productMatchCandidate.deleteMany();
   await prisma.approvalDelegation.deleteMany(); await prisma.outOfCatalogRequest.deleteMany(); await prisma.shoppingListItem.deleteMany(); await prisma.shoppingList.deleteMany(); await prisma.favorite.deleteMany();
   await prisma.auditEvent.deleteMany(); await prisma.qualityIssue.deleteMany(); await prisma.receiptLine.deleteMany(); await prisma.receipt.deleteMany();
   await prisma.purchaseOrderLine.deleteMany(); await prisma.purchaseOrder.deleteMany(); await prisma.approvalRequest.deleteMany(); await prisma.purchaseRequisitionLine.deleteMany(); await prisma.purchaseRequisition.deleteMany();
   await prisma.cartLine.deleteMany(); await prisma.cart.deleteMany(); await prisma.budget.deleteMany(); await prisma.offerPriceHistory.deleteMany(); await prisma.supplierOffer.deleteMany(); await prisma.priceList.deleteMany();
+  await prisma.importedRecord.deleteMany(); await prisma.importJob.deleteMany(); await prisma.sourceDocument.deleteMany();
   await prisma.canonicalProduct.deleteMany(); await prisma.category.deleteMany(); await prisma.supplier.deleteMany(); await prisma.userAssignment.deleteMany(); await prisma.role.deleteMany(); await prisma.user.deleteMany();
   await prisma.costCenter.deleteMany(); await prisma.facility.deleteMany(); await prisma.area.deleteMany(); await prisma.legalEntity.deleteMany(); await prisma.organization.deleteMany();
 }
@@ -88,6 +91,7 @@ async function main() {
   ]});
   await prisma.approvalDelegation.create({data:{delegatorId:users[1].id,delegateId:users[2].id,organizationId:anteo.id,scopeType:"AREA",scopeId:areas[0].id,approvalLimit:15000,validFrom:new Date("2026-08-15"),validUntil:new Date("2026-09-15"),active:true}});
   await prisma.outOfCatalogRequest.createMany({data:[{requestNumber:"FC-2026-000001",requesterId:users[0].id,organizationId:anteo.id,facilityId:facilities[0].id,categoryId:categories[6].id,needDescription:"Ricambio specifico per sollevatore di reparto",quantity:2,estimatedAmount:480,suggestedSupplier:"Centro Ausili Italia",justification:"Ripristino urgente dell’attrezzatura di mobilizzazione",status:"UNDER_REVIEW"},{requestNumber:"FC-2026-000002",requesterId:users[0].id,organizationId:anteo.id,facilityId:facilities[0].id,categoryId:categories[3].id,needDescription:"Detergente dermatologico in formato professionale",quantity:12,estimatedAmount:210,justification:"Prodotto richiesto dal protocollo assistenziale interno",status:"SUBMITTED"}]});
+  await seedSmartImports({prisma,organization:anteo,suppliers,uploader:users[2],products,offers,now,day});
   console.log("Seed completo: "+facilities.length+" strutture, "+products.length+" prodotti, "+offers.length+" offerte, 110 richieste, 85 ordini.");
 }
 main().catch(e=>{console.error(e);process.exit(1)}).finally(()=>prisma.$disconnect());

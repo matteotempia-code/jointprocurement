@@ -85,3 +85,47 @@ The expanded deterministic seed contains 2 organizations, 4 legal entities, 6 ar
 La precedente cascata globale (`globals.css`, `operative.css`, `hardening.css`, `recovery-mobile.css`) è stata sostituita da un unico entry point, `src/app/design-system.css`. Il file è organizzato per foundation, shell, primitives, commerce, workflow, intelligence e responsive. Token con prefisso `--jp-` sono la fonte canonica per colore, spazio, bordi, radius, shell e tipografia.
 
 Il responsive usa soltanto quattro breakpoint condivisi (1100, 900, 760 e 440 px). `PageHeader`, `Metric`, `StatusIndicator`, `DataTable`, `EmptyState`, `SearchField` e `ProductImage` restano primitive React; le action row e le disclosure sono primitive semantiche CSS. Gli inline style ammessi rappresentano esclusivamente valori derivati dai dati, come larghezze di progress bar e coordinate dell’atlante immagini.
+
+## Smart Import
+
+### Modello e lifecycle
+
+`SourceDocument` conserva il file originale, checksum, ownership organizzativa, supplier opzionale, tipo, MIME, dimensione e versione. Uno stesso documento può generare più `ImportJob`, così retry e futura rielaborazione non sovrascrivono mai la fonte. Il job espone stati compatibili con processing asincrono futuro, ma l’MVP elabora in una Server Action step-based senza introdurre queue esterne.
+
+`ImportedRecord` è lo staging obbligatorio. Conserva riga grezza, campi interpretati, campi normalizzati, esito, errori, warning e locator. `ImportedFieldValue` registra per singolo campo valore grezzo, interpretato, normalizzato, override umano, confidence e provenienza. `ImportFieldCorrection` conserva chi ha corretto e quando. Nessun parser scrive direttamente su `CanonicalProduct`, `PriceList` o `SupplierOffer`.
+
+### Parser e provider
+
+`src/lib/imports/parser.ts` seleziona parser deterministici: ExcelJS per XLSX, parser delimitato Italy-first per CSV/TSV, estrazione testo per PDF nativi e Mammoth per DOCX. File immagine, PDF scannerizzati e XLS legacy vengono conservati ma falliscono con una spiegazione esplicita quando il provider necessario non è disponibile. Macro e contenuto documento non vengono mai eseguiti.
+
+`DocumentInterpretationProvider` separa il dominio da qualunque vendor. L’implementazione attiva è `LocalHeuristicProvider`: non è AI e viene presentata come “Interpretazione locale”. Un provider futuro potrà contribuire a mapping, document understanding e similarità semantica senza modificare staging, review o publish.
+
+### Normalizzazione e matching
+
+L’import riusa `src/lib/pricing/normalization.ts`: prezzo confezione, fattore di conversione e unità di consumo hanno un’unica semantica nel prodotto. Un box da 100 a 2,50 € produce 0,025 €/pezzo. Conversioni mancanti o ambigue sono `NON_COMPARABLE`; non vengono forzate.
+
+Il matching è identifier-first: GTIN/EAN, codice produttore e supplier SKU precedono descrizione, marca, categoria, UOM e packaging. `ProductMatchCandidate` conserva tipo, score, segnali, compatibilità e motivazioni. Le classi sono identico, probabile, alternativa commerciale, alternativa funzionale da verificare e nuovo prodotto. Un conflitto di identificatore o confezione richiede sempre revisione.
+
+### Review, provenance e publish
+
+La review mostra fonte, interpretazione e catalogo canonico affiancati. Anche i match ad alta affidabilità richiedono una conferma umana, eventualmente bulk. Nuovi prodotti richiedono categoria esistente confermata; supplier e categorie non vengono creati silenziosamente. Ogni correzione e decisione genera audit.
+
+Il publish è una singola transazione Prisma. Verifica scope, supplier e assenza di record irrisolti; crea una nuova versione di `PriceList`, disattiva la precedente senza cancellarla, crea offerte con snapshot normalizzati, eredita il convenzionamento per lo stesso supplier/prodotto e collega `SourceDocument`/`ImportedRecord`. La relazione univoca job-listino e il controllo `publishedPriceList` rendono l’operazione idempotente.
+
+### Change analysis e accesso
+
+La pagina variazioni confronta sempre prezzi normalizzati sulla stessa unità di consumo e usa la versione precedente anche se inattiva. Classifica aumento, riduzione, invariato, nuovo, rimosso, cambio confezione e non confrontabile; confronta inoltre la nuova posizione con la migliore offerta attiva. I volumi non vengono annualizzati in assenza di osservazioni affidabili.
+
+`PROCUREMENT_MANAGER` e `PROCUREMENT_ADMIN` possono accedere alle importazioni nel proprio `organizationId`. RSA, Area, Finance ed Executive sono bloccati server-side. Il download del documento ripete lo scope check e accetta soltanto path sotto lo storage locale autorizzato.
+
+### Scalabilità della review
+
+`src/lib/imports/review-query.ts` è il boundary canonico per ricerca, filtri, sort, conteggi e paginazione dello staging. La pagina usa 25 record per volta e query count separate; `NEEDS_REVIEW` identifica un’eccezione individuale, mentre `READY` identifica una proposta affidabile confermabile in batch. `src/lib/imports/bulk-review.ts` applica nuovamente i vincoli nel database ed è idempotente.
+
+Le proiezioni indicizzate su `ImportedRecord` rendono interrogabili descrizione/SKU/GTIN, exception type, prezzo normalizzato e price change senza leggere JSON o materializzare l’intero job. Raw, interpreted e normalized JSON restano la traccia completa; le colonne scalari sono read models di staging ricostruibili.
+
+### Provider readiness e data residency
+
+Il provider espone capability, model version, schema version ed `externalProcessing`. La configurazione è vendor-neutral tramite `DOCUMENT_INTELLIGENCE_PROVIDER`. Finché non esiste un adapter esplicitamente configurato, il runtime seleziona `LOCAL_HEURISTIC`, `externalProcessing=false`. Immagini e scansioni assumono `REQUIRES_PROVIDER`, non `FAILED`: il file resta disponibile per reprocessing, ma non vengono creati record né mutate entità canoniche.
+
+L’evidenza per campo conserva provider/modello/schema/timestamp. Un futuro adapter OCR/vision deve restituire output compatibile con `ImportedFieldValue`; non può bypassare staging, review e publish transazionale.

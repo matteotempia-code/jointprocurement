@@ -7,15 +7,19 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test tests/*.test.ts",
+    "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts",
     "qa:browser": "node tests/browser-qa.mjs",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "demo:imports": "tsx scripts/generate-demo-imports.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
+    "mammoth": "^1.12.2",
     "next": "16.3.3",
+    "pdf-parse": "^2.4.5",
     "pg": "^8.23.0",
     "prisma": "^7.10.0",
     "react": "19.2.8",

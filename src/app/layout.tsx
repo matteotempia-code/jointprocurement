@@ -17,7 +17,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [context, users] = await Promise.all([getCurrentDemoUser(), getDemoUsers()]);
   const scope = await resolveScope(context.assignment);
   return (
-    <html lang="it">
+    <html lang="it" data-scroll-behavior="smooth">
       <body><AppShell navigation={navigationByRole[context.roleCode]} switcher={<DemoRoleSwitcher users={users} currentId={context.user.id} />} identity={<div className="identity"><div className="avatar">{context.user.name.split(" ").map((part) => part[0]).join("")}</div><div><b>{context.user.name}</b><span>{roleNameLabel(context.role.name)}</span><ScopeBadge type={scope.type} label={scope.label} /></div></div>}>{children}</AppShell></body>
     </html>
   );

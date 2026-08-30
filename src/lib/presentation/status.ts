@@ -18,6 +18,13 @@ const labels: Record<string, string> = {
   LIST_USED: "Lista utilizzata", FAVORITE_ADDED: "Prodotto aggiunto ai preferiti", FAVORITE: "Preferito",
   APPROVAL_REQUESTED: "Approvazione richiesta", PO_CREATED: "Ordine creato",
   RECEIPT_CREATED: "Ricezione registrata", ISSUE_OPENED: "Non conformità aperta",
+  DOCUMENT_UPLOADED: "Documento caricato", IMPORT_STARTED: "Lettura avviata",
+  COLUMN_MAPPING_CHANGED: "Mapping colonne aggiornato", FIELD_CORRECTED: "Campo corretto",
+  MATCH_ACCEPTED: "Corrispondenza confermata", MATCH_REJECTED: "Corrispondenza rifiutata",
+  NEW_PRODUCT_CONFIRMED: "Nuovo prodotto confermato", RECORD_IGNORED: "Record ignorato",
+  RECORD_NOT_COMPARABLE: "Record segnato non confrontabile", IMPORT_READY: "Importazione pronta",
+  IMPORT_PUBLISHED: "Importazione pubblicata", IMPORT_FAILED: "Importazione non riuscita",
+  IMPORT_REPROCESSED: "Documento rielaborato", SUPPLIER_CONFIRMED: "Fornitore confermato",
 };
 
 export function statusLabel(code: string) {

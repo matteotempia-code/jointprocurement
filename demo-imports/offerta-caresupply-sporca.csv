@@ -1,0 +1,20 @@
+Listino sporco CareSupply
+codice;articolo;formato;um;prezzo;iva;minimo;categoria
+ALF-0001;Guanto nitrile s/polv M - 100 pezzi;CF 100;CF;2,45;10;2;Dispositivi monouso
+ALF-0002;Guanto nitrile s/polv L - 100 pezzi;CF 100;CF;3,23;22;1;Dispositivi monouso
+ALF-0003;Guanto nitrile blu S - 100 pezzi;CF 100;CF;4,04;22;1;Dispositivi monouso
+ALF-0004;Mascherina chirurgica tipo IIR - 50 pezzi;CF 50;CF;4,60;22;1;Dispositivi monouso
+ALF-0005;Garza sterile 10 × 10 cm - 100 pezzi;CF 100;CF;5,42;22;1;Dispositivi monouso
+ALF-0006;Cerotto in rotolo 5 m × 2,5 cm;CF 1;CF;6,27;22;2;Dispositivi monouso
+ALF-0007;Siringa sterile 10 ml - 100 pezzi;CF 100;CF;6,74;22;1;Dispositivi monouso
+ALF-0008;Ago ipodermico 21G - 100 pezzi;CF 100;CF;7,61;22;1;Dispositivi monouso
+ALF-0009;Bicchiere monouso 200 ml - 100 pezzi;CF 100;CF;8,51;22;1;Dispositivi monouso
+ALF-0010;Telino assorbente 60 × 90 cm - 30 pezzi;CF 30;CF;8,89;10;1;Dispositivi monouso
+ALF-0011;Copriscarpa monouso - 100 pezzi;CF 100;CF;9,80;22;2;Dispositivi monouso
+ALF-0012;Camice visitatore TNT - 10 pezzi;CF 10;CF;10,74;22;1;Dispositivi monouso
+ALF-0013;Rotolo lettino medico 60 cm;CF 1;CF;11,03;22;1;Dispositivi monouso
+ALF-0014;Pannolone mutandina giorno M - 30 pezzi;CF 30;CF;4,70;22;1;Incontinenza
+ALF-0015;Pannolone mutandina notte M - 30 pezzi;CF 30;CF;5,54;22;1;Incontinenza
+ALF-0016;Pannolone mutandina giorno L - 30 pezzi;CF 30;CF;6,04;22;2;Incontinenza
+ALF-0017;Pannolone mutandina notte L - 30 pezzi;CF 30;CF;6,89;22;1;Incontinenza
+ALF-0018;Pannolone a cintura M - 28 pezzi;CF 28;CF;7,77;22;1;Incontinenza

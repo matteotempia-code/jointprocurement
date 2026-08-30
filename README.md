@@ -1,6 +1,6 @@
 # Joint Procurement OS — Anteo × Coopselios
 
-MVP operativo database-backed per acquisti di struttura governati. La milestone corrente ha riprogettato il prodotto in italiano attorno alle decisioni di RSA, Area Manager, Procurement, Finance ed Executive.
+MVP operativo database-backed per acquisti di struttura governati. Il core italiano per RSA, Area Manager, Procurement, Finance ed Executive include ora Smart Import: documenti commerciali reali diventano staging verificabile, offerte versionate e price intelligence soltanto dopo conferma umana.
 
 ## What works
 
@@ -16,12 +16,17 @@ MVP operativo database-backed per acquisti di struttura governati. La milestone 
 - Ricerca globale, preferiti, liste ricorrenti e riordino
 - Richieste fuori catalogo, workspace consegne e non conformità con risoluzione
 - Category 360, deleghe temporanee e cockpit operativi attention-first
+- Smart Import con upload reale, checksum, storage originale e scope organizzativo
+- Parser deterministici XLSX/CSV, PDF nativo e supporto strutturale DOCX
+- Mapping colonne, staging raw/interpreted/normalized/human e provenienza per campo
+- Matching identifier-first spiegabile, review per eccezione e publish transazionale idempotente
+- Versioning listini e confronto vecchio/nuovo su prezzi normalizzati e cambi confezione
 
-AI import, invoices, three-way matching, sourcing and supplier portal are not implemented.
+Non è configurato un provider AI/OCR esterno: l’interfaccia dichiara correttamente “Interpretazione locale”. PDF scannerizzati e immagini vengono conservati ma non interpretati automaticamente. Invoice matching, sourcing e supplier portal non sono implementati.
 
 ## Stack
 
-Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, Prisma 7 PostgreSQL adapter, local PostgreSQL and Playwright.
+Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, Prisma 7 PostgreSQL adapter, PostgreSQL locale, Playwright, ExcelJS, Mammoth e pdf-parse.
 
 ## Start locally
 
@@ -31,6 +36,12 @@ Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, Prisma 7 Pos
     npm run dev
 
 Open http://localhost:3000. DATABASE_URL in .env must point to local database joint_procurement_os.
+
+Per rigenerare i documenti Smart Import:
+
+    npm run demo:imports
+
+I file vengono salvati in `demo-imports/`; gli upload della demo sono conservati sotto `var/imports/` e non espongono credenziali al browser.
 
 ## Demo users
 
@@ -49,21 +60,24 @@ Use View as in the demo sidebar. Selection is an HTTP-only cookie validated by a
 
 As Lucia: Catalog → search Guanto nitrile senza polvere M → Product 360 → Add → Cart → Create purchase request. Small requests auto-approve and generate supplier POs. Larger requests appear in Andrea’s Approvals inbox. Return as Lucia to Orders, open a PO and Receive delivery; partial quantities and issues are supported.
 
+Come Giulia: Importazioni → Importa un documento → carica `demo-imports/listino-alfa-medical-2027.xlsx` → verifica mapping e corrispondenze → conferma i match ad alta affidabilità → pubblica. Carica poi `listino-alfa-medical-2028.xlsx` per vedere aumenti, riduzioni, articolo rimosso, nuovo prodotto e cambio confezione calcolati sul prezzo normalizzato.
+
 ## Dataset
 
-The idempotent fictional seed creates 2 organizations, 3 legal entities, 5 areas, 14 facilities, 18 cost centers, 20 suppliers, 8 categories, 104 products, 208 offers, 20 price lists, 16 budgets, 30 requisitions, 20 POs, 15 receipts and 5 quality issues.
+Il seed fittizio e idempotente crea 2 organizzazioni, 4 entità legali, 6 aree, 18 strutture, 27 centri di costo, 25 fornitori, 12 categorie, 156 prodotti, 468 offerte, 30 listini, 42 budget, 110 richieste e 85 ordini. Include inoltre tre job Smart Import dimostrativi; i browser test caricano file reali aggiuntivi.
 
 ## Quality
 
     npx prisma validate
+    npx prisma migrate status
     npm run db:seed
     npm run lint
     npm test
     npm run build
     npm run qa:browser
 
-See docs/ARCHITECTURE.md and docs/FEATURE_REGISTER.md.
+Vedi `docs/ARCHITECTURE.md`, `docs/SMART_IMPORT.md` e `docs/FEATURE_REGISTER.md`.
 
 ## Milestone
 
-Operative Buying MVP / V1. Recommended next milestone: invoice ingestion and governed three-way matching. Smart AI Import remains separate.
+Smart Import end-to-end. Il core buying resta congelato; invoice ingestion, three-way matching e sourcing restano milestone separate e non sono stati avviati.

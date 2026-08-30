@@ -7,9 +7,13 @@ const base = process.env.QA_BASE_URL ?? `http://localhost:${qaPort}`;
 const artifacts = "artifacts/final-mvp-review";
 const styleArtifacts = "artifacts/style-audit";
 const uxArtifacts = "artifacts/ux-final-review";
+const smartImportArtifacts = "artifacts/smart-import-review";
+const smartImportUxArtifacts = "artifacts/smart-import-ux-final";
 await mkdir(artifacts, { recursive: true });
 await mkdir(styleArtifacts, { recursive: true });
 await mkdir(uxArtifacts, { recursive: true });
+await mkdir(smartImportArtifacts, { recursive: true });
+await mkdir(smartImportUxArtifacts, { recursive: true });
 
 let localServer;
 async function isExpectedApp() {
@@ -74,6 +78,10 @@ const styleGenerated = [];
 async function captureStyle(filename, fullPage = true) { await expectItalianCore(); await assertNoOverflow(); await page.screenshot({ path: `${styleArtifacts}/${filename}`, fullPage }); styleGenerated.push(filename); }
 const uxGenerated = [];
 async function captureUx(filename, fullPage = false) { await expectItalianCore(); await assertNoOverflow(); await page.screenshot({ path: `${uxArtifacts}/${filename}`, fullPage }); uxGenerated.push(filename); }
+const smartImportGenerated = [];
+async function captureSmartImport(filename, fullPage = true) { await expectItalianCore(); await assertNoOverflow(); await page.screenshot({ path: `${smartImportArtifacts}/${filename}`, fullPage }); smartImportGenerated.push(filename); }
+const smartImportUxGenerated = [];
+async function captureSmartImportUx(filename, fullPage = true) { await expectItalianCore(); await assertNoOverflow(); await page.screenshot({ path: `${smartImportUxArtifacts}/${filename}`, fullPage }); smartImportUxGenerated.push(filename); }
 
 try {
   await switchTo("Lucia Ferri");
@@ -81,6 +89,9 @@ try {
   await capture("01-home-rsa.png");
   await captureStyle("01-shell-desktop.png", false);
   await captureStyle("02-home-rsa.png");
+  const importDenied = await page.goto(new URL("/imports", base).toString(), { waitUntil: "networkidle" });
+  const importWorkspaceVisible = await page.getByRole("heading", { name: "Importazioni", exact: true }).count();
+  if (importDenied?.status() !== 404 && importWorkspaceVisible) throw new Error("Un RSA Director può accedere alle Importazioni.");
 
   await open("/catalog?q=guanto");
   await expectText(/prodott[oi] trovat[oi]/i);
@@ -92,15 +103,15 @@ try {
   await capture("02-catalogo.png");
   await captureStyle("03-catalogo.png");
   await captureUx("01-catalogo-row-desktop.png");
-  await page.getByText("Altre azioni", { exact: true }).first().click();
+  await page.locator("summary").filter({ hasText: "Altre azioni" }).first().click();
   await captureUx("03-add-to-list-dialog.png");
 
   await open(productHref);
   await expectText("Offerta convenzionata");
   if (!await page.locator('[role="img"][aria-label^="Immagine dimostrativa di"]').count()) throw new Error("Immagine prodotto assente da Prodotto 360");
-  await page.getByText("Altre azioni", { exact: true }).first().click();
+  await page.locator("summary").filter({ hasText: "Altre azioni" }).first().click();
   const compareHref = await page.getByRole("link", { name: "Confronta offerte" }).first().getAttribute("href");
-  await page.getByText("Altre azioni", { exact: true }).first().click();
+  await page.locator("summary").filter({ hasText: "Altre azioni" }).first().click();
   await capture("03-product-360.png");
   await captureStyle("04-product-360.png");
   await captureUx("05-product-hero.png");
@@ -191,6 +202,112 @@ try {
   await open(categoryHref);
   await capture("21-categoria-360.png");
 
+  // Smart Import: real files, persistent staging, human review and publish.
+  await open("/imports");
+  await expectText("Importazioni");
+  await captureSmartImport("01-import-home.png");
+  await expectText("Da gestire");
+  await captureSmartImportUx("01-import-work-queue.png");
+  await open("/imports/new");
+  await captureSmartImport("02-new-import.png");
+  await page.getByTestId("import-file").setInputFiles("demo-imports/listino-alfa-medical-2027.xlsx");
+  await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: "Alfa Medical" });
+  await captureSmartImport("03-uploaded-document.png");
+  await page.getByRole("button", { name: "Carica e interpreta" }).click();
+  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 60_000 });
+  const firstImportUrl = new URL(page.url());
+  const firstImportPath = firstImportUrl.pathname;
+  await expectText("Revisione per eccezione");
+  await captureSmartImport("05-interpretation-preview.png");
+  await captureSmartImportUx("02-import-detail-action-first.png", false);
+  await captureSmartImportUx("20-provider-status.png", false);
+  await open(`${firstImportPath}/mapping`);
+  await expectText("Mapping delle colonne");
+  await captureSmartImport("04-column-mapping.png");
+  await captureSmartImportUx("03-column-mapping-refined.png");
+  await open(`${firstImportPath}?filtro=ready`);
+  await captureSmartImport("06-review-exceptions.png");
+  const firstRecordHref = await page.getByRole("link", { name: "Riga 1", exact: true }).first().getAttribute("href");
+  await open(firstRecordHref);
+  await expectText("Dato interpretato");
+  await captureSmartImport("07-record-review.png");
+  await captureSmartImport("08-match-candidates.png", false);
+  await captureSmartImportUx("06-record-review-compact.png", false);
+  await captureSmartImportUx("07-provenance-collapsed.png");
+  await page.locator("details.provenance-disclosure summary").click();
+  await captureSmartImportUx("08-provenance-expanded.png");
+  await captureSmartImportUx("09-match-recommended.png", false);
+  await captureSmartImportUx("10-match-differences.png", false);
+  await open(firstImportPath);
+  await Promise.all([
+    page.waitForURL((url) => url.searchParams.get("alta") === "approvata", { timeout: 60_000 }),
+    page.getByRole("button", { name: "Conferma tutte le proposte affidabili" }).click(),
+  ]);
+  await open(`${firstImportPath}/summary`);
+  await captureSmartImport("11-import-summary.png");
+  await captureSmartImport("12-publish-ready.png", false);
+  await captureSmartImportUx("13-publish-summary.png");
+  const publishButton = page.getByRole("button", { name: "Pubblica importazione" });
+  if (!await publishButton.isEnabled()) throw new Error("Il primo import pulito non è pubblicabile dopo la conferma dei match alti.");
+  await publishButton.click();
+  await page.getByRole("dialog").waitFor();
+  await captureSmartImportUx("14-publish-confirm.png", false);
+  await Promise.all([page.waitForURL(/pubblicato=/, { timeout: 60_000 }), page.getByRole("dialog").getByRole("button", { name: "Pubblica", exact: true }).click()]);
+  await open(`${firstImportPath}/summary`);
+  await expectText("Importazione completata");
+  await captureSmartImport("13-import-completed.png");
+  await captureSmartImportUx("15-publish-result.png");
+  await open(`${firstImportPath}/changes`);
+  await captureSmartImport("14-price-list-change-analysis.png");
+  await captureSmartImport("15-price-intelligence.png", false);
+  await captureSmartImportUx("16-price-intelligence-summary.png");
+  await open(`${firstImportPath}/changes?tipo=increases&ordine=increase`);
+  await captureSmartImportUx("17-price-intelligence-filtered.png");
+
+  await open("/imports/new");
+  await page.getByTestId("import-file").setInputFiles("demo-imports/listino-alfa-medical-2028.xlsx");
+  await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: "Alfa Medical" });
+  await captureSmartImport("16-second-version-upload.png");
+  await page.getByRole("button", { name: "Carica e interpreta" }).click();
+  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 60_000 });
+  const secondImportPath = new URL(page.url()).pathname;
+  await open(`${secondImportPath}/changes`);
+  await captureSmartImport("17-old-vs-new.png");
+  await captureSmartImport("18-price-increase-detail.png", false);
+  await captureSmartImportUx("19-old-vs-new-summary.png");
+  await open(`${secondImportPath}/changes?tipo=packaging`);
+  await captureSmartImportUx("18-packaging-change.png");
+  await open(`${secondImportPath}?filtro=attention&eccezione=PACKAGE_CHANGE`);
+  const packagingRow = page.locator("tr", { hasText: "Cambio confezione" }).first();
+  const packagingHref = await packagingRow.getByRole("link", { name: /^Riga / }).getAttribute("href");
+  await open(packagingHref);
+  await captureSmartImport("19-packaging-change-review.png");
+  await Promise.all([
+    page.waitForURL((url) => url.searchParams.get("review") === "1", { timeout: 60_000 }),
+    page.getByRole("button", { name: "Conferma associazione" }).first().click(),
+  ]);
+  await open(`${secondImportPath}?filtro=nuovi`);
+  const newProductHref = await page.getByRole("link", { name: /Schermo facciale antiappannamento/i }).first().getAttribute("href");
+  await open(newProductHref);
+  await captureSmartImport("09-new-product-review.png");
+  await captureSmartImportUx("11-new-product-compact.png");
+  await page.getByRole("combobox", { name: /Categoria/i }).selectOption({ label: "DPI" });
+  await Promise.all([
+    page.waitForURL((url) => url.searchParams.get("nuovo") === "confermato", { timeout: 60_000 }),
+    page.getByRole("button", { name: "Conferma nuovo prodotto" }).click(),
+  ]);
+
+  await open("/imports");
+  const dirtyImportHref = await page.getByRole("link", { name: "offerta-caresupply-sporca.csv" }).first().getAttribute("href");
+  await open(dirtyImportHref);
+  await captureSmartImportUx("04-exceptions-first.png");
+  await captureSmartImportUx("05-bulk-review.png", false);
+  const nonComparableRow = page.locator("tr", { hasText: "Non confrontabile" }).first();
+  const nonComparableHref = await nonComparableRow.getByRole("link", { name: /^Riga / }).getAttribute("href");
+  await open(nonComparableHref);
+  await captureSmartImport("10-non-comparable.png");
+  await captureSmartImportUx("12-non-comparable-action.png");
+
   await switchTo("Marco Villa");
   await open("/organization");
   await capture("24-organizzazione-admin.png");
@@ -249,11 +366,17 @@ try {
   for (const filename of styleGenerated) await access(`${styleArtifacts}/${filename}`);
   if (uxGenerated.length !== 10) throw new Error(`Screenshot UX finali generati ${uxGenerated.length}/10`);
   for (const filename of uxGenerated) await access(`${uxArtifacts}/${filename}`);
+  if (smartImportGenerated.length !== 19) throw new Error(`Screenshot Smart Import generati ${smartImportGenerated.length}/19`);
+  for (const filename of smartImportGenerated) await access(`${smartImportArtifacts}/${filename}`);
+  if (smartImportUxGenerated.length !== 20) throw new Error(`Screenshot Smart Import UX generati ${smartImportUxGenerated.length}/20`);
+  for (const filename of smartImportUxGenerated) await access(`${smartImportUxArtifacts}/${filename}`);
   if (browserErrors.length) throw new Error(`Errori console browser:\n${browserErrors.join("\n")}`);
-  console.log(`BROWSER QA PASS: 6 personas, flussi Preferiti/Liste, immagini, italiano, scope, ${generated.length} screenshot finali, ${styleGenerated.length} style audit e ${uxGenerated.length} UX finali verificati.`);
+  console.log(`BROWSER QA PASS: 6 personas, flussi core e Smart Import reale, scope, ${generated.length} screenshot finali, ${styleGenerated.length} style audit, ${uxGenerated.length} UX finali e ${smartImportGenerated.length} Smart Import verificati.`);
   console.log(generated.join("\n"));
   console.log(styleGenerated.join("\n"));
   console.log(uxGenerated.join("\n"));
+  console.log(smartImportGenerated.join("\n"));
+  console.log(smartImportUxGenerated.join("\n"));
 } finally {
   await browser.close();
   localServer?.kill();

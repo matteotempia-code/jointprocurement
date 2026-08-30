@@ -19,6 +19,7 @@ export default async function Supplier360({ params }: { params: Promise<{ id: st
       include: {
         offers: { where: { active: true }, include: { canonicalProduct: { include: { category: true, offers: { where: { active: true } } } } } },
         purchaseOrders: { include: { facility: true, lines: true, receipts: true }, orderBy: { issuedAt: "desc" } },
+        priceLists: { include: { sourceDocument: true, importJob: true }, orderBy: { createdAt: "desc" }, take: 6 },
       },
     }),
     getSupplierMetrics(id),
@@ -73,8 +74,9 @@ export default async function Supplier360({ params }: { params: Promise<{ id: st
     </section>
     <div className="supplier-analytics-grid">
       <section><p className="eyebrow">Termini commerciali</p><h2>Condizioni correnti</h2><dl className="commercial-terms"><div><dt>Pagamento</dt><dd>{supplier.paymentTerms}</dd></div><div><dt>Consegna</dt><dd>{supplier.deliveryTerms}</dd></div><div><dt>Ordine minimo</dt><dd>{supplier.minimumOrderValue ? formatMoney(Number(supplier.minimumOrderValue)) : "—"}</dd></div><div><dt>Franco porto</dt><dd>{supplier.freeShippingThreshold ? formatMoney(Number(supplier.freeShippingThreshold)) : "—"}</dd></div></dl></section>
-      <section><p className="eyebrow">Contatti</p><h2>Referenti operativi</h2>{contacts.filter(Boolean).map((contact, index) => <div className="contact-row" key={index}><b>{["Commerciale", "Ordini", "Qualità"][index]}</b><strong>{contact.name}</strong><span>{contact.email} · {contact.phone}</span></div>)}</section>
+      <section><p className="eyebrow">Listini recenti</p><h2>Versioni e importazioni</h2>{supplier.priceLists.map((list) => <Link className="activity-row" href={`/price-lists/${list.id}`} key={list.id}><strong>{list.name}</strong><span>v{list.version} · {list.sourceDocument ? "Fonte verificata" : "Inserimento demo"}</span><b>{list.active ? "Attivo" : "Storico"}</b></Link>)}</section>
     </div>
+    <section><div className="section-heading"><div><p className="eyebrow">Contatti</p><h2>Referenti operativi</h2></div></div><div className="contact-grid">{contacts.filter(Boolean).map((contact, index) => <div className="contact-row" key={index}><b>{["Commerciale", "Ordini", "Qualità"][index]}</b><strong>{contact.name}</strong><span>{contact.email} · {contact.phone}</span></div>)}</div></section>
     <section><div className="section-heading"><div><p className="eyebrow">Qualità</p><h2>Non conformità</h2></div><span>{issues.filter((issue) => ["OPEN", "UNDER_REVIEW"].includes(issue.status)).length} aperte · {issues.length} totali</span></div>
       {issues.length ? <DataTable label="Non conformità"><thead><tr><th>Prodotto</th><th>Tipo</th><th>Ordine</th><th>Gravità</th><th>Quantità</th><th>Aperta</th><th>Stato</th></tr></thead><tbody>{issues.map((issue) => <tr key={issue.id}><td>{issue.purchaseOrderLine.canonicalProduct.name}</td><td>{statusLabel(issue.issueType)}</td><td><Link href={`/orders/${issue.purchaseOrderLine.purchaseOrder.id}`}>{issue.purchaseOrderLine.purchaseOrder.poNumber}</Link></td><td>{statusLabel(issue.severity)}</td><td>{Number(issue.affectedQuantity)}</td><td>{formatDate(issue.openedAt)}</td><td>{statusLabel(issue.status)}</td></tr>)}</tbody></DataTable> : <p className="muted">Nessuna non conformità registrata.</p>}
     </section>
