@@ -1,0 +1,1 @@
+export default function Loading() { return <main aria-busy="true"><div className="skeleton skeleton-kicker" /><div className="skeleton skeleton-title" /><div className="skeleton skeleton-copy" /><div className="skeleton skeleton-panel" /></main>; }

@@ -1,69 +1,18 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ArrowIcon } from "@/components/icons";
+import { Metric, PageHeader, ScopeBadge } from "@/components/ui";
+import { getCurrentDemoUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { resolveScope } from "@/lib/scope";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+export default async function Home() {
+  const context = await getCurrentDemoUser();
+  const scope = await resolveScope(context.assignment);
+  if (context.roleCode === "EXECUTIVE_SPONSOR") return <main><PageHeader eyebrow="Executive" title="Control Tower" description="Open the executive view for current network indicators." /><Link className="primary-cta" href="/control-tower">Open Control Tower <ArrowIcon /></Link></main>;
+  if (context.roleCode === "FINANCE_CONTROLLER") return <main><PageHeader eyebrow="Finance" title="Finance workspace" description={`Buongiorno, ${context.user.name.split(" ")[0]}. Your workspace for ${context.organization.name} is intentionally focused.`} /><section className="future-panel"><p className="eyebrow">Next capability</p><h2>Financial controls are on the roadmap</h2><p>Invoice matching and budget control will be activated in a subsequent milestone. No simulated finance operations are available yet.</p></section></main>;
+  const [products, preferredSuppliers, suppliers, priceLists] = await Promise.all([prisma.canonicalProduct.count(), prisma.supplier.count({ where: { offers: { some: { preferred: true } } } }), prisma.supplier.count({ where: { active: true } }), prisma.priceList.count({ where: { active: true } })]);
+  if (context.roleCode === "RSA_DIRECTOR") return <main><PageHeader eyebrow="Facility workspace" title={`Buongiorno, ${context.user.name.split(" ")[0]}`} description="Everything relevant to your facility, in one focused workspace." /><section className="context-panel"><div><span>Your facility</span><h2>{scope.facility}</h2><p>{scope.area} · {scope.organization}</p></div><ScopeBadge type={scope.type} label={scope.label} /></section><div className="metrics-grid"><Metric label="Catalog products available" value={products} detail="Current canonical catalog" /><Metric label="Preferred suppliers" value={preferredSuppliers} detail="Across active offers" /></div><Link href="/catalog" className="primary-cta">Vai al catalogo <ArrowIcon /></Link></main>;
+  if (context.roleCode === "AREA_MANAGER") return <main><PageHeader eyebrow="Area overview" title={`Buongiorno, ${context.user.name.split(" ")[0]}`} description={`${scope.area} · ${scope.facilityIds.length} facilities in your scope`} /><section className="context-panel"><div><span>Your operational scope</span><h2>{scope.area}</h2><p>{scope.organization}</p></div><ScopeBadge type={scope.type} label={scope.label} /></section><div className="metrics-grid three"><Metric label="Facilities in scope" value={scope.facilityIds.length} /><Metric label="Catalog products" value={products} /><Metric label="Active suppliers" value={suppliers} /></div><div className="cta-row"><Link href="/facilities" className="primary-cta">View facilities <ArrowIcon /></Link><Link href="/catalog" className="secondary-cta">Browse catalog</Link></div></main>;
+  const admin = context.roleCode === "PROCUREMENT_ADMIN";
+  return <main><PageHeader eyebrow={admin ? "Platform administration" : "Joint procurement"} title={`Buongiorno, ${context.user.name.split(" ")[0]}`} description={admin ? "Organization, identity and procurement master data." : "A current view of products, suppliers and pricing coverage."} /><div className="metrics-grid four"><Metric label="Canonical products" value={products} /><Metric label="Active suppliers" value={suppliers} /><Metric label="Active price lists" value={priceLists} /><Metric label="Preferred suppliers" value={preferredSuppliers} /></div><section className="section-block"><h2>{admin ? "Administration workspace" : "Procurement workspace"}</h2><p>{admin ? "Review organization structure and role–scope assignments without changing source data." : "Review price coverage and identify comparable products across supplier lists."}</p><Link className="text-link" href={admin ? "/organization" : "/products"}>{admin ? "Open organization" : "Review products"} <ArrowIcon /></Link></section></main>;
 }
