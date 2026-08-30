@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  legalEntities LegalEntity[]
+  users         UserAssignment[]
+}
+
+model LegalEntity {
+  id             String   @id @default(cuid())
+  name           String
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  areas        Area[]
+}
+
+model Area {
+  id            String   @id @default(cuid())
+  name          String
+  legalEntityId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  legalEntity LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+  facilities  Facility[]
+}
+
+model Facility {
+  id        String   @id @default(cuid())
+  name      String
+  areaId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  area        Area         @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  costCenters CostCenter[]
+}
+
+model CostCenter {
+  id         String   @id @default(cuid())
+  code       String
+  name       String
+  facilityId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@unique([facilityId, code])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments UserAssignment[]
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments UserAssignment[]
+}
+
+model UserAssignment {
+  id             String   @id @default(cuid())
+  userId         String
+  roleId         String
+  organizationId String
+  scopeType      String
+  scopeId        String?
+  approvalLimit  Decimal? @db.Decimal(14, 2)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([organizationId])
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  vatNumber String?  @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  priceLists PriceList[]
+  offers     SupplierOffer[]
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products CanonicalProduct[]
+}
+
+model CanonicalProduct {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  brand       String?
+  ean         String?
+  uom         String
+  categoryId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category Category        @relation(fields: [categoryId], references: [id])
+  offers   SupplierOffer[]
+
+  @@index([ean])
+}
+
+model PriceList {
+  id         String    @id @default(cuid())
+  name       String
+  supplierId String
+  validFrom  DateTime?
+  validUntil DateTime?
+  active     Boolean   @default(false)
+  sourceFile String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  supplier Supplier        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  offers   SupplierOffer[]
+}
+
+model SupplierOffer {
+  id                  String   @id @default(cuid())
+  supplierId          String
+  canonicalProductId  String
+  priceListId         String
+  supplierSku         String?
+  packageSize         Decimal? @db.Decimal(14, 4)
+  unitPrice           Decimal  @db.Decimal(14, 4)
+  normalizedUnitPrice Decimal? @db.Decimal(14, 6)
+  currency            String   @default("EUR")
+  preferred           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  supplier         Supplier         @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  canonicalProduct CanonicalProduct @relation(fields: [canonicalProductId], references: [id], onDelete: Cascade)
+  priceList        PriceList        @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+
+  @@index([canonicalProductId])
+  @@index([supplierId])
+}
