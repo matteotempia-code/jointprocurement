@@ -6,7 +6,7 @@ MVP operativo database-backed per acquisti di struttura governati. Il core itali
 
 - Six demo personas, role navigation and organization/area/facility scope
 - Operational RSA, Area, Procurement, Finance and Executive dashboards
-- Catalogo da 156 prodotti e 468 offerte, Product 360, storico prezzi e documenti locali
+- Catalogo da 156 prodotti e 468 offerte, Product 360, storico prezzi e documenti demo versionati
 - Persistent cart, budget impact and purchase request submission
 - Rule-based policy, auto approval, Area/Procurement approvals
 - Atomic multi-supplier PO generation and downloadable local PDF
@@ -16,7 +16,7 @@ MVP operativo database-backed per acquisti di struttura governati. Il core itali
 - Ricerca globale, preferiti, liste ricorrenti e riordino
 - Richieste fuori catalogo, workspace consegne e non conformità con risoluzione
 - Category 360, deleghe temporanee e cockpit operativi attention-first
-- Smart Import con upload reale, checksum, storage originale e scope organizzativo
+- Smart Import con upload reale, checksum, Storage Supabase privato e scope organizzativo
 - Parser deterministici XLSX/CSV, PDF nativo e supporto strutturale DOCX
 - Mapping colonne, staging raw/interpreted/normalized/human e provenienza per campo
 - Matching identifier-first spiegabile, review per eccezione e publish transazionale idempotente
@@ -26,7 +26,7 @@ Non è configurato un provider AI/OCR esterno: l’interfaccia dichiara corretta
 
 ## Stack
 
-Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, Prisma 7 PostgreSQL adapter, PostgreSQL locale, Playwright, ExcelJS, Mammoth e pdf-parse.
+Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, Prisma 7 PostgreSQL adapter, Supabase PostgreSQL + Storage, Playwright, ExcelJS, Mammoth e pdf-parse.
 
 ## Start locally
 
@@ -35,13 +35,15 @@ Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, Prisma 7 Pos
     npm run db:seed
     npm run dev
 
-Open http://localhost:3000. DATABASE_URL in .env must point to local database joint_procurement_os.
+Open http://localhost:3000. The local `.env` must point `DATABASE_URL` and `DIRECT_URL` to the shared Supabase PostgreSQL project and configure the private Supabase document bucket; no local PostgreSQL installation is required. See `docs/HOME_OFFICE_WORKFLOW.md`.
 
 Per rigenerare i documenti Smart Import:
 
     npm run demo:imports
 
-I file vengono salvati in `demo-imports/`; gli upload della demo sono conservati sotto `var/imports/` e non espongono credenziali al browser.
+Le fixture sintetiche restano in `demo-imports/`. Con `DOCUMENT_STORAGE_PROVIDER=supabase`, gli upload operativi della demo usano lo stesso bucket privato degli upload reali; `var/imports/` resta soltanto un adapter locale ignorato per test isolati.
+
+`demo:imports` genera soltanto fixture versionate e non prova l'upload cloud. La verifica live completa usa `npm run storage:prove-live` seguita da `npm run storage:prove-browser`. L'inventario di immagini, documenti e allegati è in `docs/ASSET_STORAGE_INVENTORY.md`.
 
 ## Demo users
 

@@ -7,11 +7,11 @@ export type ImportReviewSort = "confidence" | "delta" | "price" | "description" 
 
 export function recordFilterWhere(jobId: string, filter: ImportReviewFilter, search = "", exceptionType?: string): Prisma.ImportedRecordWhereInput {
   const state: Prisma.ImportedRecordWhereInput = filter === "attention"
-    ? { status: "NEEDS_REVIEW" }
+    ? { status: "NEEDS_REVIEW", NOT: { matchCandidates: { some: { recommended: true, matchType: "NEW_PRODUCT" } } } }
     : filter === "ready"
-      ? { status: { in: ["READY", "CONFIRMED", "NEW_PRODUCT_CONFIRMED", "PUBLISHED"] } }
+      ? { status: { in: ["READY", "CONFIRMED", "PUBLISHED"] } }
       : filter === "new"
-        ? { OR: [{ status: "NEW_PRODUCT_CONFIRMED" }, { matchCandidates: { some: { matchType: "NEW_PRODUCT" } } }] }
+        ? { OR: [{ status: "NEW_PRODUCT_CONFIRMED" }, { status: "NEEDS_REVIEW", matchCandidates: { some: { recommended: true, matchType: "NEW_PRODUCT" } } }] }
         : filter === "non-comparable"
           ? { status: "NON_COMPARABLE" }
           : filter === "ignored"
@@ -53,23 +53,18 @@ export async function getImportRecordPage(db: PrismaClient, input: { jobId: stri
 }
 
 export async function getImportRecordCounts(db: PrismaClient, jobId: string) {
-  const [total, attention, proposed, ready, newProducts, nonComparable, ignored, published] = await Promise.all([
-    db.importedRecord.count({ where: { importJobId: jobId } }),
-    db.importedRecord.count({ where: { importJobId: jobId, status: "NEEDS_REVIEW" } }),
-    db.importedRecord.count({ where: { importJobId: jobId, status: "READY" } }),
-    db.importedRecord.count({ where: { importJobId: jobId, status: { in: ["CONFIRMED", "NEW_PRODUCT_CONFIRMED"] } } }),
-    db.importedRecord.count({
-      where: {
-        importJobId: jobId,
-        OR: [
-          { status: "NEW_PRODUCT_CONFIRMED" },
-          { matchCandidates: { some: { matchType: "NEW_PRODUCT" } } },
-        ],
-      },
-    }),
-    db.importedRecord.count({ where: { importJobId: jobId, status: "NON_COMPARABLE" } }),
-    db.importedRecord.count({ where: { importJobId: jobId, status: "IGNORED" } }),
-    db.importedRecord.count({ where: { importJobId: jobId, status: "PUBLISHED" } }),
-  ]);
-  return { total, attention, proposed, ready, newProducts, nonComparable, ignored, published };
+  const [groups, pendingNewProducts] = await Promise.all([db.importedRecord.groupBy({ by: ["status"], where: { importJobId: jobId }, _count: { _all: true } }), db.importedRecord.count({ where: { importJobId: jobId, status: "NEEDS_REVIEW", matchCandidates: { some: { recommended: true, matchType: "NEW_PRODUCT" } } } })]);
+  const byStatus = new Map(groups.map((group) => [group.status, group._count._all]));
+  const total = groups.reduce((sum, group) => sum + group._count._all, 0);
+  const attention = (byStatus.get("NEEDS_REVIEW") ?? 0) - pendingNewProducts;
+  const proposed = byStatus.get("READY") ?? 0;
+  const confirmed = byStatus.get("CONFIRMED") ?? 0;
+  const newProducts = (byStatus.get("NEW_PRODUCT_CONFIRMED") ?? 0) + pendingNewProducts;
+  const nonComparable = byStatus.get("NON_COMPARABLE") ?? 0;
+  const ignored = byStatus.get("IGNORED") ?? 0;
+  const published = byStatus.get("PUBLISHED") ?? 0;
+  const failed = byStatus.get("FAILED") ?? 0;
+  const reconciled = attention + proposed + confirmed + newProducts + nonComparable + ignored + published + failed;
+  if (reconciled !== total) throw new Error(`Invariant Smart Import violata: ${reconciled}/${total} record classificati.`);
+  return { total, attention, proposed, ready: confirmed + newProducts, confirmed, newProducts, nonComparable, ignored, published, failed, reconciled };
 }

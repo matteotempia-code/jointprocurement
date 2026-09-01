@@ -82,6 +82,7 @@ const smartImportGenerated = [];
 async function captureSmartImport(filename, fullPage = true) { await expectItalianCore(); await assertNoOverflow(); await page.screenshot({ path: `${smartImportArtifacts}/${filename}`, fullPage }); smartImportGenerated.push(filename); }
 const smartImportUxGenerated = [];
 async function captureSmartImportUx(filename, fullPage = true) { await expectItalianCore(); await assertNoOverflow(); await page.screenshot({ path: `${smartImportUxArtifacts}/${filename}`, fullPage }); smartImportUxGenerated.push(filename); }
+let sourceDocumentHref;
 
 try {
   await switchTo("Lucia Ferri");
@@ -230,6 +231,10 @@ try {
   const firstRecordHref = await page.getByRole("link", { name: "Riga 1", exact: true }).first().getAttribute("href");
   await open(firstRecordHref);
   await expectText("Dato interpretato");
+  sourceDocumentHref = await page.getByRole("link", { name: /Apri documento originale/i }).getAttribute("href");
+  if (!sourceDocumentHref) throw new Error("Link al documento sorgente assente.");
+  const sourceResponse = await page.request.get(new URL(sourceDocumentHref, base).toString());
+  if (!sourceResponse.ok() || !(await sourceResponse.body()).length) throw new Error("Documento sorgente non leggibile dallo storage.");
   await captureSmartImport("07-record-review.png");
   await captureSmartImport("08-match-candidates.png", false);
   await captureSmartImportUx("06-record-review-compact.png", false);
@@ -302,6 +307,7 @@ try {
   await open(dirtyImportHref);
   await captureSmartImportUx("04-exceptions-first.png");
   await captureSmartImportUx("05-bulk-review.png", false);
+  await open(`${new URL(dirtyImportHref, base).pathname}?filtro=all`);
   const nonComparableRow = page.locator("tr", { hasText: "Non confrontabile" }).first();
   const nonComparableHref = await nonComparableRow.getByRole("link", { name: /^Riga / }).getAttribute("href");
   await open(nonComparableHref);
@@ -320,6 +326,9 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await switchTo("Lucia Ferri");
+  const deniedDocument = await page.request.get(new URL(sourceDocumentHref, base).toString());
+  if (deniedDocument.status() !== 404) throw new Error("Un utente fuori ruolo puo accedere al documento sorgente.");
+  await open("/");
   await expectText("Cosa ti serve oggi");
   await capture("25-home-rsa-mobile.png");
   await open("/catalog?q=guanto");

@@ -1,5 +1,7 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
+import { rm } from "node:fs/promises";
+import path from "node:path";
 import test, { after } from "node:test";
 import { applyBulkReview } from "../src/lib/imports/bulk-review";
 import { parseDocument } from "../src/lib/imports/parser";
@@ -74,6 +76,8 @@ test("bulk review conferma solo record compatibili ed è idempotente", async () 
 });
 
 test("immagine senza provider resta persistita e non modifica dati canonici", async () => {
+  const previousStorageProvider = process.env.DOCUMENT_STORAGE_PROVIDER;
+  process.env.DOCUMENT_STORAGE_PROVIDER = "local";
   const { user, assignment, supplier } = await fixtureContext();
   const productsBefore = await prisma.canonicalProduct.count();
   const jobId = await ingestDocument({ buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), filename: `scansione-${process.pid}.png`, mimeType: "image/png", supplierId: supplier.id, documentKind: "PRICE_LIST", organizationId: assignment.organizationId, userId: user.id });
@@ -84,6 +88,9 @@ test("immagine senza provider resta persistita e non modifica dati canonici", as
     assert.equal(job.records.length, 0);
     assert.equal(await prisma.canonicalProduct.count(), productsBefore);
   } finally {
+    const locator = job.sourceDocument.storageObjectKey ? path.join("var", "imports", ...job.sourceDocument.storageObjectKey.split("/")) : null;
+    if (locator) await rm(locator, { force: true });
     await prisma.sourceDocument.delete({ where: { id: job.sourceDocumentId } });
+    if (previousStorageProvider === undefined) delete process.env.DOCUMENT_STORAGE_PROVIDER; else process.env.DOCUMENT_STORAGE_PROVIDER = previousStorageProvider;
   }
 });

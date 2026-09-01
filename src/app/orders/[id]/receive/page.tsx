@@ -38,7 +38,8 @@ export default async function ReceivePage({ params }: { params: Promise<{ id: st
         </fieldset>;
       })}
       <label className="notes">Note di consegna<textarea name="notes" placeholder="Condizioni, documento di trasporto, osservazioni" /></label>
-      <button className="primary-cta">Conferma ricezione</button>
+      <button className="primary-cta">Conferma tutto come ordinato</button>
+      <p className="muted">Le quantità residue sono precompilate. Modificale o segnala una non conformità solo se la consegna differisce dall’ordine.</p>
     </form>
   </main>;
 }

@@ -1,5 +1,7 @@
 # Feature register
 
+Cloud activation evidence (1 September 2026): live XLSX and native PDF ingestion, private signed readback, role denial and operation with `var/imports/` unavailable all pass. The complete cross-asset classification is recorded in `docs/ASSET_STORAGE_INVENTORY.md`.
+
 Stima complessiva dell’MVP operativo: **84%**. Il denominatore comprende organizzazione/accesso, catalogo, ciclo buying, fornitori/categorie, qualità, intelligence e dashboard; esclude Smart Import, fatture e sourcing. Smart Import è valutato separatamente all’**82%**: il percorso XLSX/CSV è end-to-end, mentre OCR e provider AI reali non sono configurati. La stima considera correttezza, profondità, test e maturità UX, non la sola presenza delle route.
 
 | Feature | Phase | Status | Completion | Evidence | Depth note |
@@ -37,7 +39,7 @@ Stima complessiva dell’MVP operativo: **84%**. Il denominatore comprende organ
 | RSA cockpit | Recovery | DONE | 95% | Home Lucia | Search-first, oggi, budget, frequenti, attività |
 | Executive Control Tower | V1 | DONE | 90% | `/control-tower` | Quattro KPI, Top 3 rischi/opportunità e confronto organizzazioni |
 | Audit / task signals | Recovery | DONE | 90% | AuditEvent, timeline | Eventi transazionali e attività recenti |
-| Smart Import — upload e storage | AI-native | DONE | 100% | `/imports/new`, `SourceDocument` | File originale, checksum, duplicati, limiti, MIME/estensione e storage scoped |
+| Smart Import — upload e storage | AI-native | DONE | 100% | `/imports/new`, `SourceDocument`, `DocumentStorageProvider` | File originale, checksum, duplicati, limiti, MIME/estensione e storage Supabase privato scoped per organizzazione; adapter locale solo per test |
 | Smart Import — parser XLSX | AI-native | DONE | 100% | `parser.ts`, fixture reali, test | Header non in riga 1, multi-sheet e provenienza cella |
 | Smart Import — parser CSV/TSV | AI-native | DONE | 100% | `parser.ts`, fixture Italy-first, test | Virgola/punto e virgola/tab, quoted values e virgola decimale |
 | Smart Import — PDF nativo | AI-native | DONE | 85% | fixture PDF reale, test | Estrazione testo e righe; tabelle PDF molto complesse richiedono estensione futura |
@@ -53,6 +55,7 @@ Stima complessiva dell’MVP operativo: **84%**. Il denominatore comprende organ
 | Smart Import — UX scalabile | AI-native hardening | DONE | 96% | work queue, paginazione, filtri, batch, 20 screenshot UX | Review by exception fino a migliaia di righe; resta desktop-primary |
 | Smart Import — large import review | AI-native hardening | DONE | 95% | fixture/test 1.000 righe, query paginate | 25 righe per pagina; ricerca e sort server-side; queue asincrona futura |
 | Smart Import — provider readiness | AI-native hardening | DONE | 85% | capability contract, env detection, evidence per campo | Vendor-neutral e data-residency esplicita; nessun adapter esterno attivo |
+| M11 — credibilità decisionale | Hardening | IN PROGRESS | 65% | primitive UI, metriche, SLA, chiarimenti, condizioni commerciali | Core domain completato; adozione visuale trasversale, dataset network-scale e alcune UX restano aperte |
 | Smart Import — provider document intelligence reale | AI-native future | NOT STARTED | 0% | fallback locale dichiarato | Nessuna credenziale o chiamata esterna configurata |
 | Smart Import — OCR / vision reale | AI-native future | NOT STARTED | 0% | stato `REQUIRES_PROVIDER`, test | File conservato senza falsa estrazione o mutazione canonica |
 | Smart Import — processing asincrono grandi file | AI-native future | NOT STARTED | 10% | stati job compatibili | Nessuna queue/worker introdotta nell’MVP |

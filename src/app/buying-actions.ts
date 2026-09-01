@@ -35,6 +35,12 @@ export async function createOutOfCatalogRequest(formData:FormData){const c=await
 
 export async function acknowledgeOrder(formData:FormData){await requireRoles(["PROCUREMENT_MANAGER"]);const id=String(formData.get("poId"));await prisma.purchaseOrder.update({where:{id},data:{status:"ACKNOWLEDGED",supplierAcknowledgedAt:new Date(),expectedDeliveryDate:formData.get("expectedDate")?new Date(String(formData.get("expectedDate"))):undefined}});revalidatePath("/orders/"+id);}
 
+export async function draftSupplierReminder(formData: FormData) {
+ const context=await requireRoles(["RSA_DIRECTOR","AREA_MANAGER","PROCUREMENT_MANAGER"]),id=String(formData.get("poId"));const scope=await resolveScope(context.assignment);const order=await prisma.purchaseOrder.findFirstOrThrow({where:{id,organizationId:context.organization.id,...(context.roleCode!=="PROCUREMENT_MANAGER"?{facilityId:{in:scope.facilityIds}}:{})},include:{supplier:true}});const contact=(order.supplier.orderContact??{}) as {email?:string;name?:string};
+ const subject=`Sollecito consegna ${order.poNumber}`;const body=`Buongiorno, chiediamo aggiornamento sulla consegna ${order.poNumber}, prevista il ${order.expectedDeliveryDate.toLocaleDateString("it-IT")}. La comunicazione è una bozza e non è stata inviata.`;
+ await prisma.auditEvent.create({data:{actorUserId:context.user.id,entityType:"PURCHASE_ORDER",entityId:order.id,action:"SUPPLIER_REMINDER_DRAFTED",metadata:{recipient:contact.email??order.supplier.contactEmail??null,contactName:contact.name??null,subject,body,deliveryProviderConfigured:false}}});revalidatePath("/consegne");revalidatePath(`/orders/${order.id}`);redirect(`/orders/${order.id}?reminder=draft`);
+}
+
 export async function resolveQualityIssue(formData:FormData){const c=await requireRoles(["PROCUREMENT_MANAGER"]),id=String(formData.get("issueId")),decision=String(formData.get("status"));await prisma.$transaction([prisma.qualityIssue.update({where:{id},data:{status:decision as "UNDER_REVIEW"|"RESOLVED"|"CLOSED",resolutionType:String(formData.get("resolutionType")||"")||null,resolutionNote:String(formData.get("note")||"")||null,resolvedAt:decision==="RESOLVED"||decision==="CLOSED"?new Date():null}}),prisma.auditEvent.create({data:{actorUserId:c.user.id,entityType:"QUALITY_ISSUE",entityId:id,action:"ISSUE_"+decision,metadata:{resolutionType:String(formData.get("resolutionType")||"")}}})]);revalidatePath("/non-conformita");}
 
 export async function submitRequisition(formData:FormData){
@@ -57,6 +63,22 @@ export async function decideApproval(formData:FormData){
   if(decision==="APPROVED"){await tx.purchaseRequisition.update({where:{id:approval.requisitionId},data:{status:"APPROVED",approvedAt:new Date()}});await createPurchaseOrders(tx,approval.requisitionId,context.user.id);}else await tx.purchaseRequisition.update({where:{id:approval.requisitionId},data:{status:decision==="REJECTED"?"REJECTED":"CLARIFICATION_REQUESTED",rejectedAt:decision==="REJECTED"?new Date():null}});
   await tx.auditEvent.create({data:{actorUserId:context.user.id,entityType:"PURCHASE_REQUISITION",entityId:approval.requisitionId,action:decision==="APPROVED"?"APPROVED":decision,metadata:{approvalId:approval.id,note}}});});
  redirect("/approvals?decision="+decision.toLowerCase());
+}
+
+export async function answerClarification(formData: FormData) {
+ const context = await requireRoles(["RSA_DIRECTOR"]); const scope = await resolveScope(context.assignment); const requisitionId = String(formData.get("requisitionId")); const answer = String(formData.get("answer") ?? "").trim(); const justification = String(formData.get("justification") ?? "").trim();
+ if (answer.length < 3) throw new Error("Inserisci una risposta al chiarimento.");
+ const request = await prisma.purchaseRequisition.findFirstOrThrow({ where: { id: requisitionId, requesterId: context.user.id, facilityId: scope.id, status: "CLARIFICATION_REQUESTED" }, include: { lines: true, approvals: { orderBy: { requestedAt: "desc" }, take: 1 } } });
+ const previous = request.approvals[0]; if (!previous || previous.status !== "CLARIFICATION_REQUESTED") throw new Error("Richiesta di chiarimento non disponibile.");
+ const updates = request.lines.map((line) => ({ line, quantity: Math.max(.0001, Number(formData.get(`quantity-${line.id}`) ?? line.quantity)) }));
+ const subtotal = updates.reduce((sum, item) => sum + item.quantity * Number(item.line.unitPrice), 0); const taxTotal = updates.reduce((sum, item) => sum + item.quantity * Number(item.line.unitPrice) * Number(item.line.taxRate) / 100, 0); const total = subtotal + taxTotal;
+ await prisma.$transaction(async (tx) => {
+  for (const item of updates) await tx.purchaseRequisitionLine.update({ where: { id: item.line.id }, data: { quantity: item.quantity, lineTotal: item.quantity * Number(item.line.unitPrice) } });
+  await tx.purchaseRequisition.update({ where: { id: request.id }, data: { status: "PENDING_APPROVAL", subtotal, taxTotal, total, justification: justification || request.justification, submittedAt: new Date(), budgetAfter: Number(request.budgetBefore) - total } });
+  const next = await tx.approvalRequest.create({ data: { requisitionId: request.id, approverUserId: previous.approverUserId, approverAssignmentId: previous.approverAssignmentId, delegationId: previous.delegationId, status: "PENDING", level: previous.level, reason: `Chiarimento risposto · ${previous.reason}` } });
+  await tx.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "PURCHASE_REQUISITION", entityId: request.id, action: "CLARIFICATION_ANSWERED", metadata: { previousApprovalId: previous.id, approvalId: next.id, question: previous.decisionNote, answer, quantitiesUpdated: updates.some((item) => Number(item.line.quantity) !== item.quantity) } } });
+ });
+ redirect(`/requisitions/${request.id}?clarification=answered`);
 }
 
 async function ownedListContext() {

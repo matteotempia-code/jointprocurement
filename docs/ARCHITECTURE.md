@@ -90,7 +90,7 @@ Il responsive usa soltanto quattro breakpoint condivisi (1100, 900, 760 e 440 px
 
 ### Modello e lifecycle
 
-`SourceDocument` conserva il file originale, checksum, ownership organizzativa, supplier opzionale, tipo, MIME, dimensione e versione. Uno stesso documento può generare più `ImportJob`, così retry e futura rielaborazione non sovrascrivono mai la fonte. Il job espone stati compatibili con processing asincrono futuro, ma l’MVP elabora in una Server Action step-based senza introdurre queue esterne.
+`SourceDocument` conserva checksum, ownership organizzativa, supplier opzionale, tipo, MIME, dimensione, versione e un locator storage esplicito. In esercizio `storageProvider=supabase` punta al bucket privato e a una object key scoped per organizzazione; `storagePath` resta soltanto compatibilità per record locali/fixture esistenti. Uno stesso documento può generare più `ImportJob`, così retry e futura rielaborazione non sovrascrivono mai la fonte.
 
 `ImportedRecord` è lo staging obbligatorio. Conserva riga grezza, campi interpretati, campi normalizzati, esito, errori, warning e locator. `ImportedFieldValue` registra per singolo campo valore grezzo, interpretato, normalizzato, override umano, confidence e provenienza. `ImportFieldCorrection` conserva chi ha corretto e quando. Nessun parser scrive direttamente su `CanonicalProduct`, `PriceList` o `SupplierOffer`.
 
@@ -116,7 +116,9 @@ Il publish è una singola transazione Prisma. Verifica scope, supplier e assenza
 
 La pagina variazioni confronta sempre prezzi normalizzati sulla stessa unità di consumo e usa la versione precedente anche se inattiva. Classifica aumento, riduzione, invariato, nuovo, rimosso, cambio confezione e non confrontabile; confronta inoltre la nuova posizione con la migliore offerta attiva. I volumi non vengono annualizzati in assenza di osservazioni affidabili.
 
-`PROCUREMENT_MANAGER` e `PROCUREMENT_ADMIN` possono accedere alle importazioni nel proprio `organizationId`. RSA, Area, Finance ed Executive sono bloccati server-side. Il download del documento ripete lo scope check e accetta soltanto path sotto lo storage locale autorizzato.
+`PROCUREMENT_MANAGER` e `PROCUREMENT_ADMIN` possono accedere alle importazioni nel proprio `organizationId`. RSA, Area, Finance ed Executive sono bloccati server-side. Il download ripete lo scope check prima di generare un URL firmato Supabase a 60 secondi; la chiave elevata non raggiunge mai il browser. Il bucket resta privato.
+
+L'audit binario completo è in `docs/ASSET_STORAGE_INVENTORY.md`. Le immagini catalogo e i PDF sintetici di prodotto/fornitore sono fixture immutabili versionate in Git. Gli upload mutabili di immagini, allegati ordine/ricezione e prove di non conformità non sono workflow esistenti: quando verranno introdotti useranno locator autorizzati e Storage privato, non i campi path legacy.
 
 ### Scalabilità della review
 

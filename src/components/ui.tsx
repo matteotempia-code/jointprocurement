@@ -11,7 +11,29 @@ export function Metric({ label, value, detail }: { label: string; value: ReactNo
 }
 
 export function StatusIndicator({ active, label }: { active: boolean; label?: string }) {
-  return <span className={`status ${active ? "status-active" : "status-inactive"}`}><i />{label ?? (active ? "Attivo" : "Non attivo")}</span>;
+  return <StatusChip variant={active ? "ok" : "neutral"}>{label ?? (active ? "Attivo" : "Non attivo")}</StatusChip>;
+}
+
+export function StatusChip({ variant = "neutral", children }: { variant?: "neutral" | "ok" | "warn" | "danger"; children: ReactNode }) {
+  return <span className={`status-chip status-chip-${variant}`}>{children}</span>;
+}
+
+export function InlineMeta({ items, separator = "·", className = "" }: { items: ReactNode[]; separator?: ReactNode; className?: string }) {
+  const visible = items.filter((item) => item !== null && item !== undefined && item !== "");
+  return <span className={`inline-meta ${className}`.trim()}>{visible.map((item, index) => <span key={index}>{index > 0 && <i aria-hidden>{separator}</i>}<span>{item}</span></span>)}</span>;
+}
+
+export function Num({ value, kind = "number", digits, className = "" }: { value: number; kind?: "number" | "currency" | "percent"; digits?: number; className?: string }) {
+  const options: Intl.NumberFormatOptions = kind === "currency" ? { style: "currency", currency: "EUR", minimumFractionDigits: digits ?? 2, maximumFractionDigits: digits ?? 2 } : kind === "percent" ? { style: "percent", minimumFractionDigits: digits ?? 0, maximumFractionDigits: digits ?? 1 } : { minimumFractionDigits: digits ?? 0, maximumFractionDigits: digits ?? 2 };
+  return <span className={`num ${className}`.trim()}>{new Intl.NumberFormat("it-IT", options).format(kind === "percent" ? value / 100 : value)}</span>;
+}
+
+export function PriceBlock({ normalizedPrice, normalizedUom, packPrice, packSize, variant = "default" }: { normalizedPrice: number | null; normalizedUom?: string | null; packPrice: number; packSize?: string | null; variant?: "default" | "compact" | "table" | "mobile" }) {
+  return <span className={`price-block price-block-${variant}`}><strong>{normalizedPrice == null ? "Non confrontabile" : <><Num value={normalizedPrice} kind="currency" digits={4} />{normalizedUom && ` / ${normalizedUom}`}</>}</strong><small><Num value={packPrice} kind="currency" />{packSize ? ` · ${packSize}` : " · confezione"}</small></span>;
+}
+
+export function StickyActionBar({ summary, children }: { summary: ReactNode; children: ReactNode }) {
+  return <div className="sticky-action-bar"><div>{summary}</div><div className="sticky-action-buttons">{children}</div></div>;
 }
 
 export function ScopeBadge({ type, label }: { type: string; label: string }) {
@@ -21,6 +43,10 @@ export function ScopeBadge({ type, label }: { type: string; label: string }) {
 
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
   return <div className="empty-state"><h2>{title}</h2><p>{description}</p>{action && <div className="empty-state-action">{action}</div>}</div>;
+}
+
+export function EmptyRow({ colSpan, children }: { colSpan: number; children: ReactNode }) {
+  return <tr><td className="empty-row" colSpan={colSpan}>{children}</td></tr>;
 }
 
 export function SearchField({ defaultValue, placeholder = "Cerca" }: { defaultValue?: string; placeholder?: string }) {

@@ -8,6 +8,7 @@ import { formatMoney } from "@/lib/pricing";
 import { normalizeOfferPrice } from "@/lib/pricing/normalization";
 import { getFacilityBudget } from "@/lib/procurement/budget";
 import { resolveScope } from "@/lib/scope";
+import { evaluateCommercialConditions } from "@/lib/procurement/commercial-conditions";
 
 export default async function CartPage() {
   const context = await requireRoles(["RSA_DIRECTOR"]);
@@ -22,12 +23,13 @@ export default async function CartPage() {
   const subtotal = cart.lines.reduce((sum, line) => sum + Number(line.quantity) * Number(line.supplierOffer.unitPrice), 0);
   const iva = cart.lines.reduce((sum, line) => sum + Number(line.quantity) * Number(line.supplierOffer.unitPrice) * Number(line.supplierOffer.taxRate) / 100, 0);
   const total = subtotal + iva;
-  const groups = Object.groupBy(cart.lines, (line) => line.supplierOffer.supplier.name);
+  const groups = Object.groupBy(cart.lines, (line) => line.supplierOffer.supplierId);
+  const commercialGroups = Object.entries(groups).map(([supplierId, lines]) => { const supplier=lines![0].supplierOffer.supplier; const groupSubtotal=lines!.reduce((sum,line)=>sum+Number(line.quantity)*Number(line.supplierOffer.unitPrice),0); return {supplierId,supplier,lines:lines!,commercial:evaluateCommercialConditions(groupSubtotal,supplier)}; });
   const autoApproved = total <= Number(context.assignment.approvalLimit) && total <= budget.available;
   return <main>
-    <PageHeader eyebrow="Acquisto guidato" title="Carrello" description={`${cart.lines.length} articoli · ${Object.keys(groups).length} fornitori`} />
+    <PageHeader eyebrow="Acquisto guidato" title="Carrello" description={`${cart.lines.length} articoli · ${commercialGroups.length} fornitori`} />
     <div className="cart-tools"><div><strong>Vuoi riutilizzare questo acquisto?</strong><span>Salva prodotti e quantità come lista ricorrente.</span></div><form action={saveCartAsList}><label className="sr-only" htmlFor="cart-list-name">Nome lista</label><input id="cart-list-name" required minLength={3} name="name" placeholder="Nome della nuova lista" /><button className="secondary-cta">Salva carrello come lista</button></form></div>
-    <div className="cart-layout"><div>{Object.entries(groups).map(([supplier, lines]) => <section className="supplier-group" key={supplier}><h2>{supplier}</h2>{lines!.map((line) => {
+    <div className="cart-layout"><div>{commercialGroups.map(({supplierId,supplier,lines,commercial}) => <section className="supplier-group" key={supplierId}><header><h2>{supplier.name}</h2><p>{lines.length} articoli · totale {formatMoney(commercial.subtotal)} · minimo {commercial.minimum ? formatMoney(commercial.minimum) : "non previsto"} · franco porto {commercial.freeShipping ? formatMoney(commercial.freeShipping) : "non previsto"}</p>{commercial.minimumGap > 0 && <strong className="warning">Mancano {formatMoney(commercial.minimumGap)} al minimo ordine</strong>}{commercial.freeShippingGap > 0 && <small>Mancano {formatMoney(commercial.freeShippingGap)} al franco porto · costo previsto {formatMoney(commercial.shippingFee + commercial.surcharge)}</small>}</header>{lines.map((line) => {
       const normalized = normalizeOfferPrice(line.canonicalProduct, line.supplierOffer);
       return <article className="cart-line enriched" key={line.id}><ProductImage name={line.canonicalProduct.name} categoryCode={line.canonicalProduct.category.code} /><div><strong>{line.canonicalProduct.name}</strong><span>{line.canonicalProduct.packageDescription} · {formatMoney(Number(line.supplierOffer.unitPrice))} / confezione</span><small>{normalized.normalizedLabel}</small></div><form action={updateCartLine}><input type="hidden" name="lineId" value={line.id} /><label className="sr-only">Quantità di {line.canonicalProduct.name}</label><input aria-label={`Quantità di ${line.canonicalProduct.name}`} name="quantity" type="number" min="1" defaultValue={Number(line.quantity)} /><button>Aggiorna</button></form><strong>{formatMoney(Number(line.quantity) * Number(line.supplierOffer.unitPrice))}</strong><div className="cart-line-actions"><form action={toggleFavorite}><input type="hidden" name="productId" value={line.canonicalProductId} /><button className="text-button">{favoriteIds.has(line.canonicalProductId) ? "Nei preferiti" : "Aggiungi ai preferiti"}</button></form><form action={removeCartLine}><input type="hidden" name="lineId" value={line.id} /><button className="text-button">Rimuovi</button></form></div></article>;
     })}</section>)}</div>

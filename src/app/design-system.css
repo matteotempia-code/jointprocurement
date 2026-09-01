@@ -2,6 +2,9 @@
 
 /* Joint Procurement OS — single visual grammar derived from the canonical reference. */
 :root {
+  --state-danger: #8c3a2e;
+  --state-warn: #9a6b21;
+  --state-ok: #3f6b4f;
   --jp-bg: #f4f2ef;
   --jp-surface: #ffffff;
   --jp-surface-muted: #f1ece3;
@@ -51,6 +54,13 @@
   --warning: var(--jp-warning);
   --negative: var(--jp-danger);
 }
+
+.inline-meta{display:inline-flex;align-items:baseline;flex-wrap:wrap;gap:.25rem .45rem}.inline-meta>span{display:inline-flex;align-items:baseline;gap:.45rem}.inline-meta i{font-style:normal;color:var(--muted,#6d665e)}
+.status-chip{display:inline-flex;align-items:center;width:max-content;border:1px solid currentColor;border-radius:999px;padding:.2rem .55rem;font-size:.75rem;line-height:1.2;font-weight:600}.status-chip-neutral{color:#625d56}.status-chip-ok{color:var(--state-ok)}.status-chip-warn{color:var(--state-warn)}.status-chip-danger{color:var(--state-danger)}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}.price-block{display:inline-flex;flex-direction:column;gap:.1rem;min-width:0}.price-block strong{font-variant-numeric:tabular-nums}.price-block small{color:var(--muted,#6d665e);font-weight:400}.price-block-table strong,.price-block-compact strong,.price-block-mobile strong{font-size:.875rem}.price-block-table small,.price-block-compact small,.price-block-mobile small{font-size:.75rem}
+.sticky-action-bar{position:sticky;z-index:20;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:1.5rem;padding:.8rem 1rem;border:1px solid #d8d1c7;background:#fffdf8;box-shadow:0 -4px 18px rgb(42 35 27 / 8%)}.sticky-action-buttons{display:flex;gap:.5rem;flex-wrap:wrap}.empty-row{text-align:center!important;color:var(--muted,#6d665e);padding:1rem!important}
+.table-wrap th{position:sticky;top:0;z-index:1;background:#fffdf8}.table-wrap td,.table-wrap th{height:50px}.metric strong,.checkout dd,.budget-context dd{text-align:right;font-variant-numeric:tabular-nums}
+@media(max-width:700px){.sticky-action-bar{margin-inline:-1rem;padding:.75rem 1rem}.sticky-action-buttons{flex-wrap:nowrap}.supplier-group>h2{font-size:1rem}.table-wrap td,.table-wrap th{height:auto}}
 
 * { box-sizing: border-box; }
 html { background: var(--jp-bg); scroll-behavior: smooth; }

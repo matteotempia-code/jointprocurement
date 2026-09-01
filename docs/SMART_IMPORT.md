@@ -85,7 +85,7 @@ Un punteggio non conferisce autorità di publish. La confidence descrive evidenz
 
 ## Provenance
 
-XLSX conserva foglio, riga e colonna; CSV riga/colonna; PDF pagina/testo disponibile; Word paragrafo/tabella quando ricostruibile. `ImportedFieldValue` lega ogni campo al locator. `SupplierOffer` e `PriceList` pubblicati rimandano a `SourceDocument` e `ImportJob`, quindi dal prezzo è sempre possibile risalire all’originale e alle decisioni.
+XLSX conserva foglio, riga e colonna; CSV riga/colonna; PDF pagina/testo disponibile; Word paragrafo/tabella quando ricostruibile. `ImportedFieldValue` lega ogni campo al locator. `SupplierOffer` e `PriceList` pubblicati rimandano a `SourceDocument` e `ImportJob`, quindi dal prezzo è sempre possibile risalire all’originale e alle decisioni. I byte operativi vivono nel bucket Supabase privato configurato; parser e reprocessing leggono buffer tramite `DocumentStorageProvider`, senza dipendere dal disco del computer che ha caricato il file.
 
 ## Human review
 

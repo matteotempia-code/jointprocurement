@@ -278,6 +278,9 @@ model Supplier {
   deliveryTerms          String?
   minimumOrderValue      Decimal?         @db.Decimal(14, 2)
   freeShippingThreshold  Decimal?         @db.Decimal(14, 2)
+  shippingFeeBelowThreshold Decimal?      @db.Decimal(14, 2)
+  surchargeBelowMinimum Decimal?          @db.Decimal(14, 2)
+  currency               String           @default("EUR")
   commercialContact      Json?
   orderContact           Json?
   qualityContact         Json?
@@ -562,6 +565,9 @@ model PurchaseOrder {
   subtotal               Decimal             @db.Decimal(14, 2)
   taxTotal               Decimal             @db.Decimal(14, 2)
   total                  Decimal             @db.Decimal(14, 2)
+  shippingFee            Decimal             @default(0) @db.Decimal(14, 2)
+  commercialPolicy       Json?
+  commercialOverrideReason String?
   issuedAt               DateTime
   expectedDeliveryDate   DateTime
   supplierAcknowledgedAt DateTime?
@@ -735,6 +741,9 @@ model SourceDocument {
   sourceType       String
   documentKind     ImportDocumentKind
   storagePath      String
+  storageProvider  String               @default("local")
+  storageBucket    String?
+  storageObjectKey String?
   visibility       String               @default("ORGANIZATION_PRIVATE")
   status           SourceDocumentStatus @default(UPLOADED)
   metadata         Json?
@@ -750,6 +759,7 @@ model SourceDocument {
   offers           SupplierOffer[]
 
   @@index([organizationId, uploadedAt])
+  @@index([organizationId, storageProvider])
   @@index([checksum])
 }
 

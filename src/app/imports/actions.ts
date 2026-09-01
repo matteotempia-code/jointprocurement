@@ -9,6 +9,7 @@ import { ingestDocument, publishImport, remapImport, reprocessImport, resetImpor
 import { importFields, type ImportField } from "@/lib/imports/types";
 import { normalizeImportedFields } from "@/lib/imports/normalization";
 import { applyBulkReview, type BulkReviewAction } from "@/lib/imports/bulk-review";
+import { normalizeOptionalGtin } from "@/lib/validation/gtin";
 
 const allowedRoles = ["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"] as const;
 
@@ -80,7 +81,7 @@ export async function confirmNewProduct(formData: FormData) {
   const productOverride = {
     description: String(formData.get("description") ?? currentNormalized.description ?? ""),
     brand: String(formData.get("brand") ?? currentNormalized.brand ?? "") || null,
-    ean: String(formData.get("ean") ?? currentNormalized.ean ?? "") || null,
+    ean: normalizeOptionalGtin(formData.get("ean") ?? (currentNormalized.ean == null ? null : String(currentNormalized.ean))),
     manufacturerSku: String(formData.get("manufacturerSku") ?? currentNormalized.manufacturerSku ?? "") || null,
     purchaseUom: String(formData.get("purchaseUom") ?? currentNormalized.purchaseUom ?? "BOX"),
     unitsPerPackage: Number(formData.get("unitsPerPackage") ?? currentNormalized.unitsPerPackage ?? 1),

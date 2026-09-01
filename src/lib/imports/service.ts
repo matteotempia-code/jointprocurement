@@ -1,6 +1,4 @@
-import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { createHash, randomUUID } from "node:crypto";
 import { Prisma, type ImportDocumentKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { activeInterpretationProvider, providerSupportsScannedDocuments } from "./provider";
@@ -9,16 +7,14 @@ import { parseDocument, supportedExtensions } from "./parser";
 import { suggestMatches } from "./matching";
 import type { ImportField, NormalizedImport } from "./types";
 import { classifyPriceChange } from "./changes";
+import { getDocumentStorage, locatorForNewDocument, readSourceDocument } from "@/lib/storage";
+import { buildDocumentObjectKey, sanitizeDocumentFilename } from "@/lib/storage/keys";
 
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
-const storageRoot = path.join(process.cwd(), "var", "imports");
 const allowedKinds = new Set<ImportDocumentKind>(["PRICE_LIST", "OFFER", "QUOTATION", "INFORMATIONAL_INVOICE", "OTHER"]);
 
 function safeFilename(filename: string) {
-  const originalBase = path.win32.basename(path.basename(filename));
-  if (originalBase !== filename) throw new Error("Nome file non valido.");
-  const base = originalBase.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
-  if (!base) throw new Error("Nome file non valido.");
+  const base = sanitizeDocumentFilename(filename);
   const extension = base.toLocaleLowerCase("it-IT").split(".").pop() ?? "";
   if (!supportedExtensions.has(extension)) throw new Error("Formato non supportato.");
   return base;
@@ -119,13 +115,24 @@ export async function ingestDocument(input: { buffer: Buffer; filename: string; 
   const checksum = createHash("sha256").update(input.buffer).digest("hex");
   const duplicate = await prisma.sourceDocument.findFirst({ where: { organizationId: input.organizationId, checksum }, orderBy: { uploadedAt: "desc" } });
   const version = (await prisma.sourceDocument.count({ where: { organizationId: input.organizationId, originalFilename: filename } })) + 1;
-  const directory = path.join(storageRoot, input.organizationId);
-  await mkdir(directory, { recursive: true });
-  const storagePath = path.join(directory, `${checksum.slice(0, 16)}-v${version}-${filename}`);
-  await writeFile(storagePath, input.buffer, { flag: "wx" }).catch(async (error: NodeJS.ErrnoException) => { if (error.code !== "EEXIST") throw error; });
-  const source = await prisma.sourceDocument.create({ data: { organizationId: input.organizationId, supplierId: input.supplierId || null, uploadedByUserId: input.userId, originalFilename: filename, mimeType: input.mimeType || "application/octet-stream", fileSize: input.buffer.length, checksum, sourceType: filename.split(".").pop()?.toUpperCase() ?? "UNKNOWN", documentKind: kind, storagePath: path.relative(process.cwd(), storagePath), version, status: "PROCESSING", metadata: { notes: input.notes || null, duplicateOf: duplicate?.id ?? null, interpretationMode: activeInterpretationProvider.label } } });
-  const job = await prisma.importJob.create({ data: { sourceDocumentId: source.id, status: "PARSING", parserType: null, interpretationProvider: activeInterpretationProvider.id, providerModel: activeInterpretationProvider.modelVersion, providerCapabilities: activeInterpretationProvider.capabilities, interpretationSchema: activeInterpretationProvider.schemaVersion, externalProcessing: activeInterpretationProvider.externalProcessing, startedAt: new Date(), createdByUserId: input.userId, version: 1 } });
-  await prisma.auditEvent.create({ data: { actorUserId: input.userId, entityType: "SOURCE_DOCUMENT", entityId: source.id, action: "DOCUMENT_UPLOADED", metadata: { filename, checksum, duplicateOf: duplicate?.id ?? null } } });
+  const sourceDocumentId = randomUUID();
+  const objectKey = buildDocumentObjectKey({ organizationId: input.organizationId, sourceDocumentId, checksum, filename });
+  const locator = locatorForNewDocument(objectKey);
+  const storage = getDocumentStorage(locator.provider);
+  await storage.put(locator, input.buffer, input.mimeType || "application/octet-stream");
+  let source: Awaited<ReturnType<typeof prisma.sourceDocument.create>>;
+  let job: Awaited<ReturnType<typeof prisma.importJob.create>>;
+  try {
+    ({ source, job } = await prisma.$transaction(async (tx) => {
+      const createdSource = await tx.sourceDocument.create({ data: { id: sourceDocumentId, organizationId: input.organizationId, supplierId: input.supplierId || null, uploadedByUserId: input.userId, originalFilename: filename, mimeType: input.mimeType || "application/octet-stream", fileSize: input.buffer.length, checksum, sourceType: filename.split(".").pop()?.toUpperCase() ?? "UNKNOWN", documentKind: kind, storagePath: objectKey, storageProvider: locator.provider, storageBucket: locator.bucket, storageObjectKey: locator.objectKey, version, status: "PROCESSING", metadata: { notes: input.notes || null, duplicateOf: duplicate?.id ?? null, interpretationMode: activeInterpretationProvider.label } } });
+      const createdJob = await tx.importJob.create({ data: { sourceDocumentId: createdSource.id, status: "PARSING", parserType: null, interpretationProvider: activeInterpretationProvider.id, providerModel: activeInterpretationProvider.modelVersion, providerCapabilities: activeInterpretationProvider.capabilities, interpretationSchema: activeInterpretationProvider.schemaVersion, externalProcessing: activeInterpretationProvider.externalProcessing, startedAt: new Date(), createdByUserId: input.userId, version: 1 } });
+      await tx.auditEvent.create({ data: { actorUserId: input.userId, entityType: "SOURCE_DOCUMENT", entityId: createdSource.id, action: "DOCUMENT_UPLOADED", metadata: { filename, checksum, duplicateOf: duplicate?.id ?? null, storageProvider: locator.provider } } });
+      return { source: createdSource, job: createdJob };
+    }));
+  } catch (error) {
+    await storage.delete(locator).catch(() => {});
+    throw error;
+  }
   try {
     const parsed = await parseDocument(input.buffer, filename);
     const { mapping, confidence: mappingConfidence } = activeInterpretationProvider.mapFields(parsed.rows);
@@ -149,7 +156,7 @@ export async function ingestDocument(input: { buffer: Buffer; filename: string; 
       await tx.importJob.update({ where: { id: job.id }, data: { status: parsed.rows.length ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", parserType: parsed.parserType, totalRecords: parsed.rows.length, interpretedRecords: parsed.rows.length, reviewRequiredRecords: review, publishableRecords: ready, columnMapping: mapping, detectedSheets: parsed.sheets, summary: { textPreview: parsed.textPreview?.slice(0, 5000) ?? null, sourceHeaders: Object.keys(parsed.rows[0]?.values ?? {}), providerLabel: activeInterpretationProvider.label, providerIsAi: activeInterpretationProvider.isAi, exceptionRecords: review, duplicateDocumentId: duplicate?.id ?? null } } });
       await tx.sourceDocument.update({ where: { id: source.id }, data: { status: "PROCESSED" } });
       await tx.auditEvent.create({ data: { actorUserId: input.userId, entityType: "IMPORT_JOB", entityId: job.id, action: "IMPORT_STARTED", metadata: { parserType: parsed.parserType, totalRecords: parsed.rows.length, provider: activeInterpretationProvider.id } } });
-    });
+    }, { maxWait: 10_000, timeout: 60_000 });
     return job.id;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Errore di interpretazione non identificato.";
@@ -157,15 +164,6 @@ export async function ingestDocument(input: { buffer: Buffer; filename: string; 
     await prisma.$transaction([prisma.importJob.update({ where: { id: job.id }, data: { status: needsProvider ? "REQUIRES_PROVIDER" : "FAILED", failedAt: needsProvider ? null : new Date(), errorMessage: message } }), prisma.sourceDocument.update({ where: { id: source.id }, data: { status: needsProvider ? "REQUIRES_PROVIDER" : "FAILED" } }), prisma.auditEvent.create({ data: { actorUserId: input.userId, entityType: "IMPORT_JOB", entityId: job.id, action: needsProvider ? "IMPORT_REQUIRES_PROVIDER" : "IMPORT_FAILED", metadata: { message, provider: activeInterpretationProvider.id } } })]);
     return job.id;
   }
-}
-
-function absoluteStoragePath(relativePath: string) {
-  const normalized = path.normalize(relativePath);
-  const prefix = path.join("var", "imports") + path.sep;
-  if (!normalized.startsWith(prefix)) throw new Error("Percorso documento non valido.");
-  const scoped = normalized.slice(prefix.length);
-  if (!scoped || scoped.split(path.sep).some((segment) => !segment || segment === ".." || segment === ".")) throw new Error("Percorso documento non valido.");
-  return path.join(storageRoot, scoped);
 }
 
 async function processExistingJob(input: { jobId: string; sourceDocumentId: string; buffer: Buffer; filename: string; supplierId: string | null; userId: string; mapping?: Record<string, ImportField> }) {
@@ -194,26 +192,26 @@ async function processExistingJob(input: { jobId: string; sourceDocumentId: stri
     }
     await tx.importJob.update({ where: { id: input.jobId }, data: { status: parsed.rows.length ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", parserType: parsed.parserType, totalRecords: parsed.rows.length, interpretedRecords: parsed.rows.length, reviewRequiredRecords: review, publishableRecords: ready, columnMapping: mapping, detectedSheets: parsed.sheets, failedAt: null, errorMessage: null, summary: { textPreview: parsed.textPreview?.slice(0, 5000) ?? null, sourceHeaders: Object.keys(parsed.rows[0]?.values ?? {}), providerLabel: activeInterpretationProvider.label, providerIsAi: activeInterpretationProvider.isAi, exceptionRecords: review } } });
     await tx.sourceDocument.update({ where: { id: input.sourceDocumentId }, data: { status: "PROCESSED" } });
-  });
+  }, { maxWait: 10_000, timeout: 60_000 });
 }
 
 export async function remapImport(jobId: string, mapping: Record<string, ImportField>, actorUserId: string, organizationId: string) {
   const job = await prisma.importJob.findFirstOrThrow({ where: { id: jobId, sourceDocument: { organizationId } }, include: { sourceDocument: true } });
-  const buffer = await readFile(absoluteStoragePath(job.sourceDocument.storagePath));
+  const buffer = await readSourceDocument(job.sourceDocument);
   await processExistingJob({ jobId, sourceDocumentId: job.sourceDocumentId, buffer, filename: job.sourceDocument.originalFilename, supplierId: job.sourceDocument.supplierId, userId: actorUserId, mapping });
   await prisma.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: jobId, action: "COLUMN_MAPPING_CHANGED", metadata: { mapping } } });
 }
 
 export async function resetImportMapping(jobId: string, actorUserId: string, organizationId: string) {
   const job = await prisma.importJob.findFirstOrThrow({ where: { id: jobId, sourceDocument: { organizationId } }, include: { sourceDocument: true } });
-  const buffer = await readFile(absoluteStoragePath(job.sourceDocument.storagePath));
+  const buffer = await readSourceDocument(job.sourceDocument);
   await processExistingJob({ jobId, sourceDocumentId: job.sourceDocumentId, buffer, filename: job.sourceDocument.originalFilename, supplierId: job.sourceDocument.supplierId, userId: actorUserId });
   await prisma.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: jobId, action: "COLUMN_MAPPING_CHANGED", metadata: { resetToAutomatic: true } } });
 }
 
 export async function reprocessImport(jobId: string, actorUserId: string, organizationId: string) {
   const previous = await prisma.importJob.findFirstOrThrow({ where: { id: jobId, sourceDocument: { organizationId } }, include: { sourceDocument: true } });
-  const buffer = await readFile(absoluteStoragePath(previous.sourceDocument.storagePath));
+  const buffer = await readSourceDocument(previous.sourceDocument);
   const nextVersion = (await prisma.importJob.aggregate({ where: { sourceDocumentId: previous.sourceDocumentId }, _max: { version: true } }))._max.version! + 1;
   const next = await prisma.importJob.create({ data: { sourceDocumentId: previous.sourceDocumentId, status: "PARSING", interpretationProvider: activeInterpretationProvider.id, providerModel: activeInterpretationProvider.modelVersion, providerCapabilities: activeInterpretationProvider.capabilities, interpretationSchema: activeInterpretationProvider.schemaVersion, externalProcessing: activeInterpretationProvider.externalProcessing, startedAt: new Date(), createdByUserId: actorUserId, version: nextVersion } });
   try {

@@ -18,12 +18,18 @@
     "demo:video:assemble:subtitles": "node scripts/video-demo/assemble.mjs",
     "demo:video:validate-final": "node scripts/video-demo/validate-final.mjs",
     "demo:pdfs": "node scripts/generate-demo-pdfs.mjs",
+    "storage:setup": "tsx scripts/storage/setup.ts",
+    "storage:check": "tsx scripts/storage/check.ts",
+    "storage:migrate": "tsx scripts/storage/migrate-source-documents.ts",
+    "storage:prove-live": "tsx scripts/storage/prove-live-ingestion.ts",
+    "storage:prove-browser": "node tests/storage-live-proof.mjs",
     "db:seed": "prisma db seed",
     "demo:imports": "tsx scripts/generate-demo-imports.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "@supabase/supabase-js": "^2.112.4",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "mammoth": "^1.12.2",

@@ -38,7 +38,7 @@ async function main() {
     IVA: index % 9 === 0 ? 10 : 22, MOQ: index % 5 === 0 ? 2 : 1, "Valido dal": "01/01/2027", "Valido al": "31/12/2027", "Consegna giorni": 2 + index % 6, Categoria: product.category.name,
   }));
   const second = base.slice(1).map((row, index) => ({ ...row, "Prezzo netto": Number(row["Prezzo netto"]) * (index % 5 === 0 ? .92 : index % 4 === 0 ? 1.2 : 1.04), "Pz/conf": index === 7 ? Number(row["Pz/conf"]) * 2 : row["Pz/conf"], "Valido dal": "01/01/2028", "Valido al": "31/12/2028" }));
-  second.push({ "Codice art.": "ALF-NEW-001", "Descrizione": "Schermo facciale antiappannamento regolabile — 10 pezzi", Marca: "NovaKit", EAN: "8099999999999", UM: "BOX", "Pz/conf": 10, "Prezzo netto": 14.6, IVA: 22, MOQ: 2, "Valido dal": "01/01/2028", "Valido al": "31/12/2028", "Consegna giorni": 4, Categoria: "DPI" });
+  second.push({ "Codice art.": "ALF-NEW-001", "Descrizione": "Schermo facciale antiappannamento regolabile — 10 pezzi", Marca: "NovaKit", EAN: "8099999999992", UM: "BOX", "Pz/conf": 10, "Prezzo netto": 14.6, IVA: 22, MOQ: 2, "Valido dal": "01/01/2028", "Valido al": "31/12/2028", "Consegna giorni": 4, Categoria: "DPI" });
   await workbook("listino-alfa-medical-2027.xlsx", base);
   await workbook("listino-alfa-medical-2028.xlsx", second);
   const csv = ["Listino sporco CareSupply", "codice;articolo;formato;um;prezzo;iva;minimo;categoria", ...base.slice(0, 18).map((row) => `${row["Codice art."]};${String(row.Descrizione).replace(/—/g, "-").replace("senza polvere", "s/polv")};CF ${row["Pz/conf"]};CF;${Number(row["Prezzo netto"]).toFixed(2).replace(".", ",")};${row.IVA};${row.MOQ};${row.Categoria}`)].join("\n");

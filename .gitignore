@@ -15,6 +15,7 @@
 
 # local document-ingestion storage (original uploads are runtime data)
 /var/imports/
+/var/storage-proof/
 
 # local PostgreSQL backups (never version database dumps)
 /backups/
@@ -32,6 +33,7 @@
 *.dump
 *.sql
 *.sql.gz
+!prisma/migrations/**/migration.sql
 
 # next.js
 /.next/
