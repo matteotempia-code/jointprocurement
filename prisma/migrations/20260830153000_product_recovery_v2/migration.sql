@@ -15,14 +15,15 @@ CREATE INDEX "Favorite_facilityId_idx" ON "Favorite"("facilityId");
 
 CREATE TABLE "ShoppingList" (
   "id" TEXT NOT NULL, "userId" TEXT NOT NULL, "facilityId" TEXT NOT NULL, "name" TEXT NOT NULL,
-  "description" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL,
+  "description" TEXT, "lastUsedAt" TIMESTAMP(3), "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "ShoppingList_pkey" PRIMARY KEY ("id")
 );
 CREATE INDEX "ShoppingList_userId_facilityId_idx" ON "ShoppingList"("userId", "facilityId");
 
 CREATE TABLE "ShoppingListItem" (
   "id" TEXT NOT NULL, "shoppingListId" TEXT NOT NULL, "canonicalProductId" TEXT NOT NULL,
-  "quantity" DECIMAL(14,4) NOT NULL, CONSTRAINT "ShoppingListItem_pkey" PRIMARY KEY ("id")
+  "quantity" DECIMAL(14,4) NOT NULL, "position" INTEGER NOT NULL DEFAULT 0,
+  CONSTRAINT "ShoppingListItem_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX "ShoppingListItem_shoppingListId_canonicalProductId_key" ON "ShoppingListItem"("shoppingListId", "canonicalProductId");
 
