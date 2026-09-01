@@ -129,3 +129,11 @@ Le proiezioni indicizzate su `ImportedRecord` rendono interrogabili descrizione/
 Il provider espone capability, model version, schema version ed `externalProcessing`. La configurazione è vendor-neutral tramite `DOCUMENT_INTELLIGENCE_PROVIDER`. Finché non esiste un adapter esplicitamente configurato, il runtime seleziona `LOCAL_HEURISTIC`, `externalProcessing=false`. Immagini e scansioni assumono `REQUIRES_PROVIDER`, non `FAILED`: il file resta disponibile per reprocessing, ma non vengono creati record né mutate entità canoniche.
 
 L’evidenza per campo conserva provider/modello/schema/timestamp. Un futuro adapter OCR/vision deve restituire output compatibile con `ImportedFieldValue`; non può bypassare staging, review e publish transazionale.
+
+## Automated product demo
+
+Il sottosistema in `scripts/video-demo/` è separato dal Browser QA: usa Playwright come motore di registrazione, non come test runner. `prepare.mjs` ripristina il seed canonico e rigenera gli asset di importazione, `readiness.mjs` interroga database e applicazione con definizioni esplicite, mentre `run.mjs` registra ogni scena in un browser context indipendente. Un errore di scena non cancella i clip già prodotti e la singola scena può essere rilanciata in isolamento.
+
+Le scene dichiarano beat narrativi e pause human-facing; il runtime traduce i beat in manifest JSON con tempi osservati e cue sheet Markdown per il voice-over. Ogni video viene rinominato deterministicamente e validato caricando il WebM in Chromium: risoluzione, durata, decodifica, frame non neri, still rappresentativo e assenza di errori console sono verifiche bloccanti.
+
+La modalità è isolata tramite `VIDEO_DEMO_MODE=1`. In questa modalità Next usa `.next-video-demo`, così non collide con un server di sviluppo ordinario. La sola route di chiusura `/demo-roadmap` chiama `notFound()` fuori da tale ambiente, richiede comunque il ruolo Executive e non compare nella navigazione. Cursore e focus sono iniettati dal recorder nel documento browser e non fanno parte del bundle applicativo.

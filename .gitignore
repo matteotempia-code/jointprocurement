@@ -16,8 +16,26 @@
 # local document-ingestion storage (original uploads are runtime data)
 /var/imports/
 
+# local PostgreSQL backups (never version database dumps)
+/backups/
+
+# generated product-demo recordings, audio, manifests and reports
+/artifacts/video-demo/
+*.mp4
+*.webm
+*.wav
+*.mp3
+*.m4a
+*.aac
+
+# database exports remain local even if created outside the backup folder
+*.dump
+*.sql
+*.sql.gz
+
 # next.js
 /.next/
+/.next-video-demo/
 /out/
 
 # production
@@ -35,6 +53,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel

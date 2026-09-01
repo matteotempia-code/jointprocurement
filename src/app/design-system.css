@@ -994,3 +994,30 @@ tbody tr:hover { background: var(--jp-surface-soft); }
   .recent-timeline small { grid-column: 3; }
   .facility-util { grid-template-columns: 1fr; }
 }
+
+/* Presentation-only closing surface. The route is server-gated by
+   VIDEO_DEMO_MODE and never appears in role navigation. */
+.video-roadmap-grid {
+  display: grid;
+  grid-template-columns: 1.05fr .95fr;
+  gap: var(--jp-space-5);
+  margin-top: var(--jp-space-8);
+}
+.video-roadmap-grid > section {
+  border: 1px solid var(--jp-border);
+  background: var(--jp-surface);
+  padding: var(--jp-space-8);
+}
+.video-roadmap-grid h2 { margin: var(--jp-space-2) 0 var(--jp-space-6); max-width: 22ch; }
+.video-roadmap-grid ul { display: grid; gap: var(--jp-space-3); margin: 0; padding: 0; list-style: none; }
+.video-roadmap-grid li { display: flex; gap: var(--jp-space-3); color: var(--jp-text-secondary); line-height: 1.45; }
+.video-roadmap-now li span { color: var(--jp-success); font-weight: 700; }
+.video-roadmap-next { background: var(--jp-surface-muted) !important; }
+.video-roadmap-next > p:not(.eyebrow) { margin: calc(var(--jp-space-6) * -1) 0 var(--jp-space-6); color: var(--jp-text-muted); }
+.video-roadmap-close { display: flex; justify-content: space-between; align-items: center; margin-top: var(--jp-space-8); padding-top: var(--jp-space-5); border-top: 1px solid var(--jp-border); color: var(--jp-text-muted); }
+.video-roadmap-close strong { color: var(--jp-text); }
+@media (max-width: 760px) {
+  .video-roadmap-grid { grid-template-columns: 1fr; }
+  .video-roadmap-grid > section { padding: var(--jp-space-5); }
+  .video-roadmap-close { align-items: flex-start; flex-direction: column; gap: var(--jp-space-2); }
+}

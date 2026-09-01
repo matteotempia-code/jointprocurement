@@ -56,5 +56,6 @@ Stima complessiva dell’MVP operativo: **84%**. Il denominatore comprende organ
 | Smart Import — provider document intelligence reale | AI-native future | NOT STARTED | 0% | fallback locale dichiarato | Nessuna credenziale o chiamata esterna configurata |
 | Smart Import — OCR / vision reale | AI-native future | NOT STARTED | 0% | stato `REQUIRES_PROVIDER`, test | File conservato senza falsa estrazione o mutazione canonica |
 | Smart Import — processing asincrono grandi file | AI-native future | NOT STARTED | 10% | stati job compatibili | Nessuna queue/worker introdotta nell’MVP |
+| Automated product demo | Enablement | DONE | 100% | `scripts/video-demo`, `artifacts/video-demo`, `docs/VIDEO_DEMO.md` | Nove clip deterministici, manifest temporali, cue narration, readiness e validazione tecnica; separato dal Browser QA |
 | Invoice matching | Future | NOT STARTED | 0% | Finance future-state | Fuori perimetro |
 | Sourcing | Future | NOT STARTED | 0% | — | Fuori perimetro |

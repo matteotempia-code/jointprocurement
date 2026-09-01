@@ -14,6 +14,11 @@ export default async function Catalogo({ searchParams }: Props) {
   const context = await requireRoles(["RSA_DIRECTOR", "AREA_MANAGER"]);
   const scope = await resolveScope(context.assignment);
   const filters = await searchParams;
+  const searchTerms = (filters.q ?? "").trim().split(/\s+/).filter(Boolean);
+  const searchClauses = searchTerms.map((term) => {
+    const variants = term.toLocaleLowerCase("it-IT") === "guanti" ? [term, "guanto"] : [term];
+    return { OR: variants.flatMap((value) => [{ name: { contains: value, mode: "insensitive" as const } }, { brand: { contains: value, mode: "insensitive" as const } }, { category: { name: { contains: value, mode: "insensitive" as const } } }, { manufacturerSku: { contains: value, mode: "insensitive" as const } }]) };
+  });
   const [categories, suppliers, favorites, lists, products] = await Promise.all([
     prisma.category.findMany({ orderBy: { name: "asc" } }),
     prisma.supplier.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
@@ -21,7 +26,7 @@ export default async function Catalogo({ searchParams }: Props) {
     context.roleCode === "RSA_DIRECTOR" ? prisma.shoppingList.findMany({ where: { userId: context.user.id, facilityId: scope.id }, orderBy: { updatedAt: "desc" } }) : [],
     prisma.canonicalProduct.findMany({
       where: { active: true, AND: [
-        filters.q ? { OR: [{ name: { contains: filters.q, mode: "insensitive" } }, { brand: { contains: filters.q, mode: "insensitive" } }, { category: { name: { contains: filters.q, mode: "insensitive" } } }, { manufacturerSku: { contains: filters.q, mode: "insensitive" } }] } : {},
+        ...searchClauses,
         filters.category ? { categoryId: filters.category } : {},
         filters.subcategory ? { subcategory: filters.subcategory } : {},
         filters.supplier ? { offers: { some: { supplierId: filters.supplier, active: true } } } : {},

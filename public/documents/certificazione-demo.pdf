@@ -1,0 +1,51 @@
+%PDF-1.4
+% DEMO FAC-SIMILE
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 1253 >>
+stream
+0.10 0.25 0.38 rg
+40 770 515 42 re f
+BT /F1 19 Tf 1 1 1 rg 58 786 Td
+(CERTIFICAZIONE DEMO) Tj ET
+BT /F1 11 Tf 0.16 0.20 0.24 rg 58 748 Td
+(Attestazione sintetica per il catalogo Joint Procurement OS) Tj ET
+0.82 0.86 0.89 RG 40 728 m 555 728 l S
+BT /F1 12 Tf 0.10 0.25 0.38 rg 58 690 Td (Oggetto) Tj ET
+BT /F1 10 Tf 0.16 0.20 0.24 rg 58 670 Td (Referenza dimostrativa DEMO-CERT-001.) Tj ET
+BT /F1 12 Tf 0.10 0.25 0.38 rg 58 612 Td (Dichiarazione) Tj ET
+BT /F1 10 Tf 0.16 0.20 0.24 rg 58 592 Td (Il presente asset verifica esclusivamente il flusso documentale software.) Tj ET
+BT /F1 12 Tf 0.10 0.25 0.38 rg 58 534 Td (Validita) Tj ET
+BT /F1 10 Tf 0.16 0.20 0.24 rg 58 514 Td (Nessuna. Non certifica prodotti, imprese, processi o conformita reali.) Tj ET
+BT /F1 12 Tf 0.10 0.25 0.38 rg 58 456 Td (Tracciabilita) Tj ET
+BT /F1 10 Tf 0.16 0.20 0.24 rg 58 436 Td (Emesso automaticamente dal generatore repository - revisione 1.) Tj ET
+0.94 0.96 0.97 rg 40 105 515 70 re f
+BT /F1 11 Tf 0.72 0.12 0.12 rg 58 148 Td (DEMO / FAC-SIMILE) Tj ET
+BT /F1 9 Tf 0.24 0.28 0.31 rg 58 128 Td (Dati interamente sintetici. Nessun dato personale o fornitore reale.) Tj ET
+BT /F1 8 Tf 0.40 0.44 0.47 rg 58 60 Td (Joint Procurement OS - fixture documentale riproducibile) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000027 00000 n 
+0000000076 00000 n 
+0000000133 00000 n 
+0000000259 00000 n 
+0000001564 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1634
+%%EOF
