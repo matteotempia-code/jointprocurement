@@ -1,4 +1,4 @@
-import ExcelJS from "exceljs";
+import type ExcelJS from "exceljs";
 import mammoth from "mammoth";
 import { knownHeaderScore } from "./mapping";
 import type { ParsedDocument, ParsedRow } from "./types";
@@ -15,13 +15,26 @@ function cellValue(value: ExcelJS.CellValue): unknown {
 }
 
 export async function parseSpreadsheet(buffer: Buffer): Promise<ParsedDocument> {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
+  if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+    throw new Error("Il file XLSX non è valido o è incompleto: archivio workbook non riconosciuto.");
+  }
+  const excelModule = await import("exceljs");
+  const excelRuntime = (excelModule.default ?? excelModule) as typeof ExcelJS;
+  if (typeof excelRuntime.Workbook !== "function") throw new Error("Il parser XLSX non è disponibile nel runtime server.");
+  const workbook = new excelRuntime.Workbook();
+  try {
+    await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "workbook non leggibile";
+    throw new Error(`Il file XLSX non è valido o è incompleto: ${detail}`, { cause: error });
+  }
+  const worksheets = workbook.worksheets;
+  if (!Array.isArray(worksheets) || worksheets.length === 0) throw new Error("Il file XLSX non contiene fogli di lavoro leggibili.");
   const sheets: ParsedDocument["sheets"] = [];
   let selectedRows: ParsedRow[] = [];
   let selectedScore = -1;
   let selectedPreview = "";
-  workbook.eachSheet((worksheet) => {
+  for (const worksheet of worksheets) {
     const matrix: unknown[][] = [];
     worksheet.eachRow({ includeEmpty: false }, (row) => matrix.push((row.values as ExcelJS.CellValue[]).slice(1).map(cellValue)));
     let headerIndex = 0;
@@ -38,7 +51,7 @@ export async function parseSpreadsheet(buffer: Buffer): Promise<ParsedDocument> 
     const candidate = score >= 2 && !/note|istruz|legenda/i.test(worksheet.name);
     sheets.push({ name: worksheet.name, records: rows.length, selected: false });
     if (candidate && score > selectedScore) { selectedScore = score; selectedRows = rows; selectedPreview = matrix.slice(0, 20).map((values) => values.map(String).join(" | ")).join("\n"); sheets.forEach((sheet) => { sheet.selected = sheet.name === worksheet.name; }); }
-  });
+  }
   if (!selectedRows.length) throw new Error("Non è stata identificata una tabella prodotti nel workbook.");
   return { parserType: "XLSX_DETERMINISTIC", sheets, rows: selectedRows, textPreview: selectedPreview.slice(0, 5000) };
 }

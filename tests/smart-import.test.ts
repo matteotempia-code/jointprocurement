@@ -15,12 +15,21 @@ const fixtures = path.join(process.cwd(), "demo-imports");
 test("parser XLSX legge il file reale, trova header e conserva la riga sorgente", async () => {
   const buffer = await readFile(path.join(fixtures, "listino-alfa-medical-2027.xlsx"));
   const parsed = await parseDocument(buffer, "listino-alfa-medical-2027.xlsx");
+  assert.ok(parsed.sheets.length >= 1);
+  assert.ok(parsed.rows.length >= 1);
   assert.equal(parsed.parserType, "XLSX_DETERMINISTIC");
   assert.equal(parsed.rows.length, 36);
   assert.equal(parsed.rows[0].locator.sheet, "Listino");
   assert.equal(parsed.rows[0].locator.row, 4);
   assert.ok(String(parsed.rows[0].values["Descrizione"]).length > 10);
   assert.equal(parsed.sheets.find((sheet) => sheet.name === "Note")?.selected, false);
+});
+
+test("parser XLSX restituisce un errore utile per workbook mancanti o non validi", async () => {
+  await assert.rejects(
+    parseDocument(Buffer.from("contenuto non XLSX"), "listino-invalido.xlsx"),
+    /file XLSX non è valido o è incompleto/i,
+  );
 });
 
 test("parser CSV Italy-first gestisce punto e virgola e virgola decimale", async () => {
