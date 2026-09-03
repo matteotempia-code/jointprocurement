@@ -1,6 +1,5 @@
 import ExcelJS from "exceljs";
 import mammoth from "mammoth";
-import { PDFParse } from "pdf-parse";
 import { knownHeaderScore } from "./mapping";
 import type { ParsedDocument, ParsedRow } from "./types";
 
@@ -84,9 +83,10 @@ export async function parseDocument(buffer: Buffer, filename: string): Promise<P
   if (textExtensions.has(ext)) return parseDelimited(buffer.toString("utf8"));
   if (ext === "docx") { const result = await mammoth.extractRawText({ buffer }); return parseTextTable(result.value, "DOCX_TEXT_DETERMINISTIC"); }
   if (ext === "pdf") {
-    const parser = new PDFParse({ data: buffer });
-    try { const result = await parser.getText(); if (!result.text.trim()) throw new Error("PDF senza testo estraibile. OCR non disponibile in questo ambiente."); return parseTextTable(result.text, "PDF_TEXT_DETERMINISTIC"); }
-    finally { await parser.destroy(); }
+    const { extractPdfText } = await import("./pdf-parser");
+    const text = await extractPdfText(buffer);
+    if (!text.trim()) throw new Error("PDF senza testo estraibile. OCR non disponibile in questo ambiente.");
+    return parseTextTable(text, "PDF_TEXT_DETERMINISTIC");
   }
   throw new Error("Formato non supportato.");
 }
