@@ -1,0 +1,10 @@
+node_modules
+.next
+artifacts
+coverage
+var
+tmp
+*.log
+*.mp4
+*.zip
+# Generated deployment payloads are intentionally excluded.
