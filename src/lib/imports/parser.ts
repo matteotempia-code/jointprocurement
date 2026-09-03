@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import type ExcelJS from "exceljs";
 import mammoth from "mammoth";
 import { knownHeaderScore } from "./mapping";
-import type { ParsedDocument, ParsedRow } from "./types";
+import type { ParsedDocument, ParsedRow, XlsxRuntimeDiagnostic } from "./types";
 
 const textExtensions = new Set(["csv", "tsv", "txt"]);
 export const supportedExtensions = new Set(["xlsx", "xls", "csv", "tsv", "pdf", "docx", "txt", "png", "jpg", "jpeg"]);
@@ -14,46 +15,89 @@ function cellValue(value: ExcelJS.CellValue): unknown {
   return value ?? "";
 }
 
-export async function parseSpreadsheet(buffer: Buffer): Promise<ParsedDocument> {
-  if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
-    throw new Error("Il file XLSX non è valido o è incompleto: archivio workbook non riconosciuto.");
+class XlsxRuntimeDiagnosticError extends Error {
+  constructor(public readonly diagnostic: XlsxRuntimeDiagnostic, cause: unknown) {
+    super(`${diagnostic.marker}: ${diagnostic.errorMessage ?? "errore XLSX non identificato"}`, { cause });
+    this.name = "XlsxRuntimeDiagnosticError";
   }
-  const excelModule = await import("exceljs");
-  const excelRuntime = (excelModule.default ?? excelModule) as typeof ExcelJS;
-  if (typeof excelRuntime.Workbook !== "function") throw new Error("Il parser XLSX non è disponibile nel runtime server.");
-  const workbook = new excelRuntime.Workbook();
+}
+
+export function xlsxRuntimeDiagnosticFromError(error: unknown) {
+  return error instanceof XlsxRuntimeDiagnosticError ? error.diagnostic : null;
+}
+
+export async function parseSpreadsheet(buffer: Buffer, expected?: { byteLength?: number; checksum?: string }): Promise<ParsedDocument> {
+  const sha256 = createHash("sha256").update(buffer).digest("hex");
+  const diagnostic: XlsxRuntimeDiagnostic = {
+    marker: "XLSX_RUNTIME_DIAG_V1",
+    sourceByteLength: buffer.length,
+    expectedByteLength: expected?.byteLength ?? null,
+    byteLengthMatches: expected?.byteLength == null ? null : buffer.length === expected.byteLength,
+    firstFourBytesHex: buffer.subarray(0, 4).toString("hex"),
+    zipSignature: buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4b,
+    sha256,
+    expectedChecksumMatches: expected?.checksum == null ? null : sha256 === expected.checksum,
+    nodeVersion: process.version,
+    moduleShapeKeys: [],
+    moduleDefaultExists: false,
+    workbookConstructorExists: false,
+    workbookCreated: false,
+    beforeWorkbookLoad: false,
+    afterWorkbookLoad: false,
+    worksheetsLength: null,
+    worksheetNames: [],
+    errorClass: null,
+    errorMessage: null,
+    stackOrigin: null,
+  };
   try {
+    if (!diagnostic.zipSignature) throw new Error("Il file XLSX non è valido o è incompleto: archivio workbook non riconosciuto.");
+    const excelModule = await import("exceljs");
+    diagnostic.moduleShapeKeys = Object.keys(excelModule).sort().slice(0, 40);
+    diagnostic.moduleDefaultExists = excelModule.default != null;
+    const excelRuntime = (excelModule.default ?? excelModule) as typeof ExcelJS;
+    diagnostic.workbookConstructorExists = typeof excelRuntime.Workbook === "function";
+    if (!diagnostic.workbookConstructorExists) throw new Error("Il parser XLSX non è disponibile nel runtime server.");
+    const workbook = new excelRuntime.Workbook();
+    diagnostic.workbookCreated = true;
+    diagnostic.beforeWorkbookLoad = true;
     await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : "workbook non leggibile";
-    throw new Error(`Il file XLSX non è valido o è incompleto: ${detail}`, { cause: error });
-  }
-  const worksheets = workbook.worksheets;
-  if (!Array.isArray(worksheets) || worksheets.length === 0) throw new Error("Il file XLSX non contiene fogli di lavoro leggibili.");
-  const sheets: ParsedDocument["sheets"] = [];
-  let selectedRows: ParsedRow[] = [];
-  let selectedScore = -1;
-  let selectedPreview = "";
-  for (const worksheet of worksheets) {
-    const matrix: unknown[][] = [];
-    worksheet.eachRow({ includeEmpty: false }, (row) => matrix.push((row.values as ExcelJS.CellValue[]).slice(1).map(cellValue)));
-    let headerIndex = 0;
-    let score = 0;
-    for (let index = 0; index < Math.min(matrix.length, 20); index += 1) {
-      const candidateScore = knownHeaderScore(matrix[index]);
-      if (candidateScore > score) { score = candidateScore; headerIndex = index; }
+    diagnostic.afterWorkbookLoad = true;
+    const worksheets = workbook.worksheets;
+    diagnostic.worksheetsLength = Array.isArray(worksheets) ? worksheets.length : null;
+    diagnostic.worksheetNames = Array.isArray(worksheets) ? worksheets.map((sheet) => sheet.name).slice(0, 30) : [];
+    if (!Array.isArray(worksheets) || worksheets.length === 0) throw new Error("Il file XLSX non contiene fogli di lavoro leggibili.");
+
+    const sheets: ParsedDocument["sheets"] = [];
+    let selectedRows: ParsedRow[] = [];
+    let selectedScore = -1;
+    let selectedPreview = "";
+    for (const worksheet of worksheets) {
+      const matrix: unknown[][] = [];
+      worksheet.eachRow({ includeEmpty: false }, (row) => matrix.push((row.values as ExcelJS.CellValue[]).slice(1).map(cellValue)));
+      let headerIndex = 0;
+      let score = 0;
+      for (let index = 0; index < Math.min(matrix.length, 20); index += 1) {
+        const candidateScore = knownHeaderScore(matrix[index]);
+        if (candidateScore > score) { score = candidateScore; headerIndex = index; }
+      }
+      const headers = matrix[headerIndex]?.map((value, index) => String(value || `Colonna ${index + 1}`).trim()) ?? [];
+      const rows = matrix.slice(headerIndex + 1).filter((values) => values.some((value) => String(value ?? "").trim())).map((values, index) => {
+        const mapped = Object.fromEntries(headers.map((header, column) => [header, values[column] ?? ""]));
+        return { values: mapped, rawSource: values.map((value) => String(value ?? "")).join(" | "), locator: { sheet: worksheet.name, row: headerIndex + index + 2 } };
+      });
+      const candidate = score >= 2 && !/note|istruz|legenda/i.test(worksheet.name);
+      sheets.push({ name: worksheet.name, records: rows.length, selected: false });
+      if (candidate && score > selectedScore) { selectedScore = score; selectedRows = rows; selectedPreview = matrix.slice(0, 20).map((values) => values.map(String).join(" | ")).join("\n"); sheets.forEach((sheet) => { sheet.selected = sheet.name === worksheet.name; }); }
     }
-    const headers = matrix[headerIndex]?.map((value, index) => String(value || `Colonna ${index + 1}`).trim()) ?? [];
-    const rows = matrix.slice(headerIndex + 1).filter((values) => values.some((value) => String(value ?? "").trim())).map((values, index) => {
-      const mapped = Object.fromEntries(headers.map((header, column) => [header, values[column] ?? ""]));
-      return { values: mapped, rawSource: values.map((value) => String(value ?? "")).join(" | "), locator: { sheet: worksheet.name, row: headerIndex + index + 2 } };
-    });
-    const candidate = score >= 2 && !/note|istruz|legenda/i.test(worksheet.name);
-    sheets.push({ name: worksheet.name, records: rows.length, selected: false });
-    if (candidate && score > selectedScore) { selectedScore = score; selectedRows = rows; selectedPreview = matrix.slice(0, 20).map((values) => values.map(String).join(" | ")).join("\n"); sheets.forEach((sheet) => { sheet.selected = sheet.name === worksheet.name; }); }
+    if (!selectedRows.length) throw new Error("Non è stata identificata una tabella prodotti nel workbook.");
+    return { parserType: "XLSX_DETERMINISTIC", sheets, rows: selectedRows, textPreview: selectedPreview.slice(0, 5000), runtimeDiagnostic: diagnostic };
+  } catch (error) {
+    diagnostic.errorClass = error instanceof Error ? error.name : typeof error;
+    diagnostic.errorMessage = error instanceof Error ? error.message : "workbook non leggibile";
+    diagnostic.stackOrigin = error instanceof Error ? error.stack?.split("\n").slice(1).map((line) => line.trim()).find(Boolean) ?? null : null;
+    throw new XlsxRuntimeDiagnosticError(diagnostic, error);
   }
-  if (!selectedRows.length) throw new Error("Non è stata identificata una tabella prodotti nel workbook.");
-  return { parserType: "XLSX_DETERMINISTIC", sheets, rows: selectedRows, textPreview: selectedPreview.slice(0, 5000) };
 }
 
 function parseDelimitedLine(line: string, delimiter: string) {
@@ -87,12 +131,12 @@ function parseTextTable(text: string, parserType: string): ParsedDocument {
   throw new Error("Non è stata identificata una tabella prodotti nel testo del documento.");
 }
 
-export async function parseDocument(buffer: Buffer, filename: string): Promise<ParsedDocument> {
+export async function parseDocument(buffer: Buffer, filename: string, expected?: { byteLength?: number; checksum?: string }): Promise<ParsedDocument> {
   const ext = extension(filename);
   if (!supportedExtensions.has(ext)) throw new Error("Formato non supportato. Usa XLSX, CSV, TSV, PDF, DOCX, TXT o un’immagine.");
   if (ext === "xls") throw new Error("Il formato XLS binario legacy è stato conservato, ma il parser locale non può leggerlo in sicurezza. Salvalo come XLSX o CSV e riprova.");
   if (["png", "jpg", "jpeg"].includes(ext)) throw new Error("Interpretazione automatica delle immagini non disponibile in questo ambiente. Il documento è stato conservato per una futura elaborazione OCR.");
-  if (ext === "xlsx") return parseSpreadsheet(buffer);
+  if (ext === "xlsx") return parseSpreadsheet(buffer, expected);
   if (textExtensions.has(ext)) return parseDelimited(buffer.toString("utf8"));
   if (ext === "docx") { const result = await mammoth.extractRawText({ buffer }); return parseTextTable(result.value, "DOCX_TEXT_DETERMINISTIC"); }
   if (ext === "pdf") {

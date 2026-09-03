@@ -7,7 +7,29 @@ export const importFields = [
 export type ImportField = (typeof importFields)[number];
 export type SourceLocator = { sheet?: string; row?: number; column?: string; page?: number; paragraph?: number; table?: number; columns?: Record<string, string> };
 export type ParsedRow = { values: Record<string, unknown>; locator: SourceLocator; rawSource: string };
-export type ParsedDocument = { parserType: string; sheets: { name: string; records: number; selected: boolean }[]; rows: ParsedRow[]; textPreview?: string };
+export type XlsxRuntimeDiagnostic = {
+  marker: "XLSX_RUNTIME_DIAG_V1";
+  sourceByteLength: number;
+  expectedByteLength: number | null;
+  byteLengthMatches: boolean | null;
+  firstFourBytesHex: string;
+  zipSignature: boolean;
+  sha256: string;
+  expectedChecksumMatches: boolean | null;
+  nodeVersion: string;
+  moduleShapeKeys: string[];
+  moduleDefaultExists: boolean;
+  workbookConstructorExists: boolean;
+  workbookCreated: boolean;
+  beforeWorkbookLoad: boolean;
+  afterWorkbookLoad: boolean;
+  worksheetsLength: number | null;
+  worksheetNames: string[];
+  errorClass: string | null;
+  errorMessage: string | null;
+  stackOrigin: string | null;
+};
+export type ParsedDocument = { parserType: string; sheets: { name: string; records: number; selected: boolean }[]; rows: ParsedRow[]; textPreview?: string; runtimeDiagnostic?: XlsxRuntimeDiagnostic };
 
 export type InterpretedFields = Partial<Record<ImportField, string | number | null>>;
 export type NormalizedImport = InterpretedFields & {

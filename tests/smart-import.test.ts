@@ -8,7 +8,7 @@ import { suggestColumnMapping } from "../src/lib/imports/mapping";
 import { extractCommercialConditions, suggestSupplierFromDocument } from "../src/lib/imports/document-context";
 import { suggestMatches } from "../src/lib/imports/matching";
 import { normalizeImportDate, normalizeImportedFields, parseItalianNumber } from "../src/lib/imports/normalization";
-import { parseDocument } from "../src/lib/imports/parser";
+import { parseDocument, xlsxRuntimeDiagnosticFromError } from "../src/lib/imports/parser";
 
 const fixtures = path.join(process.cwd(), "demo-imports");
 
@@ -17,6 +17,9 @@ test("parser XLSX legge il file reale, trova header e conserva la riga sorgente"
   const parsed = await parseDocument(buffer, "listino-alfa-medical-2027.xlsx");
   assert.ok(parsed.sheets.length >= 1);
   assert.ok(parsed.rows.length >= 1);
+  assert.equal(parsed.runtimeDiagnostic?.marker, "XLSX_RUNTIME_DIAG_V1");
+  assert.equal(parsed.runtimeDiagnostic?.afterWorkbookLoad, true);
+  assert.equal(parsed.runtimeDiagnostic?.worksheetsLength, parsed.sheets.length);
   assert.equal(parsed.parserType, "XLSX_DETERMINISTIC");
   assert.equal(parsed.rows.length, 36);
   assert.equal(parsed.rows[0].locator.sheet, "Listino");
@@ -28,7 +31,14 @@ test("parser XLSX legge il file reale, trova header e conserva la riga sorgente"
 test("parser XLSX restituisce un errore utile per workbook mancanti o non validi", async () => {
   await assert.rejects(
     parseDocument(Buffer.from("contenuto non XLSX"), "listino-invalido.xlsx"),
-    /file XLSX non è valido o è incompleto/i,
+    (error) => {
+      const diagnostic = xlsxRuntimeDiagnosticFromError(error);
+      assert.equal(diagnostic?.marker, "XLSX_RUNTIME_DIAG_V1");
+      assert.equal(diagnostic?.zipSignature, false);
+      assert.equal(diagnostic?.beforeWorkbookLoad, false);
+      assert.match(String(error), /file XLSX non è valido o è incompleto/i);
+      return true;
+    },
   );
 });
 

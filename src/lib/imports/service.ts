@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { activeInterpretationProvider, providerSupportsScannedDocuments } from "./provider";
 import { extractCommercialConditions, suggestSupplierFromDocument } from "./document-context";
 import { normalizeImportedFields } from "./normalization";
-import { parseDocument, supportedExtensions } from "./parser";
+import { parseDocument, supportedExtensions, xlsxRuntimeDiagnosticFromError } from "./parser";
 import { suggestMatches } from "./matching";
 import type { ImportField, NormalizedImport } from "./types";
 import { classifyPriceChange } from "./changes";
@@ -14,6 +14,12 @@ import { procurementAI } from "@/lib/procurement-ai";
 
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 const allowedKinds = new Set<ImportDocumentKind>(["PRICE_LIST", "OFFER", "QUOTATION", "INFORMATIONAL_INVOICE", "OTHER"]);
+
+function parsingFailure(error: unknown) {
+  const message = error instanceof Error ? error.message : "Errore di interpretazione non identificato.";
+  const xlsxRuntimeDiagnostic = xlsxRuntimeDiagnosticFromError(error);
+  return { message, xlsxRuntimeDiagnostic };
+}
 
 function safeFilename(filename: string) {
   const base = sanitizeDocumentFilename(filename);
@@ -136,7 +142,7 @@ export async function ingestDocument(input: { buffer: Buffer; filename: string; 
     throw error;
   }
   try {
-    const parsed = await parseDocument(input.buffer, filename);
+    const parsed = await parseDocument(input.buffer, filename, { byteLength: input.buffer.length, checksum });
     const documentContext = [filename, parsed.textPreview, ...parsed.rows.slice(0, 8).map((row) => row.rawSource)].filter(Boolean).join("\n");
     const suppliers = await prisma.supplier.findMany({ where: { active: true }, select: { id: true, name: true, vatNumber: true } });
     const supplierSuggestion = input.supplierId ? null : suggestSupplierFromDocument(filename, documentContext, suppliers);
@@ -165,21 +171,28 @@ export async function ingestDocument(input: { buffer: Buffer; filename: string; 
         const normalized = record.normalizedFields as Record<string, unknown>;
         await tx.importedFieldValue.createMany({ data: fieldEvidence({ recordId: record.id, raw: parsed.rows[index].values, interpreted: interpreted[index] as Record<string, unknown>, normalized, mapping, locator: parsed.rows[index].locator as Record<string, unknown>, extractionConfidence: parsed.parserType.includes("XLSX") || parsed.parserType.includes("CSV") ? 1 : 0.82, mappingConfidence }) });
       }
-      await tx.importJob.update({ where: { id: job.id }, data: { status: parsed.rows.length ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", parserType: parsed.parserType, interpretationProvider: aiDocument ? procurementAI.id : activeInterpretationProvider.id, providerModel: aiDocument ? procurementAI.model : activeInterpretationProvider.modelVersion, externalProcessing: Boolean(aiDocument), totalRecords: parsed.rows.length, interpretedRecords: parsed.rows.length, reviewRequiredRecords: review, publishableRecords: ready, columnMapping: mapping, detectedSheets: parsed.sheets, summary: { textPreview: parsed.textPreview?.slice(0, 5000) ?? null, sourceHeaders: Object.keys(parsed.rows[0]?.values ?? {}), providerLabel: aiDocument ? "Interpretazione AI" : activeInterpretationProvider.label, providerIsAi: Boolean(aiDocument), exceptionRecords: review, duplicateDocumentId: duplicate?.id ?? null, supplierSuggestion, aiSupplierSuggestion: aiDocument?.supplierCandidate ?? null, commercialConditions, aiCommercialConditions: aiDocument?.commercialConditions ?? [] } } });
+      await tx.importJob.update({ where: { id: job.id }, data: { status: parsed.rows.length ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", parserType: parsed.parserType, interpretationProvider: aiDocument ? procurementAI.id : activeInterpretationProvider.id, providerModel: aiDocument ? procurementAI.model : activeInterpretationProvider.modelVersion, externalProcessing: Boolean(aiDocument), totalRecords: parsed.rows.length, interpretedRecords: parsed.rows.length, reviewRequiredRecords: review, publishableRecords: ready, columnMapping: mapping, detectedSheets: parsed.sheets, summary: { textPreview: parsed.textPreview?.slice(0, 5000) ?? null, sourceHeaders: Object.keys(parsed.rows[0]?.values ?? {}), providerLabel: aiDocument ? "Interpretazione AI" : activeInterpretationProvider.label, providerIsAi: Boolean(aiDocument), exceptionRecords: review, duplicateDocumentId: duplicate?.id ?? null, supplierSuggestion, aiSupplierSuggestion: aiDocument?.supplierCandidate ?? null, commercialConditions, aiCommercialConditions: aiDocument?.commercialConditions ?? [], xlsxRuntimeDiagnostic: parsed.runtimeDiagnostic ?? null } } });
       await tx.sourceDocument.update({ where: { id: source.id }, data: { status: "PROCESSED" } });
       await tx.auditEvent.create({ data: { actorUserId: input.userId, entityType: "IMPORT_JOB", entityId: job.id, action: "IMPORT_STARTED", metadata: { parserType: parsed.parserType, totalRecords: parsed.rows.length, provider: activeInterpretationProvider.id } } });
     }, { maxWait: 10_000, timeout: 60_000 });
     return job.id;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Errore di interpretazione non identificato.";
+    const { message, xlsxRuntimeDiagnostic } = parsingFailure(error);
     const needsProvider = !providerSupportsScannedDocuments() && /ocr|scansion|immagin|image/i.test(message);
-    await prisma.$transaction([prisma.importJob.update({ where: { id: job.id }, data: { status: needsProvider ? "REQUIRES_PROVIDER" : "FAILED", failedAt: needsProvider ? null : new Date(), errorMessage: message } }), prisma.sourceDocument.update({ where: { id: source.id }, data: { status: needsProvider ? "REQUIRES_PROVIDER" : "FAILED" } }), prisma.auditEvent.create({ data: { actorUserId: input.userId, entityType: "IMPORT_JOB", entityId: job.id, action: needsProvider ? "IMPORT_REQUIRES_PROVIDER" : "IMPORT_FAILED", metadata: { message, provider: activeInterpretationProvider.id } } })]);
+    await prisma.$transaction([prisma.importJob.update({ where: { id: job.id }, data: { status: needsProvider ? "REQUIRES_PROVIDER" : "FAILED", failedAt: needsProvider ? null : new Date(), errorMessage: message, ...(xlsxRuntimeDiagnostic ? { summary: { xlsxRuntimeDiagnostic } } : {}) } }), prisma.sourceDocument.update({ where: { id: source.id }, data: { status: needsProvider ? "REQUIRES_PROVIDER" : "FAILED" } }), prisma.auditEvent.create({ data: { actorUserId: input.userId, entityType: "IMPORT_JOB", entityId: job.id, action: needsProvider ? "IMPORT_REQUIRES_PROVIDER" : "IMPORT_FAILED", metadata: { message, provider: activeInterpretationProvider.id, ...(xlsxRuntimeDiagnostic ? { diagnosticMarker: xlsxRuntimeDiagnostic.marker } : {}) } } })]);
     return job.id;
   }
 }
 
-async function processExistingJob(input: { jobId: string; sourceDocumentId: string; buffer: Buffer; filename: string; supplierId: string | null; userId: string; mapping?: Record<string, ImportField> }) {
-  const parsed = await parseDocument(input.buffer, input.filename);
+async function processExistingJob(input: { jobId: string; sourceDocumentId: string; buffer: Buffer; filename: string; supplierId: string | null; userId: string; mapping?: Record<string, ImportField>; expectedByteLength?: number; expectedChecksum?: string }) {
+  let parsed: Awaited<ReturnType<typeof parseDocument>>;
+  try {
+    parsed = await parseDocument(input.buffer, input.filename, { byteLength: input.expectedByteLength, checksum: input.expectedChecksum });
+  } catch (error) {
+    const { message, xlsxRuntimeDiagnostic } = parsingFailure(error);
+    await prisma.importJob.update({ where: { id: input.jobId }, data: { status: "FAILED", failedAt: new Date(), errorMessage: message, ...(xlsxRuntimeDiagnostic ? { summary: { xlsxRuntimeDiagnostic } } : {}) } });
+    throw error;
+  }
   const documentContext = [input.filename, parsed.textPreview, ...parsed.rows.slice(0, 8).map((row) => row.rawSource)].filter(Boolean).join("\n");
   const commercialConditions = extractCommercialConditions(documentContext);
   const automatic = activeInterpretationProvider.mapFields(parsed.rows);
@@ -204,7 +217,7 @@ async function processExistingJob(input: { jobId: string; sourceDocumentId: stri
       const normalized = record.normalizedFields as Record<string, unknown>;
       await tx.importedFieldValue.createMany({ data: fieldEvidence({ recordId: record.id, raw: parsed.rows[index].values, interpreted: interpreted[index] as Record<string, unknown>, normalized, mapping, locator: parsed.rows[index].locator as Record<string, unknown>, extractionConfidence: parsed.parserType.includes("XLSX") || parsed.parserType.includes("CSV") ? 1 : 0.82, mappingConfidence }) });
     }
-    await tx.importJob.update({ where: { id: input.jobId }, data: { status: parsed.rows.length ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", parserType: parsed.parserType, totalRecords: parsed.rows.length, interpretedRecords: parsed.rows.length, reviewRequiredRecords: review, publishableRecords: ready, columnMapping: mapping, detectedSheets: parsed.sheets, failedAt: null, errorMessage: null, summary: { textPreview: parsed.textPreview?.slice(0, 5000) ?? null, sourceHeaders: Object.keys(parsed.rows[0]?.values ?? {}), providerLabel: activeInterpretationProvider.label, providerIsAi: activeInterpretationProvider.isAi, exceptionRecords: review, commercialConditions } } });
+    await tx.importJob.update({ where: { id: input.jobId }, data: { status: parsed.rows.length ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", parserType: parsed.parserType, totalRecords: parsed.rows.length, interpretedRecords: parsed.rows.length, reviewRequiredRecords: review, publishableRecords: ready, columnMapping: mapping, detectedSheets: parsed.sheets, failedAt: null, errorMessage: null, summary: { textPreview: parsed.textPreview?.slice(0, 5000) ?? null, sourceHeaders: Object.keys(parsed.rows[0]?.values ?? {}), providerLabel: activeInterpretationProvider.label, providerIsAi: activeInterpretationProvider.isAi, exceptionRecords: review, commercialConditions, xlsxRuntimeDiagnostic: parsed.runtimeDiagnostic ?? null } } });
     await tx.sourceDocument.update({ where: { id: input.sourceDocumentId }, data: { status: "PROCESSED" } });
   }, { maxWait: 10_000, timeout: 60_000 });
 }
@@ -212,14 +225,14 @@ async function processExistingJob(input: { jobId: string; sourceDocumentId: stri
 export async function remapImport(jobId: string, mapping: Record<string, ImportField>, actorUserId: string, organizationId: string) {
   const job = await prisma.importJob.findFirstOrThrow({ where: { id: jobId, sourceDocument: { organizationId } }, include: { sourceDocument: true } });
   const buffer = await readSourceDocument(job.sourceDocument);
-  await processExistingJob({ jobId, sourceDocumentId: job.sourceDocumentId, buffer, filename: job.sourceDocument.originalFilename, supplierId: job.sourceDocument.supplierId, userId: actorUserId, mapping });
+  await processExistingJob({ jobId, sourceDocumentId: job.sourceDocumentId, buffer, filename: job.sourceDocument.originalFilename, supplierId: job.sourceDocument.supplierId, userId: actorUserId, mapping, expectedByteLength: job.sourceDocument.fileSize, expectedChecksum: job.sourceDocument.checksum });
   await prisma.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: jobId, action: "COLUMN_MAPPING_CHANGED", metadata: { mapping } } });
 }
 
 export async function resetImportMapping(jobId: string, actorUserId: string, organizationId: string) {
   const job = await prisma.importJob.findFirstOrThrow({ where: { id: jobId, sourceDocument: { organizationId } }, include: { sourceDocument: true } });
   const buffer = await readSourceDocument(job.sourceDocument);
-  await processExistingJob({ jobId, sourceDocumentId: job.sourceDocumentId, buffer, filename: job.sourceDocument.originalFilename, supplierId: job.sourceDocument.supplierId, userId: actorUserId });
+  await processExistingJob({ jobId, sourceDocumentId: job.sourceDocumentId, buffer, filename: job.sourceDocument.originalFilename, supplierId: job.sourceDocument.supplierId, userId: actorUserId, expectedByteLength: job.sourceDocument.fileSize, expectedChecksum: job.sourceDocument.checksum });
   await prisma.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: jobId, action: "COLUMN_MAPPING_CHANGED", metadata: { resetToAutomatic: true } } });
 }
 
@@ -227,7 +240,7 @@ export async function reprocessImportForSupplier(jobId: string, supplierId: stri
   const job = await prisma.importJob.findFirstOrThrow({ where: { id: jobId, sourceDocument: { organizationId } }, include: { sourceDocument: true } });
   const buffer = await readSourceDocument(job.sourceDocument);
   await prisma.sourceDocument.update({ where: { id: job.sourceDocumentId }, data: { supplierId } });
-  await processExistingJob({ jobId, sourceDocumentId: job.sourceDocumentId, buffer, filename: job.sourceDocument.originalFilename, supplierId, userId: actorUserId, mapping: (job.columnMapping ?? undefined) as Record<string, ImportField> | undefined });
+  await processExistingJob({ jobId, sourceDocumentId: job.sourceDocumentId, buffer, filename: job.sourceDocument.originalFilename, supplierId, userId: actorUserId, mapping: (job.columnMapping ?? undefined) as Record<string, ImportField> | undefined, expectedByteLength: job.sourceDocument.fileSize, expectedChecksum: job.sourceDocument.checksum });
 }
 
 export async function confirmRecommendedMatches(jobId: string, actorUserId: string, organizationId: string, minimumScore = .88) {
@@ -255,7 +268,7 @@ export async function reprocessImport(jobId: string, actorUserId: string, organi
   const nextVersion = (await prisma.importJob.aggregate({ where: { sourceDocumentId: previous.sourceDocumentId }, _max: { version: true } }))._max.version! + 1;
   const next = await prisma.importJob.create({ data: { sourceDocumentId: previous.sourceDocumentId, status: "PARSING", interpretationProvider: activeInterpretationProvider.id, providerModel: activeInterpretationProvider.modelVersion, providerCapabilities: activeInterpretationProvider.capabilities, interpretationSchema: activeInterpretationProvider.schemaVersion, externalProcessing: activeInterpretationProvider.externalProcessing, startedAt: new Date(), createdByUserId: actorUserId, version: nextVersion } });
   try {
-    await processExistingJob({ jobId: next.id, sourceDocumentId: previous.sourceDocumentId, buffer, filename: previous.sourceDocument.originalFilename, supplierId: previous.sourceDocument.supplierId, userId: actorUserId });
+    await processExistingJob({ jobId: next.id, sourceDocumentId: previous.sourceDocumentId, buffer, filename: previous.sourceDocument.originalFilename, supplierId: previous.sourceDocument.supplierId, userId: actorUserId, expectedByteLength: previous.sourceDocument.fileSize, expectedChecksum: previous.sourceDocument.checksum });
     await prisma.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: next.id, action: "IMPORT_REPROCESSED", metadata: { previousJobId: previous.id, version: nextVersion } } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Errore di rielaborazione non identificato.";
