@@ -1,14 +1,16 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { addProductToList, createShoppingList } from "@/app/buying-actions";
 
 type ListOption = { id: string; name: string };
 
-export function ProductActionsMenu({ productId, productName, lists, detailHref, compareHref }: {
+export function ProductActionsMenu({ productId, productName, lists, detailHref, compareHref, extraActions }: {
   productId: string;
   productName: string;
   lists: ListOption[];
   detailHref: string;
   compareHref?: string;
+  extraActions?: ReactNode;
 }) {
   return <details className="product-actions-menu">
     <summary aria-label={`Altre azioni per ${productName}`}>Altre azioni</summary>
@@ -25,6 +27,7 @@ export function ProductActionsMenu({ productId, productName, lists, detailHref, 
         <button>Crea e aggiungi</button>
       </form></details>
       <nav aria-label="Approfondimenti prodotto"><Link href={detailHref}>Apri dettagli</Link>{compareHref && <Link href={compareHref}>Confronta offerte</Link>}</nav>
+      {extraActions && <div className="product-menu-extra">{extraActions}</div>}
     </div>
   </details>;
 }

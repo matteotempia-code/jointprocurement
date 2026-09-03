@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { Prisma, type ImportDocumentKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { activeInterpretationProvider, providerSupportsScannedDocuments } from "./provider";
+import { extractCommercialConditions, suggestSupplierFromDocument } from "./document-context";
 import { normalizeImportedFields } from "./normalization";
 import { parseDocument, supportedExtensions } from "./parser";
 import { suggestMatches } from "./matching";
@@ -9,6 +10,7 @@ import type { ImportField, NormalizedImport } from "./types";
 import { classifyPriceChange } from "./changes";
 import { getDocumentStorage, locatorForNewDocument, readSourceDocument } from "@/lib/storage";
 import { buildDocumentObjectKey, sanitizeDocumentFilename } from "@/lib/storage/keys";
+import { procurementAI } from "@/lib/procurement-ai";
 
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 const allowedKinds = new Set<ImportDocumentKind>(["PRICE_LIST", "OFFER", "QUOTATION", "INFORMATIONAL_INVOICE", "OTHER"]);
@@ -135,8 +137,18 @@ export async function ingestDocument(input: { buffer: Buffer; filename: string; 
   }
   try {
     const parsed = await parseDocument(input.buffer, filename);
+    const documentContext = [filename, parsed.textPreview, ...parsed.rows.slice(0, 8).map((row) => row.rawSource)].filter(Boolean).join("\n");
+    const suppliers = await prisma.supplier.findMany({ where: { active: true }, select: { id: true, name: true, vatNumber: true } });
+    const supplierSuggestion = input.supplierId ? null : suggestSupplierFromDocument(filename, documentContext, suppliers);
+    const commercialConditions = extractCommercialConditions(documentContext);
+    const aiDocument = procurementAI.isAi ? await procurementAI.interpretDocumentContext(documentContext, suppliers, { organizationId: input.organizationId, importJobId: job.id, operation: "DOCUMENT_CONTEXT" }) : null;
     const { mapping, confidence: mappingConfidence } = activeInterpretationProvider.mapFields(parsed.rows);
     const interpreted = activeInterpretationProvider.interpretRows(parsed.rows, mapping);
+    if (procurementAI.isAi) for (let index = 0, calls = 0; index < interpreted.length && calls < 12; index += 1) {
+      const row = interpreted[index]; if (row.description && row.netPrice != null && (row.unitsPerPackage != null || row.packageDescription)) continue;
+      const ai = await procurementAI.interpretProductRow(parsed.rows[index].rawSource, parsed.rows[index].values, { organizationId: input.organizationId, importJobId: job.id, operation: "ROW_INTERPRETATION" });
+      if (ai && ai.confidence >= .8) interpreted[index] = { ...row, ...ai.fields }; calls += 1;
+    }
     const products = await loadMatchableProducts();
     let review = 0; let ready = 0;
     await prisma.$transaction(async (tx) => {
@@ -153,7 +165,7 @@ export async function ingestDocument(input: { buffer: Buffer; filename: string; 
         const normalized = record.normalizedFields as Record<string, unknown>;
         await tx.importedFieldValue.createMany({ data: fieldEvidence({ recordId: record.id, raw: parsed.rows[index].values, interpreted: interpreted[index] as Record<string, unknown>, normalized, mapping, locator: parsed.rows[index].locator as Record<string, unknown>, extractionConfidence: parsed.parserType.includes("XLSX") || parsed.parserType.includes("CSV") ? 1 : 0.82, mappingConfidence }) });
       }
-      await tx.importJob.update({ where: { id: job.id }, data: { status: parsed.rows.length ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", parserType: parsed.parserType, totalRecords: parsed.rows.length, interpretedRecords: parsed.rows.length, reviewRequiredRecords: review, publishableRecords: ready, columnMapping: mapping, detectedSheets: parsed.sheets, summary: { textPreview: parsed.textPreview?.slice(0, 5000) ?? null, sourceHeaders: Object.keys(parsed.rows[0]?.values ?? {}), providerLabel: activeInterpretationProvider.label, providerIsAi: activeInterpretationProvider.isAi, exceptionRecords: review, duplicateDocumentId: duplicate?.id ?? null } } });
+      await tx.importJob.update({ where: { id: job.id }, data: { status: parsed.rows.length ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", parserType: parsed.parserType, interpretationProvider: aiDocument ? procurementAI.id : activeInterpretationProvider.id, providerModel: aiDocument ? procurementAI.model : activeInterpretationProvider.modelVersion, externalProcessing: Boolean(aiDocument), totalRecords: parsed.rows.length, interpretedRecords: parsed.rows.length, reviewRequiredRecords: review, publishableRecords: ready, columnMapping: mapping, detectedSheets: parsed.sheets, summary: { textPreview: parsed.textPreview?.slice(0, 5000) ?? null, sourceHeaders: Object.keys(parsed.rows[0]?.values ?? {}), providerLabel: aiDocument ? "Interpretazione AI" : activeInterpretationProvider.label, providerIsAi: Boolean(aiDocument), exceptionRecords: review, duplicateDocumentId: duplicate?.id ?? null, supplierSuggestion, aiSupplierSuggestion: aiDocument?.supplierCandidate ?? null, commercialConditions, aiCommercialConditions: aiDocument?.commercialConditions ?? [] } } });
       await tx.sourceDocument.update({ where: { id: source.id }, data: { status: "PROCESSED" } });
       await tx.auditEvent.create({ data: { actorUserId: input.userId, entityType: "IMPORT_JOB", entityId: job.id, action: "IMPORT_STARTED", metadata: { parserType: parsed.parserType, totalRecords: parsed.rows.length, provider: activeInterpretationProvider.id } } });
     }, { maxWait: 10_000, timeout: 60_000 });
@@ -168,6 +180,8 @@ export async function ingestDocument(input: { buffer: Buffer; filename: string; 
 
 async function processExistingJob(input: { jobId: string; sourceDocumentId: string; buffer: Buffer; filename: string; supplierId: string | null; userId: string; mapping?: Record<string, ImportField> }) {
   const parsed = await parseDocument(input.buffer, input.filename);
+  const documentContext = [input.filename, parsed.textPreview, ...parsed.rows.slice(0, 8).map((row) => row.rawSource)].filter(Boolean).join("\n");
+  const commercialConditions = extractCommercialConditions(documentContext);
   const automatic = activeInterpretationProvider.mapFields(parsed.rows);
   const mapping = input.mapping ?? automatic.mapping;
   const mappingConfidence = input.mapping ? 1 : automatic.confidence;
@@ -190,7 +204,7 @@ async function processExistingJob(input: { jobId: string; sourceDocumentId: stri
       const normalized = record.normalizedFields as Record<string, unknown>;
       await tx.importedFieldValue.createMany({ data: fieldEvidence({ recordId: record.id, raw: parsed.rows[index].values, interpreted: interpreted[index] as Record<string, unknown>, normalized, mapping, locator: parsed.rows[index].locator as Record<string, unknown>, extractionConfidence: parsed.parserType.includes("XLSX") || parsed.parserType.includes("CSV") ? 1 : 0.82, mappingConfidence }) });
     }
-    await tx.importJob.update({ where: { id: input.jobId }, data: { status: parsed.rows.length ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", parserType: parsed.parserType, totalRecords: parsed.rows.length, interpretedRecords: parsed.rows.length, reviewRequiredRecords: review, publishableRecords: ready, columnMapping: mapping, detectedSheets: parsed.sheets, failedAt: null, errorMessage: null, summary: { textPreview: parsed.textPreview?.slice(0, 5000) ?? null, sourceHeaders: Object.keys(parsed.rows[0]?.values ?? {}), providerLabel: activeInterpretationProvider.label, providerIsAi: activeInterpretationProvider.isAi, exceptionRecords: review } } });
+    await tx.importJob.update({ where: { id: input.jobId }, data: { status: parsed.rows.length ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", parserType: parsed.parserType, totalRecords: parsed.rows.length, interpretedRecords: parsed.rows.length, reviewRequiredRecords: review, publishableRecords: ready, columnMapping: mapping, detectedSheets: parsed.sheets, failedAt: null, errorMessage: null, summary: { textPreview: parsed.textPreview?.slice(0, 5000) ?? null, sourceHeaders: Object.keys(parsed.rows[0]?.values ?? {}), providerLabel: activeInterpretationProvider.label, providerIsAi: activeInterpretationProvider.isAi, exceptionRecords: review, commercialConditions } } });
     await tx.sourceDocument.update({ where: { id: input.sourceDocumentId }, data: { status: "PROCESSED" } });
   }, { maxWait: 10_000, timeout: 60_000 });
 }
@@ -207,6 +221,32 @@ export async function resetImportMapping(jobId: string, actorUserId: string, org
   const buffer = await readSourceDocument(job.sourceDocument);
   await processExistingJob({ jobId, sourceDocumentId: job.sourceDocumentId, buffer, filename: job.sourceDocument.originalFilename, supplierId: job.sourceDocument.supplierId, userId: actorUserId });
   await prisma.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: jobId, action: "COLUMN_MAPPING_CHANGED", metadata: { resetToAutomatic: true } } });
+}
+
+export async function reprocessImportForSupplier(jobId: string, supplierId: string, actorUserId: string, organizationId: string) {
+  const job = await prisma.importJob.findFirstOrThrow({ where: { id: jobId, sourceDocument: { organizationId } }, include: { sourceDocument: true } });
+  const buffer = await readSourceDocument(job.sourceDocument);
+  await prisma.sourceDocument.update({ where: { id: job.sourceDocumentId }, data: { supplierId } });
+  await processExistingJob({ jobId, sourceDocumentId: job.sourceDocumentId, buffer, filename: job.sourceDocument.originalFilename, supplierId, userId: actorUserId, mapping: (job.columnMapping ?? undefined) as Record<string, ImportField> | undefined });
+}
+
+export async function confirmRecommendedMatches(jobId: string, actorUserId: string, organizationId: string, minimumScore = .88) {
+  const job = await prisma.importJob.findFirstOrThrow({ where: { id: jobId, sourceDocument: { organizationId } } });
+  const records = await prisma.importedRecord.findMany({ where: { importJobId: job.id, status: { in: ["READY", "NEEDS_REVIEW"] }, matchCandidates: { some: { recommended: true, score: { gte: minimumScore }, canonicalProductId: { not: null } } } }, include: { matchCandidates: { where: { recommended: true, score: { gte: minimumScore }, canonicalProductId: { not: null } }, take: 1 } } });
+  let confirmed = 0;
+  await prisma.$transaction(async (tx) => {
+    for (const record of records) {
+      const candidate = record.matchCandidates[0];
+      const normalized = record.normalizedFields as NormalizedImport;
+      if (!candidate?.canonicalProductId || !normalized.comparable || candidate.packagingCompatibility === false) continue;
+      await tx.importedRecord.update({ where: { id: record.id }, data: { status: "CONFIRMED", requiresReview: false, canonicalProductId: candidate.canonicalProductId } });
+      await tx.productMatchCandidate.update({ where: { id: candidate.id }, data: { humanDecision: "ACCEPTED", decidedByUserId: actorUserId, decidedAt: new Date() } }); confirmed += 1;
+    }
+    await tx.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: job.id, action: "MATCH_ACCEPTED", metadata: { bulk: true, records: confirmed, minimumScore } } });
+    const remaining = await tx.importedRecord.count({ where: { importJobId: job.id, status: { in: ["READY", "NEEDS_REVIEW"] } } });
+    await tx.importJob.update({ where: { id: job.id }, data: { status: remaining ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", reviewRequiredRecords: await tx.importedRecord.count({ where: { importJobId: job.id, status: "NEEDS_REVIEW" } }), publishableRecords: await tx.importedRecord.count({ where: { importJobId: job.id, status: { in: ["CONFIRMED", "NEW_PRODUCT_CONFIRMED"] } } }) } });
+  });
+  return confirmed;
 }
 
 export async function reprocessImport(jobId: string, actorUserId: string, organizationId: string) {
@@ -244,6 +284,8 @@ export async function publishImport(jobId: string, actorUserId: string, organiza
     const validFrom = validStarts.length ? new Date(Math.min(...validStarts.map(Number))) : new Date();
     const validUntil = validEnds.length ? new Date(Math.max(...validEnds.map(Number))) : new Date(new Date().setFullYear(new Date().getFullYear() + 1));
     const list = await tx.priceList.create({ data: { name: `${job.sourceDocument.originalFilename.replace(/\.[^.]+$/, "")} · v${(previous?.version ?? 0) + 1}`, supplierId: job.sourceDocument.supplierId, sourceFile: job.sourceDocument.originalFilename, sourceDocumentId: job.sourceDocument.id, importJobId: job.id, previousVersionId: previous?.id, version: (previous?.version ?? 0) + 1, active: true, publishedByUserId: actorUserId, publishedAt: new Date(), validFrom, validUntil } });
+    const summary = (job.summary ?? {}) as { aiCommercialConditions?: Array<{ type: string; value: string | number | null; confidence: number; sourceEvidence: string; reasoningSummary: string }> };
+    for (const condition of summary.aiCommercialConditions ?? []) if (condition.value != null && condition.sourceEvidence) await tx.priceListCommercialCondition.create({ data: { priceListId: list.id, conditionType: condition.type, numericValue: typeof condition.value === "number" ? condition.value : null, textValue: typeof condition.value === "string" ? condition.value : null, currency: typeof condition.value === "number" ? "EUR" : null, sourceEvidence: condition.sourceEvidence.slice(0,500), reasoningSummary: condition.reasoningSummary.slice(0,500), confidence: condition.confidence, interpretationProvider: job.interpretationProvider, providerModel: job.providerModel, humanConfirmationState: "PENDING" } });
     if (previous) {
       await tx.priceList.update({ where: { id: previous.id }, data: { active: false } });
       await tx.supplierOffer.updateMany({ where: { priceListId: previous.id }, data: { active: false } });
@@ -271,6 +313,6 @@ export async function publishImport(jobId: string, actorUserId: string, organiza
     await tx.importJob.update({ where: { id: job.id }, data: { status: "PUBLISHED", publishedRecords: published, completedAt: new Date() } });
     await tx.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: job.id, action: "IMPORT_PUBLISHED", metadata: { priceListId: list.id, publishedRecords: published, sourceDocumentId: job.sourceDocument.id } } });
     return list;
-  });
+  }, { timeout: 30_000 });
   return result;
 }

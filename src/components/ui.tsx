@@ -57,6 +57,12 @@ export function DataTable({ children, label }: { children: ReactNode; label: str
   return <div className="table-wrap"><table><caption className="sr-only">{label}</caption>{children}</table></div>;
 }
 
+export function Pagination({ page, pages, pathname, params = {} }: { page: number; pages: number; pathname: string; params?: Record<string, string | undefined> }) {
+  if (pages <= 1) return null;
+  const href = (next: number) => { const query = new URLSearchParams(); for (const [key, value] of Object.entries(params)) if (value) query.set(key, value); query.set("pagina", String(next)); return `${pathname}?${query}`; };
+  return <nav className="phase1-pagination" aria-label="Paginazione"><Link className={page <= 1 ? "is-disabled" : ""} aria-disabled={page <= 1} href={href(Math.max(1, page - 1))}>Precedente</Link><span>Pagina {page} di {pages}</span><Link className={page >= pages ? "is-disabled" : ""} aria-disabled={page >= pages} href={href(Math.min(pages, page + 1))}>Successiva</Link></nav>;
+}
+
 export function ProductLink({ id, name, detail }: { id: string; name: string; detail?: string }) {
   return <Link className="product-link" href={`/products/${id}`}><strong>{name}</strong>{detail && <span>{detail}</span>}</Link>;
 }

@@ -1,16 +1,18 @@
 import Link from "next/link";
-import { Metric, PageHeader, StatusIndicator } from "@/components/ui";
+import { Num, PageHeader, Pagination, SearchField, StatusChip } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { compareOffers, formatMoney, getComparablePrice } from "@/lib/pricing";
+import { compareOffers, getComparablePrice } from "@/lib/pricing";
 
-export default async function ConfrontoPrezzi() {
-  await requireRoles(["PROCUREMENT_MANAGER"]);
-  const products = await prisma.canonicalProduct.findMany({ where: { offers: { some: {} } }, include: { category: true, offers: { include: { supplier: true } } } });
-  const comparable = products.filter((product) => product.offers.length > 1);
-  const comparisons = comparable.map((product) => ({ product, result: compareOffers(product.offers) }));
-  const supplierCount = new Set(comparable.flatMap((product) => product.offers.map((offer) => offer.supplierId))).size;
-  const average = comparisons.length ? comparisons.reduce((sum, comparison) => sum + comparison.result.spread, 0) / comparisons.length : 0;
-  const opportunity = comparisons.reduce((sum, comparison) => sum + Math.max(0, comparison.result.preferred ? getComparablePrice(comparison.result.preferred) - getComparablePrice(comparison.result.lowest!) : 0), 0);
-  return <main><PageHeader eyebrow="Intelligence prezzi" title="Confronto prezzi" description="Offerte normalizzate sulla stessa unità di consumo e allineate al prodotto canonico." /><div className="metrics-grid four"><Metric label="Prodotti confrontabili" value={comparable.length} /><Metric label="Fornitori rappresentati" value={supplierCount} /><Metric label="Differenza media" value={`${average.toFixed(1)}%`} /><Metric label="Opportunità osservata" value={formatMoney(opportunity, 4)} detail="Stima demo · una unità normalizzata" /></div><div className="comparison-list">{comparisons.map(({ product, result }) => <article className="compare-card" key={product.id}><header><div><span>{product.category.name}</span><Link href={`/products/${product.id}`}>{product.name}</Link></div><strong>{result.spread.toFixed(1)}% di differenza</strong></header><div className="offer-bars">{result.sorted.map((offer) => <div key={offer.id} className="offer-bar"><div><b>{offer.supplier.name}</b>{offer.preferred && <StatusIndicator active label="Convenzionato" />}</div><strong>{formatMoney(getComparablePrice(offer), 4)}</strong></div>)}</div><footer><span>Differenza {formatMoney(result.deltaEuro, 4)}</span><b>{result.preferredDelta === 0 ? "Migliore offerta disponibile" : `L’offerta convenzionata è superiore del ${result.preferredDelta.toFixed(1)}%`}</b></footer></article>)}</div></main>;
+const PAGE_SIZE = 12;
+export default async function ConfrontoPrezzi({ searchParams }: { searchParams: Promise<{ q?: string; pagina?: string }> }) {
+  await requireRoles(["PROCUREMENT_MANAGER"]); const query = await searchParams, page = Math.max(1, Number(query.pagina ?? 1));
+  const where = { active: true, offers: { some: { active: true } }, ...(query.q ? { name: { contains: query.q, mode: "insensitive" as const } } : {}) };
+  const [total, products] = await Promise.all([prisma.canonicalProduct.count({ where }), prisma.canonicalProduct.findMany({ where, include: { category: true, offers: { where: { active: true }, include: { supplier: true } } }, orderBy: { name: "asc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE })]);
+  const comparisons = products.filter((item) => item.offers.length > 1).map((product) => ({ product, result: compareOffers(product.offers) })), pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  return <main className="phase2-page phase2-compare"><PageHeader eyebrow="Intelligence prezzi" title="Confronto offerte" description="Le differenze normalizzate sono dominanti; gli attributi identici restano secondari." />
+    <form className="phase2-control-bar"><SearchField defaultValue={query.q} placeholder="Prodotto da confrontare" /><button className="secondary-cta">Cerca</button></form>
+    <div className="phase2-comparison-list">{comparisons.map(({ product, result }) => <article key={product.id}><header><div><span>{product.category.name}</span><Link href={`/products/${product.id}`}>{product.name}</Link></div><StatusChip variant={result.spread > 20 ? "warn" : "neutral"}>{result.spread.toLocaleString("it-IT", { maximumFractionDigits: 1 })}% differenza</StatusChip></header><div>{result.sorted.slice(0, 4).map((offer, index) => <div className={index === 0 ? "is-best" : ""} key={offer.id}><span>{offer.supplier.name}{offer.preferred ? " · convenzionato" : ""}</span><strong><Num value={getComparablePrice(offer)} kind="currency" digits={4} /> / unità normalizzata</strong><StatusChip variant={index === 0 ? "ok" : "neutral"}>{index === 0 ? "Migliore" : `+${((getComparablePrice(offer) / getComparablePrice(result.lowest!) - 1) * 100).toLocaleString("it-IT", { maximumFractionDigits: 1 })}%`}</StatusChip></div>)}</div></article>)}</div>
+    <Pagination page={Math.min(page, pages)} pages={pages} pathname="/compare" params={{ q: query.q }} />
+  </main>;
 }

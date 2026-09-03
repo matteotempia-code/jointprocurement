@@ -16,7 +16,7 @@ export default async function ListaDetail({ params, searchParams }: { params: Pr
   if (!list) notFound();
   const notice = await searchParams;
   const estimate = list.items.reduce((sum, item) => sum + Number(item.quantity) * Number(item.canonicalProduct.offers[0]?.unitPrice ?? 0), 0);
-  return <main>
+  return <main className="phase2-page phase2-list-detail">
     {(notice.creata || notice.duplicata || notice.dalCarrello || notice.daOrdine) && <div className="success">Lista pronta. Puoi modificarla o aggiungerla subito al carrello.</div>}
     <PageHeader eyebrow="Lista ricorrente" title={list.name} description={`${list.items.length} articoli · ${scope.label} · ${list.lastUsedAt ? `usata ${formatDate(list.lastUsedAt)}` : "non ancora utilizzata"}`} />
     <div className="list-command"><div><span>Valore stimato</span><strong>{formatMoney(estimate)}</strong><small>IVA esclusa, prezzi correnti</small></div><Link className="secondary-cta" href="/catalog">Aggiungi prodotti</Link><form action={addShoppingListToCart}><input type="hidden" name="listId" value={list.id} /><button className="primary-cta">Aggiungi tutto al carrello</button></form></div>

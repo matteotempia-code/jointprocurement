@@ -23,8 +23,11 @@
     "storage:migrate": "tsx scripts/storage/migrate-source-documents.ts",
     "storage:prove-live": "tsx scripts/storage/prove-live-ingestion.ts",
     "storage:prove-browser": "node tests/storage-live-proof.mjs",
+    "m11:check": "tsx scripts/m11-readiness.ts",
     "db:seed": "prisma db seed",
-    "demo:imports": "tsx scripts/generate-demo-imports.ts"
+    "demo:imports": "tsx scripts/generate-demo-imports.ts",
+    "demo:procurement:refresh": "tsx scripts/demo/refresh-procurement.ts",
+    "demo:procurement:refresh:apply": "tsx scripts/demo/refresh-procurement.ts --apply"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
@@ -38,7 +41,8 @@
     "pg": "^8.23.0",
     "prisma": "^7.10.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

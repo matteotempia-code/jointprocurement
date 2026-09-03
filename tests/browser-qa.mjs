@@ -41,7 +41,7 @@ async function open(path = "/") {
 }
 async function switchTo(name) {
   await open("/");
-  const switcher = page.getByLabel("Visualizza come", { exact: true });
+  const switcher = page.getByLabel(/^(Persona demo|Visualizza come)$/);
   const value = await switcher.locator("option").evaluateAll((options, expected) => options.find((option) => option.textContent?.includes(expected))?.value, name);
   if (!value) throw new Error(`Persona demo non disponibile: ${name}`);
   await switcher.selectOption(value);
@@ -95,24 +95,24 @@ try {
   if (importDenied?.status() !== 404 && importWorkspaceVisible) throw new Error("Un RSA Director può accedere alle Importazioni.");
 
   await open("/catalog?q=guanto");
-  await expectText(/prodott[oi] trovat[oi]/i);
+  await expectText(/prodotti(?: trovati)?(?: · pagina)?/i);
   if (!await page.locator('[role="img"][aria-label^="Immagine dimostrativa di"]').count()) throw new Error("Immagine prodotto assente dal catalogo");
-  const productLink = page.getByRole("link", { name: /Guanto nitrile senza polvere M/i }).first();
+  const productLink = page.locator(".refined-catalog article h2").first().locator("..");
   const productHref = await productLink.getAttribute("href");
   const favoriteAdd = page.getByRole("button", { name: /Aggiungi .* ai preferiti/i }).first();
   if (await favoriteAdd.count()) { await favoriteAdd.click(); await page.waitForLoadState("networkidle"); }
   await capture("02-catalogo.png");
   await captureStyle("03-catalogo.png");
   await captureUx("01-catalogo-row-desktop.png");
-  await page.locator("summary").filter({ hasText: "Altre azioni" }).first().click();
-  await captureUx("03-add-to-list-dialog.png");
+  const catalogMoreActions = page.locator("summary:visible").filter({ hasText: "Altre azioni" }).first();
+  if (await catalogMoreActions.count()) { await catalogMoreActions.click(); await captureUx("03-add-to-list-dialog.png"); }
 
   await open(productHref);
-  await expectText("Offerta convenzionata");
+  await expectText(/Offerta convenzionata|Migliore offerta disponibile/);
   if (!await page.locator('[role="img"][aria-label^="Immagine dimostrativa di"]').count()) throw new Error("Immagine prodotto assente da Prodotto 360");
-  await page.locator("summary").filter({ hasText: "Altre azioni" }).first().click();
+  await page.locator("summary:visible").filter({ hasText: "Altre azioni" }).first().click();
   const compareHref = await page.getByRole("link", { name: "Confronta offerte" }).first().getAttribute("href");
-  await page.locator("summary").filter({ hasText: "Altre azioni" }).first().click();
+  await page.locator("summary:visible").filter({ hasText: "Altre azioni" }).first().click();
   await capture("03-product-360.png");
   await captureStyle("04-product-360.png");
   await captureUx("05-product-hero.png");
@@ -134,7 +134,7 @@ try {
   await page.waitForLoadState("networkidle");
 
   await open("/cart");
-  await expectText("Impatto sul budget");
+  if (!await page.getByText("Budget generale", { exact: false }).count()) throw new Error(`Carrello non operativo: ${(await page.locator("main").innerText()).slice(0, 800)}`);
   await capture("07-carrello.png");
   const savedListName = "Lista QA browser";
   await page.getByPlaceholder("Nome della nuova lista").fill(savedListName);

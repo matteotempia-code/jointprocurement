@@ -40,7 +40,8 @@ export function normalizeImportedFields(input: InterpretedFields): NormalizedImp
   const errors: string[] = [];
   const warnings: string[] = [];
   const gross = parseItalianNumber(input.grossPrice);
-  const units = parseItalianNumber(input.unitsPerPackage);
+  const packageUnits = String(input.packageDescription ?? "").match(/(?:cf|conf|box|cartone|pack)?\s*[x×:]?\s*(\d+(?:[.,]\d+)?)(?:\s*(?:pz|pezzi|unità|unita))?/i)?.[1];
+  const units = parseItalianNumber(input.unitsPerPackage) ?? parseItalianNumber(packageUnits);
   const taxRate = parseItalianNumber(input.taxRate);
   const discount = parseItalianNumber(input.discount);
   const explicitNet = parseItalianNumber(input.netPrice);

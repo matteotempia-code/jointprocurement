@@ -21,6 +21,7 @@ export async function parseSpreadsheet(buffer: Buffer): Promise<ParsedDocument> 
   const sheets: ParsedDocument["sheets"] = [];
   let selectedRows: ParsedRow[] = [];
   let selectedScore = -1;
+  let selectedPreview = "";
   workbook.eachSheet((worksheet) => {
     const matrix: unknown[][] = [];
     worksheet.eachRow({ includeEmpty: false }, (row) => matrix.push((row.values as ExcelJS.CellValue[]).slice(1).map(cellValue)));
@@ -37,10 +38,10 @@ export async function parseSpreadsheet(buffer: Buffer): Promise<ParsedDocument> 
     });
     const candidate = score >= 2 && !/note|istruz|legenda/i.test(worksheet.name);
     sheets.push({ name: worksheet.name, records: rows.length, selected: false });
-    if (candidate && score > selectedScore) { selectedScore = score; selectedRows = rows; sheets.forEach((sheet) => { sheet.selected = sheet.name === worksheet.name; }); }
+    if (candidate && score > selectedScore) { selectedScore = score; selectedRows = rows; selectedPreview = matrix.slice(0, 20).map((values) => values.map(String).join(" | ")).join("\n"); sheets.forEach((sheet) => { sheet.selected = sheet.name === worksheet.name; }); }
   });
   if (!selectedRows.length) throw new Error("Non è stata identificata una tabella prodotti nel workbook.");
-  return { parserType: "XLSX_DETERMINISTIC", sheets, rows: selectedRows };
+  return { parserType: "XLSX_DETERMINISTIC", sheets, rows: selectedRows, textPreview: selectedPreview.slice(0, 5000) };
 }
 
 function parseDelimitedLine(line: string, delimiter: string) {

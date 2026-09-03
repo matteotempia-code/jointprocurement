@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { classifyPriceChange } from "../src/lib/imports/changes";
 import { suggestColumnMapping } from "../src/lib/imports/mapping";
+import { extractCommercialConditions, suggestSupplierFromDocument } from "../src/lib/imports/document-context";
 import { suggestMatches } from "../src/lib/imports/matching";
 import { normalizeImportDate, normalizeImportedFields, parseItalianNumber } from "../src/lib/imports/normalization";
 import { parseDocument } from "../src/lib/imports/parser";
@@ -57,10 +58,39 @@ test("mapping colonne riconosce sinonimi commerciali italiani", () => {
   assert.equal(mapping.IVA, "taxRate");
 });
 
+test("mapping riconcilia layout fornitori con intestazioni e ordine differenti", () => {
+  const layoutA = suggestColumnMapping(["SKU", "Description", "Box", "Price"]);
+  const layoutB = suggestColumnMapping(["Description", "Unit price", "UOM", "Supplier code"]);
+  assert.equal(layoutA.SKU, "supplierSku"); assert.equal(layoutA.Description, "description"); assert.equal(layoutA.Box, "unitsPerPackage"); assert.equal(layoutA.Price, "netPrice");
+  assert.equal(layoutB["Supplier code"], "supplierSku"); assert.equal(layoutB["Unit price"], "netPrice"); assert.equal(layoutB.UOM, "purchaseUom");
+});
+
+test("identificazione fornitore suggerisce senza associare e rifiuta ambiguità", () => {
+  const suppliers = [{ id: "a", name: "Alfa Medical", vatNumber: "IT12345678901" }, { id: "b", name: "Beta Care", vatNumber: "IT10987654321" }];
+  assert.equal(suggestSupplierFromDocument("listino.xlsx", "ALFA MEDICAL - P.IVA 12345678901", suppliers)?.supplierId, "a");
+  assert.equal(suggestSupplierFromDocument("listino.xlsx", "catalogo prodotti", suppliers), null);
+});
+
+test("condizioni documento restano estratte con scope di listino da verificare", () => {
+  const conditions = extractCommercialConditions("Ordine minimo: 350 €; franco porto: 750 €; trasporto: 24 €; pagamento: 60 gg D.F.F.M.; sconto 5%");
+  assert.equal(conditions.minimumOrderValue, 350); assert.equal(conditions.freeShippingThreshold, 750); assert.equal(conditions.shippingFee, 24); assert.equal(conditions.discountPercent, 5); assert.match(conditions.paymentTerms ?? "", /60 gg/);
+});
+
+test("similarità descrittiva non viene dichiarata equivalenza funzionale", () => {
+  const products = [{ id: "p1", name: "Guanto nitrile blu M", brand: null, manufacturerSku: null, ean: null, purchaseUom: "BOX", unitsPerPackage: 100, consumptionUom: "PIECE", category: { id: "c1", name: "DPI", code: "DPI" }, offers: [] }];
+  const [match] = suggestMatches(normalizeImportedFields({ description: "Guanto nitrile blu taglia M", unitsPerPackage: 100, purchaseUom: "BOX", consumptionUom: "PIECE", netPrice: 4 }), products);
+  assert.notEqual(match.matchType, "FUNCTIONAL_EQUIVALENT"); assert.notEqual(match.matchType, "COMMERCIAL_SUBSTITUTE");
+});
+
 test("normalizzazione import: box 100 a 2,50 € vale 0,025 € per pezzo", () => {
   const result = normalizeImportedFields({ description: "Guanti nitrile M", purchaseUom: "BOX", unitsPerPackage: 100, consumptionUom: "PIECE", netPrice: "2,50", currency: "EUR" });
   assert.equal(result.comparable, true);
   assert.equal(result.normalizedPrice, 0.025);
+});
+
+test("normalizzazione recupera il fattore da una colonna formato CF 100", () => {
+  const result = normalizeImportedFields({ description: "Guanto nitrile M", purchaseUom: "CF", packageDescription: "CF 100", netPrice: "2,50" });
+  assert.equal(result.unitsPerPackage, 100); assert.equal(result.normalizedPrice, .025); assert.equal(result.comparable, true);
 });
 
 test("normalizzazione import: tanica da 5 litri usa il litro come unità di consumo", () => {

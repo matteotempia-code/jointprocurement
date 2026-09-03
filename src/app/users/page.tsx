@@ -1,16 +1,19 @@
-import { DataTable, PageHeader, ScopeBadge, StatusIndicator } from "@/components/ui";
+import { DataTable, EmptyRow, Num, PageHeader, Pagination, ScopeBadge, SearchField, StatusIndicator } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatMoney } from "@/lib/pricing";
 
-async function scopeNames(assignments: { scopeType: string; scopeId: string | null }[]) {
-  const ids = assignments.map((assignment) => assignment.scopeId).filter(Boolean) as string[];
-  const [areas, facilities] = await Promise.all([prisma.area.findMany({ where: { id: { in: ids } } }), prisma.facility.findMany({ where: { id: { in: ids } } })]);
-  return new Map([...areas, ...facilities].map((item) => [item.id, item.name]));
-}
-export default async function Utenti() {
-  const context = await requireRoles(["PROCUREMENT_ADMIN"]);
-  const assignments = await prisma.userAssignment.findMany({ where: { organizationId: context.organization.id }, include: { user: true, role: true, organization: true }, orderBy: { user: { name: "asc" } } });
-  const names = await scopeNames(assignments);
-  return <main><PageHeader eyebrow="Identità e poteri" title="Utenti" description="Il ruolo definisce cosa si può fare; lo scope definisce dove." /><aside className="principle-note"><b>Ruolo ≠ scope</b><span>Ogni assegnazione combina utente, ruolo, organizzazione, perimetro operativo e autonomia.</span></aside><DataTable label="Assegnazioni utente"><thead><tr><th>Utente</th><th>Ruolo</th><th>Organizzazione</th><th>Scope</th><th>Limite di approvazione</th><th>Stato</th></tr></thead><tbody>{assignments.map((assignment) => <tr key={assignment.id}><td><strong>{assignment.user.name}</strong><small className="cell-detail">{assignment.user.email}</small></td><td>{assignment.role.name}</td><td>{assignment.organization.name}</td><td><ScopeBadge type={assignment.scopeType} label={assignment.scopeType === "ORGANIZATION" ? assignment.organization.name : names.get(assignment.scopeId ?? "") ?? "Scope non disponibile"} /></td><td>{assignment.approvalLimit ? formatMoney(Number(assignment.approvalLimit)) : "—"}</td><td><StatusIndicator active={assignment.active} label={assignment.active ? "Attivo" : "Non attivo"} /></td></tr>)}</tbody></DataTable></main>;
+const PAGE_SIZE = 20;
+async function scopeNames(assignments: { scopeId: string | null }[]) { const ids = assignments.flatMap((item) => item.scopeId ? [item.scopeId] : []); const [areas, facilities] = await Promise.all([prisma.area.findMany({ where: { id: { in: ids } } }), prisma.facility.findMany({ where: { id: { in: ids } } })]); return new Map([...areas, ...facilities].map((item) => [item.id, item.name])); }
+
+export default async function Utenti({ searchParams }: { searchParams: Promise<{ q?: string; stato?: string; pagina?: string }> }) {
+  const context = await requireRoles(["PROCUREMENT_ADMIN"]), query = await searchParams, page = Math.max(1, Number(query.pagina ?? 1));
+  const where = { organizationId: context.organization.id, ...(query.stato === "active" ? { active: true } : query.stato === "inactive" ? { active: false } : {}), ...(query.q ? { OR: [{ user: { name: { contains: query.q, mode: "insensitive" as const } } }, { user: { email: { contains: query.q, mode: "insensitive" as const } } }, { role: { name: { contains: query.q, mode: "insensitive" as const } } }] } : {}) };
+  const [total, active, assignments] = await Promise.all([prisma.userAssignment.count({ where }), prisma.userAssignment.count({ where: { organizationId: context.organization.id, active: true } }), prisma.userAssignment.findMany({ where, include: { user: true, role: true, organization: true }, orderBy: { user: { name: "asc" } }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE })]);
+  const names = await scopeNames(assignments), pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  return <main className="phase2-page phase2-admin"><PageHeader eyebrow="Identità e poteri" title="Utenti" description="Persone, ruolo corrente e perimetro operativo senza esporre dettagli tecnici inutili." />
+    <section className="phase2-summary-strip"><div><span>Assegnazioni nel filtro</span><strong><Num value={total} /></strong></div><div><span>Attive nell’organizzazione</span><strong><Num value={active} /></strong></div><div><span>Regola</span><strong>Ruolo + scope</strong><small>Identità separata dall’autorità</small></div><div><span>Provisioning</span><strong>Demo locale</strong><small>Enterprise identity fuori M11</small></div></section>
+    <form className="phase2-control-bar"><SearchField defaultValue={query.q} placeholder="Persona, email o ruolo" /><select name="stato" defaultValue={query.stato ?? "all"}><option value="all">Tutti gli stati</option><option value="active">Attivi</option><option value="inactive">Non attivi</option></select><button className="secondary-cta">Applica</button></form>
+    <DataTable label="Assegnazioni utente"><thead><tr><th>Persona</th><th>Ruolo</th><th>Scope organizzativo</th><th className="num-cell">Limite approvazione</th><th>Stato</th></tr></thead><tbody>{assignments.length ? assignments.map((assignment) => <tr key={assignment.id}><td><strong>{assignment.user.name}</strong><small className="cell-detail">{assignment.user.email}</small></td><td>{assignment.role.name}</td><td><ScopeBadge type={assignment.scopeType} label={assignment.scopeType === "ORGANIZATION" ? assignment.organization.name : names.get(assignment.scopeId ?? "") ?? "Scope non disponibile"} /></td><td className="num-cell">{assignment.approvalLimit ? <Num value={Number(assignment.approvalLimit)} kind="currency" /> : "—"}</td><td><StatusIndicator active={assignment.active} label={assignment.active ? "Attivo" : "Non attivo"} /></td></tr>) : <EmptyRow colSpan={5}>Nessuna assegnazione nel filtro.</EmptyRow>}</tbody></DataTable>
+    <Pagination page={Math.min(page, pages)} pages={pages} pathname="/users" params={{ q: query.q, stato: query.stato }} />
+  </main>;
 }

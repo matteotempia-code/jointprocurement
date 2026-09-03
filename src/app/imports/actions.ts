@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ingestDocument, publishImport, remapImport, reprocessImport, resetImportMapping } from "@/lib/imports/service";
+import { confirmRecommendedMatches, ingestDocument, publishImport, remapImport, reprocessImport, reprocessImportForSupplier, resetImportMapping } from "@/lib/imports/service";
 import { importFields, type ImportField } from "@/lib/imports/types";
 import { normalizeImportedFields } from "@/lib/imports/normalization";
 import { applyBulkReview, type BulkReviewAction } from "@/lib/imports/bulk-review";
@@ -30,14 +30,15 @@ export async function uploadImport(_previous: UploadImportState, formData: FormD
 
 async function scopedJob(jobId: string) {
   const context = await requireRoles([...allowedRoles]);
-  const job = await prisma.importJob.findFirstOrThrow({ where: { id: jobId, sourceDocument: { organizationId: context.assignment.organizationId } } });
+  const job = await prisma.importJob.findFirstOrThrow({ where: { id: jobId, sourceDocument: { organizationId: context.assignment.organizationId } }, include: { sourceDocument: true } });
   return { context, job };
 }
 
 export async function acceptRecord(formData: FormData) {
   const recordId = String(formData.get("recordId")); const candidateId = String(formData.get("candidateId")); const jobId = String(formData.get("jobId"));
-  const { context } = await scopedJob(jobId);
+  const { context, job } = await scopedJob(jobId);
   const candidate = await prisma.productMatchCandidate.findFirstOrThrow({ where: { id: candidateId, importedRecord: { id: recordId, importJobId: jobId } } });
+  const record = await prisma.importedRecord.findUniqueOrThrow({ where: { id: recordId }, select: { supplierSkuText: true } });
   if (!candidate.canonicalProductId) throw new Error("Il candidato non è collegato a un prodotto canonico.");
   await prisma.$transaction([
     prisma.productMatchCandidate.updateMany({ where: { importedRecordId: recordId }, data: { humanDecision: "REJECTED", decidedByUserId: context.user.id, decidedAt: new Date() } }),
@@ -45,6 +46,7 @@ export async function acceptRecord(formData: FormData) {
     prisma.importedRecord.update({ where: { id: recordId }, data: { canonicalProductId: candidate.canonicalProductId, status: "CONFIRMED", requiresReview: false } }),
     prisma.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: "MATCH_ACCEPTED", metadata: { candidateId, canonicalProductId: candidate.canonicalProductId } } }),
   ]);
+  if (record.supplierSkuText && job.sourceDocument.supplierId) await prisma.procurementMemory.upsert({ where: { organizationId_supplierId_memoryType_lookupKey: { organizationId: context.assignment.organizationId, supplierId: job.sourceDocument.supplierId, memoryType: "SUPPLIER_SKU_PRODUCT", lookupKey: record.supplierSkuText.toLocaleLowerCase("it-IT") } }, update: { canonicalValue: { canonicalProductId: candidate.canonicalProductId }, sourceEntityId: recordId, confirmedByUserId: context.user.id }, create: { organizationId: context.assignment.organizationId, supplierId: job.sourceDocument.supplierId, memoryType: "SUPPLIER_SKU_PRODUCT", lookupKey: record.supplierSkuText.toLocaleLowerCase("it-IT"), canonicalValue: { canonicalProductId: candidate.canonicalProductId }, sourceEntityId: recordId, confirmedByUserId: context.user.id } });
   await refreshJob(jobId, context.user.id); redirect(`/imports/${jobId}?review=1`);
 }
 
@@ -108,8 +110,7 @@ export async function markRecord(formData: FormData) {
 
 export async function approveHighConfidence(formData: FormData) {
   const jobId = String(formData.get("jobId")); const { context } = await scopedJob(jobId);
-  const records = await prisma.importedRecord.findMany({ where: { importJobId: jobId, status: "READY", matchCandidates: { some: { recommended: true, score: { gte: .88 }, canonicalProductId: { not: null } } } }, include: { matchCandidates: { where: { recommended: true }, take: 1 } } });
-  await prisma.$transaction(async (tx) => { for (const record of records) { const candidate = record.matchCandidates[0]; if (!candidate?.canonicalProductId) continue; await tx.importedRecord.update({ where: { id: record.id }, data: { status: "CONFIRMED", requiresReview: false, canonicalProductId: candidate.canonicalProductId } }); await tx.productMatchCandidate.update({ where: { id: candidate.id }, data: { humanDecision: "ACCEPTED", decidedByUserId: context.user.id, decidedAt: new Date() } }); } await tx.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "IMPORT_JOB", entityId: jobId, action: "MATCH_ACCEPTED", metadata: { bulk: true, records: records.length } } }); });
+  await confirmRecommendedMatches(jobId, context.user.id, context.assignment.organizationId, .88);
   await refreshJob(jobId, context.user.id); redirect(`/imports/${jobId}?alta=approvata`);
 }
 
@@ -165,10 +166,8 @@ export async function confirmImportSupplier(formData: FormData) {
   const supplierId = String(formData.get("supplierId"));
   const { context, job } = await scopedJob(jobId);
   const supplier = await prisma.supplier.findFirstOrThrow({ where: { id: supplierId, active: true } });
-  await prisma.$transaction([
-    prisma.sourceDocument.update({ where: { id: job.sourceDocumentId }, data: { supplierId: supplier.id } }),
-    prisma.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "SOURCE_DOCUMENT", entityId: job.sourceDocumentId, action: "SUPPLIER_CONFIRMED", metadata: { supplierId: supplier.id, supplierName: supplier.name } } }),
-  ]);
+  await reprocessImportForSupplier(jobId, supplier.id, context.user.id, context.assignment.organizationId);
+  await prisma.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "SOURCE_DOCUMENT", entityId: job.sourceDocumentId, action: "SUPPLIER_CONFIRMED", metadata: { supplierId: supplier.id, supplierName: supplier.name, matchingRecomputed: true } } });
   revalidatePath(`/imports/${jobId}`);
   redirect(`/imports/${jobId}?fornitore=confermato`);
 }

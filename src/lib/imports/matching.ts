@@ -26,7 +26,9 @@ export function suggestMatches(record: NormalizedImport, products: MatchableProd
     if (category) { score += .05; reasons.push("stessa categoria"); }
     score = Math.min(1, score);
     const strongIdentifier = identifiers.length > 0;
-    const matchType = strongIdentifier && score >= .88 ? "IDENTICAL" : score >= .68 ? "PROBABLE_MATCH" : score >= .48 ? "COMMERCIAL_SUBSTITUTE" : score >= .34 ? "FUNCTIONAL_EQUIVALENT" : "NEW_PRODUCT";
+    // Similarità lessicale non equivale a sostituibilità commerciale o funzionale:
+    // sotto la soglia di identità proponiamo soltanto un candidato da verificare.
+    const matchType = strongIdentifier && score >= .88 ? "IDENTICAL" : score >= .34 ? "PROBABLE_MATCH" : "NEW_PRODUCT";
     return { canonicalProductId: product.id, matchType, score, reasons: [...identifiers, ...reasons], identifierMatches: identifiers, descriptionSimilarity: similarity, uomCompatibility: uom, packagingCompatibility: packageCompatible, categoryCompatibility: category, recommended: false } satisfies SuggestedMatch;
   }).sort((a, b) => b.score - a.score).slice(0, 3);
   if (!candidates.length || candidates[0].score < .34) return [{ canonicalProductId: null, matchType: "NEW_PRODUCT", score: 1 - (candidates[0]?.score ?? 0), reasons: ["nessun identificatore o prodotto sufficientemente simile"], identifierMatches: [], descriptionSimilarity: candidates[0]?.descriptionSimilarity ?? 0, uomCompatibility: null, packagingCompatibility: null, categoryCompatibility: null, recommended: true }];

@@ -36,3 +36,13 @@
 - Primitive visuali non ancora adottate in tutte le route.
 - Suggerimenti di completamento ordine, reconciliation Supplier 360, glossario budget, keyboard UX e undo restano aperti.
 - “Impatto € annuo” resta intenzionalmente incompleto fino al Consumption & Demand Ledger; nessun saving annualizzato viene inventato.
+# M11 final — operational director procurement
+
+- Added private Supabase-backed attachments for out-of-catalog requests, goods receipts and nonconformity evidence, including checksum, MIME/size validation, scoped signed access and compensating cleanup.
+- Added facility × product/category × period monetary and quantity limits with used, committed, reserved, requested and remaining-after evaluation.
+- Made requisition totals include supplier shipping and below-minimum costs and preserved the complete commercial/limit policy snapshot.
+- Added supplier-grouped cart decision blocks and operational receipt/NC evidence capture suitable for mobile browsers.
+- Expanded the deterministic synthetic network to 2 organizations, 102 facilities, 780 products, 75 suppliers, 2,964 offers, 520 requisitions and 420 orders.
+- Added migration `20260902143000_m11_operational_limits_attachments`.
+
+Known boundary: universal invoice/accounting orchestration, ERP posting, enterprise identity federation and universal evidence/authority are planned for M11.5 and remain out of M11.

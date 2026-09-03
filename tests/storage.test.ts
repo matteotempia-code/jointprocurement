@@ -6,7 +6,7 @@ import path from "node:path";
 import test, { after } from "node:test";
 import AdmZip from "adm-zip";
 import { LocalDocumentStorage } from "../src/lib/storage/local";
-import { assertSafeObjectKey, buildDocumentObjectKey, sanitizeDocumentFilename } from "../src/lib/storage/keys";
+import { assertSafeObjectKey, buildDocumentObjectKey, buildOperationalAttachmentKey, sanitizeDocumentFilename } from "../src/lib/storage/keys";
 import type { DocumentStorageLocator } from "../src/lib/storage/types";
 import { ingestDocument } from "../src/lib/imports/service";
 import { locatorFromSourceDocument, readSourceDocument } from "../src/lib/storage";
@@ -22,6 +22,9 @@ test("object keys are organization-scoped, deterministic and traversal-safe", ()
   assert.throws(() => sanitizeDocumentFilename("../file.csv"));
   assert.throws(() => assertSafeObjectKey("organizations/org/../secret"));
   assert.throws(() => assertSafeObjectKey("/absolute/file"));
+  const attachmentKey = buildOperationalAttachmentKey({ organizationId: "org_123", ownerType: "quality-issue", ownerId: "issue_123", attachmentId: "attachment_123", checksum, filename: "Foto danno.jpg" });
+  assert.equal(attachmentKey, `organizations/org_123/procurement/quality-issue/issue_123/attachment_123/${checksum}-Foto-danno.jpg`);
+  assert.throws(() => buildOperationalAttachmentKey({ organizationId: "org_123", ownerType: "../receipt", ownerId: "receipt_123", attachmentId: "attachment_123", checksum, filename: "ddt.pdf" }));
 });
 
 test("local adapter supports immutable round-trip, metadata, deletion and missing objects", async () => {

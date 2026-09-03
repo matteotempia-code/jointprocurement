@@ -21,6 +21,16 @@ export function buildDocumentObjectKey(input: { organizationId: string; sourceDo
   return `organizations/${organizationId}/imports/${sourceDocumentId}/documents/${sourceDocumentId}/${input.checksum}-${filename}`;
 }
 
+export function buildOperationalAttachmentKey(input: { organizationId: string; ownerType: string; ownerId: string; attachmentId: string; checksum: string; filename: string }) {
+  const organizationId = safeSegment(input.organizationId, "Organizzazione");
+  const ownerType = safeSegment(input.ownerType.toLocaleLowerCase("en-US"), "Tipo allegato");
+  const ownerId = safeSegment(input.ownerId, "Record");
+  const attachmentId = safeSegment(input.attachmentId, "Allegato");
+  if (!/^[a-f0-9]{64}$/.test(input.checksum)) throw new Error("Checksum non valido per lo storage.");
+  const filename = sanitizeDocumentFilename(input.filename);
+  return `organizations/${organizationId}/procurement/${ownerType}/${ownerId}/${attachmentId}/${input.checksum}-${filename}`;
+}
+
 export function assertSafeObjectKey(objectKey: string) {
   if (objectKey.startsWith("/") || objectKey.includes("\\") || objectKey.split("/").some((part) => !part || part === "." || part === "..")) {
     throw new Error("Chiave oggetto non valida.");

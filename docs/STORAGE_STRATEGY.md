@@ -4,7 +4,7 @@
 
 - GitHub stores source, migrations, deterministic fixtures and synthetic static assets.
 - Supabase PostgreSQL stores document metadata, checksums, provenance, import staging and business state.
-- The private Supabase Storage bucket `source-documents` stores uploaded source bytes.
+- The private Supabase Storage bucket `source-documents` stores Smart Import originals and current-scope operational procurement attachments.
 - `var/imports/` is an optional local adapter workspace for tests and isolated development. It is ignored, dispensable and never canonical in shared operation.
 
 `SourceDocument` records an explicit `storageProvider`, `storageBucket` and `storageObjectKey`. `storagePath` remains as a compatibility locator while existing records migrate. New Supabase documents store the object key in both locator fields; no workstation path enters cloud metadata.
@@ -19,6 +19,7 @@ The original-document route requires Procurement Manager or Procurement Admin an
 
 ```text
 organizations/{organizationId}/imports/{sourceDocumentId}/documents/{sourceDocumentId}/{sha256}-{sanitizedFilename}
+organizations/{organizationId}/procurement/{ownerType}/{ownerId}/{attachmentId}/{sha256}-{sanitizedFilename}
 ```
 
 Identifiers accept only alphanumeric, underscore and hyphen characters. Filenames are reduced to a basename and sanitized. Empty segments, traversal components, backslashes and absolute keys are rejected. SHA-256 plus the document ID provides collision resistance and stable provenance.
@@ -50,6 +51,10 @@ npm run storage:prove-browser # authorized readback, denial and no-var/imports p
 ```
 
 The proof manifest is transient and ignored under `var/storage-proof/`; it never stores a credential or signed URL. See `ASSET_STORAGE_INVENTORY.md` for the repository-wide binary/content audit.
+
+## Operational procurement evidence
+
+`OperationalAttachment` stores the explicit provider, bucket, object key, checksum, MIME type, byte size, uploader and exactly one owner: out-of-catalog request, receipt, or quality issue. The owner’s organization and facility are repeated deliberately as authorization/indexing boundaries. Current submitted evidence is immutable. A server route authorizes organization, role and facility scope before issuing a 60-second signed URL; the bucket remains private.
 
 ## Local adapter
 

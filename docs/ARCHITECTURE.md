@@ -1,5 +1,21 @@
 # Architecture
 
+## Canonical architecture documents
+
+This file describes the implemented application architecture and its current constraints. The enterprise target and binding product decisions are defined in:
+
+- `docs/PRODUCT_VISION.md` — product thesis, system boundaries, and principles;
+- `docs/DOMAIN_ARCHITECTURE_2.md` — target canonical domain, engines, and integration contracts;
+- `docs/ADR/ADR-001-universal-procurement-orchestration.md` — accepted decision and consequences.
+
+Where this implementation document is narrower than those sources, the target documents govern future design, while the current code remains the statement of what exists today. Planned target objects must not be described as implemented until their feature-register status changes.
+
+## Current-to-target boundary
+
+The implemented lifecycle is primarily PO-centric: Cart → PurchaseRequisition → ApprovalRequest → PurchaseOrder → Receipt → QualityIssue. Under the accepted enterprise direction, these become specializations and evidence sources within a broader lifecycle built around `ProcurementProcedure`, `CommercialCommitment`, `PayableEvent/Invoice`, `EvidenceRecord`, `ResolutionCase`, `AuthorityGraph`, `AccountingProposal`, and `AccountingPostingResult`.
+
+The current static roles, scoped assignments, approval delegations, annual monetary budgets, M11 facility/product/category period limits, and audit events remain valid implementation components, but they are not the final authority graph, enterprise-wide multidimensional allocation model, or universal immutable evidence engine. Supabase PostgreSQL and private Storage remain canonical application infrastructure; the ERP will remain the accounting system of record through a vendor-neutral Integration Hub.
+
 ## Domain and scope
 
 The hierarchy remains Organization → LegalEntity → Area → Facility → CostCenter. Authorization is an active UserAssignment: user, role, organization, scope and authority. resolveScope expands ORGANIZATION, AREA and FACILITY into permitted facility IDs. Pages and mutation actions validate roles server-side; resource pages additionally constrain facility or approver ownership.
@@ -21,6 +37,8 @@ Cart state is persisted per user and facility. Submission snapshots product, sup
 
 Values are derived rather than copied into mutable balance fields. A requisition snapshots budgetBefore and budgetAfter so historical policy context remains explainable.
 
+For the director flow, `ProcurementLimit` adds facility × product/category × period controls in currency or consumption quantity, optionally scoped to a cost centre. Product-specific limits take precedence over category fallbacks for each limit kind. Evaluation derives received use, outstanding PO commitment, pending-requisition reservation, the current request and remaining-after-purchase. This is the operational M11 subset, not the complete M11.5 enterprise allocation matrix.
+
 ## Policy engine
 
 The central engine is deterministic:
@@ -36,15 +54,15 @@ It returns outcome, reason, required role, explanation, evaluated rules and just
 
 The approver is resolved from an active assignment. Final approval, requisition update, PO generation and audit share one Prisma transaction. PO generation groups lines by the snapshot offer supplier, producing one PO per supplier with independent totals and delivery dates.
 
-## Receiving, quality and audit
+## Receiving, quality, attachments and audit
 
-A receipt records received, accepted and rejected quantities against PO lines. Cumulative quantities determine partial or full receipt; any discrepancy creates a QualityIssue and sets the PO to ISSUE. AuditEvent covers request creation, policy evaluation, approval request/decision, PO creation, receipt and issue opening.
+A receipt records received, accepted and rejected quantities against PO lines. Cumulative quantities determine partial or full receipt; any discrepancy creates a QualityIssue and sets the PO to ISSUE. `OperationalAttachment` stores private Supabase locators and immutable evidence for out-of-catalog requests, receipts and quality issues. The signed-access route authorizes organization, role and facility before issuing a 60-second URL. AuditEvent covers request creation, policy evaluation, approval request/decision, PO creation, receipt, issue opening and resolution.
 
 ## Data and boundaries
 
 One server-only Prisma 7 PostgreSQL adapter serves all queries. Policy and transactions remain server-side. Server Actions validate identity and resource ownership; credentials and Prisma values never enter browser bundles.
 
-AI ingestion, invoices, three-way matching, RFQ/RFP, supplier portal and contracts remain outside V1.
+Invoice ingestion, payable matching, RFQ/RFP, supplier portal and contract lifecycle management remain outside the implemented core. Smart Import is implemented as the controlled document-ingestion boundary described below.
 
 ## Core hardening
 
@@ -70,11 +88,11 @@ The recovered experience is Italian-first and decision-oriented. The shell expos
 
 `Favorite` is scoped by user, facility and canonical product. `ShoppingList` persists recurring facility demand independently from the cart; adding a list resolves the currently active preferred offer at action time. `OutOfCatalogRequest` captures an unmet need without inventing a product or supplier offer and routes it to Procurement review.
 
-`ApprovalDelegation` expresses a bounded transfer of authority: delegator, delegate, validity, scope and optional limit. This milestone persists and exposes delegations; the next policy revision should use them during approver resolution and preserve the selected delegation on `ApprovalRequest`.
+`ApprovalDelegation` expresses a bounded transfer of authority: delegator, delegate, validity, scope and optional limit. The current resolver uses valid delegations during approver resolution and preserves the selected delegation on `ApprovalRequest`; this remains narrower than the planned enterprise `AuthorityGraph`.
 
 Quality issues now have a lifecycle (`OPEN → UNDER_REVIEW → RESOLVED → CLOSED`) with resolution type and note. Changes are transactional with an audit event. Deliveries are a derived operational view of scoped purchase orders and receipts, not a duplicate balance table.
 
-The expanded deterministic seed contains 2 organizations, 4 legal entities, 6 areas, 18 facilities, 27 cost centers, 25 suppliers, 12 categories, 156 canonical products, 468 offers, 30 price lists, 42 budgets, 110 requisitions and 85 purchase orders. Historical price points and operational history are stored in PostgreSQL; no chart uses random runtime values.
+The expanded deterministic seed contains 2 organizations, 4 legal entities, 6 areas, 102 facilities, 111 cost centers, 75 suppliers, 12 categories, 780 canonical products, 2,964 offers, 80 price lists, 102 annual budgets, 520 requisitions and 420 purchase orders. Historical price points and operational history are stored in PostgreSQL; no chart uses random runtime values.
 
 ## Last-mile core freeze
 

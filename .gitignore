@@ -22,6 +22,16 @@
 
 # generated product-demo recordings, audio, manifests and reports
 /artifacts/video-demo/
+/artifacts/m11-visual-review/
+/artifacts/m11-redesign-phase1/reference-extracted/
+/artifacts/m11-redesign-phase1/
+/artifacts/m11-redesign-phase1-final/
+/artifacts/m11-phase2/
+/artifacts/m11-phase2-visual-review/
+/artifacts/m11-final-closure/
+/artifacts/m11-final-visual-review/
+/artifacts/tomorrow-price-list-readiness/
+/artifacts/m11-visual-review.zip
 *.mp4
 *.webm
 *.wav

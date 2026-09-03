@@ -215,8 +215,8 @@ async function Director({
     },
   });
   return (
-    <main>
-      <section className="director-welcome">
+    <main className="phase1-page phase1-home">
+      <section className="director-welcome phase1-director-welcome">
         <div className="director-search">
           <p>{facility}</p>
           <h1>Cosa ti serve oggi, {name.split(" ")[0]}?</h1>
@@ -323,7 +323,7 @@ async function Director({
           <Link href="/catalog">Vedi catalogo</Link>
         </div>
         <div className="frequent-products">
-          {products.map((product) => {
+          {products.slice(0, 3).map((product) => {
             const offer = product.offers[0];
             return (
               <article key={product.id}>
@@ -355,7 +355,8 @@ async function Director({
           })}
         </div>
       </section>
-      <section className="recent-timeline">
+      <details className="recent-timeline phase1-archive">
+        <summary>Attività recente · {recentUnique.length} aggiornamenti</summary>
         <div className="section-heading">
           <div>
             <p className="eyebrow">Attività recente</p>
@@ -370,7 +371,7 @@ async function Director({
             <small>{statusLabel(event.entityType)}</small>
           </div>
         ))}
-      </section>
+      </details>
     </main>
   );
 }

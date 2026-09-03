@@ -84,6 +84,17 @@ enum OutOfCatalogStatus {
   CONVERTED
 }
 
+enum OperationalAttachmentKind {
+  OUT_OF_CATALOG
+  RECEIPT
+  QUALITY_ISSUE
+}
+
+enum ProcurementLimitType {
+  MONETARY
+  QUANTITY
+}
+
 enum AvailabilityStatus {
   IN_STOCK
   LIMITED
@@ -159,6 +170,10 @@ model Organization {
   requisitions    PurchaseRequisition[]
   purchaseOrders  PurchaseOrder[]
   sourceDocuments SourceDocument[]
+  operationalAttachments OperationalAttachment[]
+  procurementLimits ProcurementLimit[]
+  procurementMemories ProcurementMemory[]
+  procurementAICalls ProcurementAICall[]
 }
 
 model LegalEntity {
@@ -197,6 +212,8 @@ model Facility {
   requisitions   PurchaseRequisition[]
   purchaseOrders PurchaseOrder[]
   receipts       Receipt[]
+  procurementLimits ProcurementLimit[]
+  operationalAttachments OperationalAttachment[]
 }
 
 model CostCenter {
@@ -209,6 +226,7 @@ model CostCenter {
   facility     Facility              @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   budgets      Budget[]
   requisitions PurchaseRequisition[]
+  procurementLimits ProcurementLimit[]
 
   @@unique([facilityId, code])
 }
@@ -235,6 +253,9 @@ model User {
   importCorrections     ImportFieldCorrection[]
   confirmedImportFields ImportedFieldValue[]    @relation("ImportFieldConfirmer")
   publishedPriceLists   PriceList[]             @relation("PriceListPublisher")
+  operationalAttachments OperationalAttachment[] @relation("OperationalAttachmentUploader")
+  confirmedPriceListConditions PriceListCommercialCondition[] @relation("PriceListConditionConfirmer")
+  confirmedProcurementMemories ProcurementMemory[] @relation("ProcurementMemoryConfirmer")
 }
 
 model Role {
@@ -294,6 +315,7 @@ model Supplier {
   offers                 SupplierOffer[]
   purchaseOrders         PurchaseOrder[]
   sourceDocuments        SourceDocument[]
+  procurementMemories    ProcurementMemory[]
 }
 
 model Category {
@@ -304,6 +326,7 @@ model Category {
   updatedAt DateTime           @updatedAt
   products  CanonicalProduct[]
   budgets   Budget[]
+  procurementLimits ProcurementLimit[]
 }
 
 model CanonicalProduct {
@@ -342,6 +365,7 @@ model CanonicalProduct {
   shoppingListItems     ShoppingListItem[]
   importMatchCandidates ProductMatchCandidate[]
   importedRecords       ImportedRecord[]
+  procurementLimits     ProcurementLimit[]
 
   @@index([ean])
   @@index([categoryId, subcategory])
@@ -370,9 +394,75 @@ model PriceList {
   sourceDocument    SourceDocument? @relation(fields: [sourceDocumentId], references: [id])
   importJob         ImportJob?      @relation(fields: [importJobId], references: [id])
   publishedBy       User?           @relation("PriceListPublisher", fields: [publishedByUserId], references: [id])
+  commercialConditions PriceListCommercialCondition[]
 
   @@index([supplierId, version])
   @@index([sourceDocumentId])
+}
+
+model PriceListCommercialCondition {
+  id String @id @default(cuid())
+  priceListId String
+  conditionType String
+  numericValue Decimal? @db.Decimal(14, 4)
+  textValue String?
+  currency String?
+  sourceEvidence String
+  reasoningSummary String?
+  confidence Decimal @db.Decimal(5, 4)
+  interpretationProvider String
+  providerModel String?
+  humanConfirmationState String @default("PENDING")
+  confirmedByUserId String?
+  confirmedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  priceList PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  confirmedBy User? @relation("PriceListConditionConfirmer", fields: [confirmedByUserId], references: [id])
+
+  @@unique([priceListId, conditionType, sourceEvidence])
+  @@index([priceListId, humanConfirmationState])
+}
+
+model ProcurementMemory {
+  id String @id @default(cuid())
+  organizationId String
+  supplierId String?
+  memoryType String
+  lookupKey String
+  canonicalValue Json
+  sourceEntityId String?
+  confirmedByUserId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  confirmedBy User @relation("ProcurementMemoryConfirmer", fields: [confirmedByUserId], references: [id])
+
+  @@unique([organizationId, supplierId, memoryType, lookupKey])
+  @@index([organizationId, memoryType])
+}
+
+model ProcurementAICall {
+  id String @id @default(cuid())
+  organizationId String
+  importJobId String?
+  provider String
+  model String
+  operation String
+  latencyMs Int
+  inputTokens Int?
+  outputTokens Int?
+  totalTokens Int?
+  estimatedCostUsd Decimal? @db.Decimal(12, 6)
+  resultState String
+  errorCode String?
+  createdAt DateTime @default(now())
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  importJob ImportJob? @relation(fields: [importJobId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([importJobId, operation])
 }
 
 model SupplierOffer {
@@ -449,6 +539,33 @@ model Budget {
 
   @@index([organizationId, periodStart, periodEnd])
   @@index([facilityId, categoryId])
+}
+
+model ProcurementLimit {
+  id                 String               @id @default(cuid())
+  organizationId     String
+  facilityId         String
+  canonicalProductId String?
+  categoryId         String?
+  costCenterId       String?
+  limitType          ProcurementLimitType
+  periodStart        DateTime
+  periodEnd          DateTime
+  maximumAmount      Decimal?             @db.Decimal(14, 2)
+  maximumQuantity    Decimal?             @db.Decimal(14, 4)
+  quantityUom        String?
+  active             Boolean              @default(true)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  facility           Facility             @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  canonicalProduct   CanonicalProduct?     @relation(fields: [canonicalProductId], references: [id], onDelete: Restrict)
+  category           Category?             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  costCenter         CostCenter?           @relation(fields: [costCenterId], references: [id])
+
+  @@index([facilityId, periodStart, periodEnd])
+  @@index([canonicalProductId, active])
+  @@index([categoryId, active])
 }
 
 model Cart {
@@ -613,6 +730,7 @@ model Receipt {
   facility        Facility      @relation(fields: [facilityId], references: [id])
   receivedBy      User          @relation(fields: [receivedById], references: [id])
   lines           ReceiptLine[]
+  attachments     OperationalAttachment[]
 }
 
 model ReceiptLine {
@@ -644,6 +762,7 @@ model QualityIssue {
   resolutionNote      String?
   receiptLine         ReceiptLine?      @relation(fields: [receiptLineId], references: [id])
   purchaseOrderLine   PurchaseOrderLine @relation(fields: [purchaseOrderLineId], references: [id])
+  attachments         OperationalAttachment[]
 
   @@index([status, openedAt])
 }
@@ -724,9 +843,41 @@ model OutOfCatalogRequest {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   requester         User               @relation(fields: [requesterId], references: [id])
+  attachments       OperationalAttachment[]
 
   @@index([organizationId, status])
   @@index([facilityId, createdAt])
+}
+
+model OperationalAttachment {
+  id                    String                    @id @default(cuid())
+  organizationId        String
+  facilityId            String
+  uploadedByUserId      String
+  kind                  OperationalAttachmentKind
+  outOfCatalogRequestId String?
+  receiptId             String?
+  qualityIssueId        String?
+  originalFilename      String
+  mimeType              String
+  sizeBytes             Int
+  checksum              String
+  storageProvider       String
+  storageBucket         String?
+  storageObjectKey      String
+  immutableAt           DateTime?
+  createdAt             DateTime                  @default(now())
+  organization          Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  facility              Facility                  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  uploadedBy            User                      @relation("OperationalAttachmentUploader", fields: [uploadedByUserId], references: [id])
+  outOfCatalogRequest   OutOfCatalogRequest?      @relation(fields: [outOfCatalogRequestId], references: [id], onDelete: Cascade)
+  receipt               Receipt?                  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  qualityIssue          QualityIssue?             @relation(fields: [qualityIssueId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([outOfCatalogRequestId])
+  @@index([receiptId])
+  @@index([qualityIssueId])
 }
 
 model SourceDocument {
@@ -793,6 +944,7 @@ model ImportJob {
   createdBy              User             @relation("ImportJobCreator", fields: [createdByUserId], references: [id])
   records                ImportedRecord[]
   publishedPriceList     PriceList?
+  procurementAICalls     ProcurementAICall[]
 
   @@unique([sourceDocumentId, version])
   @@index([status, createdAt])
