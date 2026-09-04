@@ -28,6 +28,18 @@ test("parser XLSX legge il file reale, trova header e conserva la riga sorgente"
   assert.equal(parsed.sheets.find((sheet) => sheet.name === "Note")?.selected, false);
 });
 
+test("parser XLSX carica stabilmente 50 volte il fixture multi-foglio", async () => {
+  const buffer = await readFile(path.join(fixtures, "listino-alfa-medical-2027.xlsx"));
+  for (let iteration = 0; iteration < 50; iteration += 1) {
+    const parsed = await parseDocument(buffer, "listino-alfa-medical-2027.xlsx");
+    assert.deepEqual(parsed.sheets.map((sheet) => sheet.name), ["Note", "Listino"]);
+    assert.equal(parsed.sheets.find((sheet) => sheet.name === "Listino")?.selected, true);
+    assert.equal(parsed.sheets.find((sheet) => sheet.name === "Note")?.selected, false);
+    assert.equal(parsed.rows.length, 36);
+    assert.equal(parsed.rows[0].locator.sheet, "Listino");
+  }
+});
+
 test("parser XLSX restituisce un errore utile per workbook mancanti o non validi", async () => {
   await assert.rejects(
     parseDocument(Buffer.from("contenuto non XLSX"), "listino-invalido.xlsx"),
