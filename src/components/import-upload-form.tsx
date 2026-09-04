@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { uploadImport, type UploadImportState } from "@/app/imports/actions";
 
-export function ImportUploadForm({ suppliers }: { suppliers: { id: string; name: string }[] }) {
+export function ImportUploadForm({ suppliers, processingExplanation }: { suppliers: { id: string; name: string }[]; processingExplanation: string }) {
   const [state, action, pending] = useActionState<UploadImportState, FormData>(uploadImport, {});
   const [filename, setFilename] = useState("Nessun file selezionato");
   return <form action={action} className="import-upload-form">
@@ -35,7 +35,7 @@ export function ImportUploadForm({ suppliers }: { suppliers: { id: string; name:
       <textarea name="notes" placeholder="Contesto o indicazioni utili per chi verificherà i dati" />
     </label>
     {state.error && <p className="form-error" role="alert">{state.error}</p>}
-    <div className="import-honesty-note"><strong>Come verrà elaborato</strong><span>Parser deterministico e mapping euristico locale. In questo ambiente non è configurato un provider AI esterno: i record incerti richiedono sempre conferma.</span></div>
+    <div className="import-honesty-note"><strong>Come verrà elaborato</strong><span>{processingExplanation}</span></div>
     <button className="primary-cta" disabled={pending}>{pending ? "Caricamento e lettura…" : "Carica e interpreta"}</button>
   </form>;
 }

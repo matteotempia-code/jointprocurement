@@ -20,6 +20,7 @@ export function resolveProcurementAIStatus(environment: ProcurementAIEnvironment
     fallbackActive: false,
     state: "OPENAI" as const,
     reason: `OpenAI attivo con modello ${model}.`,
+    processingExplanation: "Il documento verrà letto dal parser deterministico e interpretato con Procurement AI tramite OpenAI. Fornitore, condizioni commerciali e righe ambigue possono essere proposti automaticamente; le decisioni incerte restano soggette a conferma umana.",
   };
   if (!enabled) return {
     enabled,
@@ -29,6 +30,7 @@ export function resolveProcurementAIStatus(environment: ProcurementAIEnvironment
     fallbackActive: false,
     state: "DISABLED" as const,
     reason: "Procurement AI disattivata: interpretazione locale, nessun invio esterno.",
+    processingExplanation: "Procurement AI è disabilitata in questo ambiente. Il documento verrà elaborato localmente senza invio a provider AI esterni.",
   };
   return {
     enabled,
@@ -40,5 +42,6 @@ export function resolveProcurementAIStatus(environment: ProcurementAIEnvironment
     reason: requestedProvider !== "openai"
       ? `Provider “${requestedProvider || "non definito"}” non supportato: interpretazione locale.`
       : "OPENAI_API_KEY non configurata: interpretazione locale, nessun invio esterno.",
+    processingExplanation: "Procurement AI non è disponibile in questo momento. Il documento verrà elaborato con parser deterministico e mapping euristico locale.",
   };
 }
