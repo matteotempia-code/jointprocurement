@@ -637,6 +637,9 @@ tbody tr:hover { background: var(--jp-surface-soft); }
 .import-guidance li { padding: 10px 0; border-bottom: 1px solid #dfd6c9; display: flex; flex-direction: column; }
 .import-guidance li strong { font-size: 11px; }
 .import-guidance li span { color: var(--jp-text-secondary); font-size: 9.5px; }
+.provider-runtime-status { display: grid; gap: 3px; padding: 10px 0; border-top: 1px solid #dfd6c9; border-bottom: 1px solid #dfd6c9; }
+.provider-runtime-status strong { font-size: 11px; letter-spacing: .03em; }
+.provider-runtime-status span { color: var(--jp-text-secondary); font-size: 10px; line-height: 1.45; }
 .sheet-selection { margin-bottom: var(--jp-space-8); display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: var(--jp-space-3); }
 .sheet-selection article { padding: 14px; border: 1px solid var(--jp-border); display: flex; flex-direction: column; }
 .sheet-selection article.selected { border-color: var(--jp-accent); background: var(--jp-accent-soft); }
