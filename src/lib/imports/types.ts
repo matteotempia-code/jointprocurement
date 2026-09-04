@@ -17,6 +17,8 @@ export type XlsxRuntimeDiagnostic = {
   sha256: string;
   expectedChecksumMatches: boolean | null;
   nodeVersion: string;
+  parserName: string;
+  parserVersion: string;
   moduleShapeKeys: string[];
   moduleDefaultExists: boolean;
   workbookConstructorExists: boolean;

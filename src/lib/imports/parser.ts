@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import type ExcelJS from "exceljs";
 import mammoth from "mammoth";
 import { knownHeaderScore } from "./mapping";
 import type { ParsedDocument, ParsedRow, XlsxRuntimeDiagnostic } from "./types";
@@ -8,10 +7,8 @@ const textExtensions = new Set(["csv", "tsv", "txt"]);
 export const supportedExtensions = new Set(["xlsx", "xls", "csv", "tsv", "pdf", "docx", "txt", "png", "jpg", "jpeg"]);
 
 function extension(filename: string) { return filename.toLocaleLowerCase("it-IT").split(".").pop() ?? ""; }
-function cellValue(value: ExcelJS.CellValue): unknown {
+function cellValue(value: unknown): unknown {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
-  if (typeof value === "object" && value && "result" in value) return value.result;
-  if (typeof value === "object" && value && "text" in value) return value.text;
   return value ?? "";
 }
 
@@ -38,6 +35,8 @@ export async function parseSpreadsheet(buffer: Buffer, expected?: { byteLength?:
     sha256,
     expectedChecksumMatches: expected?.checksum == null ? null : sha256 === expected.checksum,
     nodeVersion: process.version,
+    parserName: "read-excel-file",
+    parserVersion: "9.3.10",
     moduleShapeKeys: [],
     moduleDefaultExists: false,
     workbookConstructorExists: false,
@@ -52,20 +51,17 @@ export async function parseSpreadsheet(buffer: Buffer, expected?: { byteLength?:
   };
   try {
     if (!diagnostic.zipSignature) throw new Error("Il file XLSX non è valido o è incompleto: archivio workbook non riconosciuto.");
-    const excelModule = await import("exceljs");
-    diagnostic.moduleShapeKeys = Object.keys(excelModule).sort().slice(0, 40);
-    diagnostic.moduleDefaultExists = excelModule.default != null;
-    const excelRuntime = (excelModule.default ?? excelModule) as typeof ExcelJS;
-    diagnostic.workbookConstructorExists = typeof excelRuntime.Workbook === "function";
-    if (!diagnostic.workbookConstructorExists) throw new Error("Il parser XLSX non è disponibile nel runtime server.");
-    const workbook = new excelRuntime.Workbook();
+    const readerModule = await import("read-excel-file/node");
+    diagnostic.moduleShapeKeys = Object.keys(readerModule).sort().slice(0, 40);
+    diagnostic.moduleDefaultExists = typeof readerModule.default === "function";
+    diagnostic.workbookConstructorExists = false;
+    if (!diagnostic.moduleDefaultExists) throw new Error("Il parser XLSX non è disponibile nel runtime server.");
     diagnostic.workbookCreated = true;
     diagnostic.beforeWorkbookLoad = true;
-    await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
+    const worksheets = await readerModule.default(buffer);
     diagnostic.afterWorkbookLoad = true;
-    const worksheets = workbook.worksheets;
     diagnostic.worksheetsLength = Array.isArray(worksheets) ? worksheets.length : null;
-    diagnostic.worksheetNames = Array.isArray(worksheets) ? worksheets.map((sheet) => sheet.name).slice(0, 30) : [];
+    diagnostic.worksheetNames = Array.isArray(worksheets) ? worksheets.map((sheet) => sheet.sheet).slice(0, 30) : [];
     if (!Array.isArray(worksheets) || worksheets.length === 0) throw new Error("Il file XLSX non contiene fogli di lavoro leggibili.");
 
     const sheets: ParsedDocument["sheets"] = [];
@@ -73,8 +69,11 @@ export async function parseSpreadsheet(buffer: Buffer, expected?: { byteLength?:
     let selectedScore = -1;
     let selectedPreview = "";
     for (const worksheet of worksheets) {
-      const matrix: unknown[][] = [];
-      worksheet.eachRow({ includeEmpty: false }, (row) => matrix.push((row.values as ExcelJS.CellValue[]).slice(1).map(cellValue)));
+      // Preserve the former ExcelJS `eachRow({ includeEmpty: false })` contract:
+      // completely blank rows are omitted, while blank cells inside a row remain.
+      const matrix = worksheet.data
+        .filter((row) => row.some((value) => value !== null && value !== ""))
+        .map((row) => row.map(cellValue));
       let headerIndex = 0;
       let score = 0;
       for (let index = 0; index < Math.min(matrix.length, 20); index += 1) {
@@ -84,11 +83,11 @@ export async function parseSpreadsheet(buffer: Buffer, expected?: { byteLength?:
       const headers = matrix[headerIndex]?.map((value, index) => String(value || `Colonna ${index + 1}`).trim()) ?? [];
       const rows = matrix.slice(headerIndex + 1).filter((values) => values.some((value) => String(value ?? "").trim())).map((values, index) => {
         const mapped = Object.fromEntries(headers.map((header, column) => [header, values[column] ?? ""]));
-        return { values: mapped, rawSource: values.map((value) => String(value ?? "")).join(" | "), locator: { sheet: worksheet.name, row: headerIndex + index + 2 } };
+        return { values: mapped, rawSource: values.map((value) => String(value ?? "")).join(" | "), locator: { sheet: worksheet.sheet, row: headerIndex + index + 2 } };
       });
-      const candidate = score >= 2 && !/note|istruz|legenda/i.test(worksheet.name);
-      sheets.push({ name: worksheet.name, records: rows.length, selected: false });
-      if (candidate && score > selectedScore) { selectedScore = score; selectedRows = rows; selectedPreview = matrix.slice(0, 20).map((values) => values.map(String).join(" | ")).join("\n"); sheets.forEach((sheet) => { sheet.selected = sheet.name === worksheet.name; }); }
+      const candidate = score >= 2 && !/note|istruz|legenda/i.test(worksheet.sheet);
+      sheets.push({ name: worksheet.sheet, records: rows.length, selected: false });
+      if (candidate && score > selectedScore) { selectedScore = score; selectedRows = rows; selectedPreview = matrix.slice(0, 20).map((values) => values.map(String).join(" | ")).join("\n"); sheets.forEach((sheet) => { sheet.selected = sheet.name === worksheet.sheet; }); }
     }
     if (!selectedRows.length) throw new Error("Non è stata identificata una tabella prodotti nel workbook.");
     return { parserType: "XLSX_DETERMINISTIC", sheets, rows: selectedRows, textPreview: selectedPreview.slice(0, 5000), runtimeDiagnostic: diagnostic };

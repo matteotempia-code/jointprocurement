@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Keep document parsers and the native PDF.js canvas runtime as traced Node
   // dependencies. XLSX and PDF implementations are loaded only for their path.
-  serverExternalPackages: ["@napi-rs/canvas", "exceljs", "pdf-parse"],
+  serverExternalPackages: ["@napi-rs/canvas", "pdf-parse", "read-excel-file"],
   // Video recordings can run beside an ordinary developer server. A separate
   // compiler directory avoids competing for Next's development lock.
   distDir: process.env.VIDEO_DEMO_MODE === "1" ? ".next-video-demo" : ".next",

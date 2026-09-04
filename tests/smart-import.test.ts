@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import AdmZip from "adm-zip";
+import ExcelJS from "exceljs";
 import path from "node:path";
 import test from "node:test";
 import { classifyPriceChange } from "../src/lib/imports/changes";
@@ -18,6 +19,8 @@ test("parser XLSX legge il file reale, trova header e conserva la riga sorgente"
   assert.ok(parsed.sheets.length >= 1);
   assert.ok(parsed.rows.length >= 1);
   assert.equal(parsed.runtimeDiagnostic?.marker, "XLSX_RUNTIME_DIAG_V1");
+  assert.equal(parsed.runtimeDiagnostic?.parserName, "read-excel-file");
+  assert.equal(parsed.runtimeDiagnostic?.parserVersion, "9.3.10");
   assert.equal(parsed.runtimeDiagnostic?.afterWorkbookLoad, true);
   assert.equal(parsed.runtimeDiagnostic?.worksheetsLength, parsed.sheets.length);
   assert.equal(parsed.parserType, "XLSX_DETERMINISTIC");
@@ -28,9 +31,9 @@ test("parser XLSX legge il file reale, trova header e conserva la riga sorgente"
   assert.equal(parsed.sheets.find((sheet) => sheet.name === "Note")?.selected, false);
 });
 
-test("parser XLSX carica stabilmente 50 volte il fixture multi-foglio", async () => {
+test("parser XLSX carica stabilmente 100 volte il fixture multi-foglio", async () => {
   const buffer = await readFile(path.join(fixtures, "listino-alfa-medical-2027.xlsx"));
-  for (let iteration = 0; iteration < 50; iteration += 1) {
+  for (let iteration = 0; iteration < 100; iteration += 1) {
     const parsed = await parseDocument(buffer, "listino-alfa-medical-2027.xlsx");
     assert.deepEqual(parsed.sheets.map((sheet) => sheet.name), ["Note", "Listino"]);
     assert.equal(parsed.sheets.find((sheet) => sheet.name === "Listino")?.selected, true);
@@ -38,6 +41,26 @@ test("parser XLSX carica stabilmente 50 volte il fixture multi-foglio", async ()
     assert.equal(parsed.rows.length, 36);
     assert.equal(parsed.rows[0].locator.sheet, "Listino");
   }
+});
+
+test("parser XLSX conserva celle vuote, numeri, testo, date e risultati formula", async () => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.addWorksheet("Note").addRow(["Istruzioni"]);
+  const sheet = workbook.addWorksheet("Listino tipizzato");
+  sheet.addRow(["Codice", "Descrizione", "Prezzo", "Validità", "Formula"]);
+  sheet.addRow(["SKU-1", "Prodotto tipizzato", 12.5, new Date("2027-03-15T00:00:00.000Z"), { formula: "C2*2", result: 25 }]);
+  sheet.addRow(["SKU-2", null, 0, null, null]);
+  const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+  const parsed = await parseDocument(buffer, "fixture-tipizzato.xlsx");
+  assert.deepEqual(parsed.sheets.map((candidate) => candidate.name), ["Note", "Listino tipizzato"]);
+  assert.equal(parsed.rows[0].values.Codice, "SKU-1");
+  assert.equal(parsed.rows[0].values.Descrizione, "Prodotto tipizzato");
+  assert.equal(parsed.rows[0].values.Prezzo, 12.5);
+  assert.equal(parsed.rows[0].values["Validità"], "2027-03-15");
+  assert.equal(parsed.rows[0].values.Formula, 25);
+  assert.equal(parsed.rows[1].values.Descrizione, "");
+  assert.equal(parsed.rows[1].values.Prezzo, 0);
 });
 
 test("parser XLSX restituisce un errore utile per workbook mancanti o non validi", async () => {
