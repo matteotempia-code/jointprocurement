@@ -17,7 +17,7 @@ const exceptionLabels: Record<string, string> = { UNCERTAIN_MATCH: "Match incert
 function semantic(value: unknown) { return String(value ?? "").toLocaleLowerCase("it-IT").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\b(confezione|conf|pezzi|pezzo|pz|da|di)\b/g, " ").replace(/(\d),([0-9])/g, "$1.$2").replace(/[^a-z0-9.]+/g, " ").trim().split(/\s+/).sort().join("|"); }
 function candidateDifference(label: string, source: unknown, target: unknown) { const equal = semantic(source) === semantic(target); return <div className={equal ? "same" : "different"}><span>{label}</span><strong>{displayValue(source)}</strong><i aria-hidden="true">→</i><strong>{displayValue(target)}</strong></div>; }
 
-export default async function RecordReviewPage({ params, searchParams }: { params: Promise<{ id: string; recordId: string }>; searchParams: Promise<{ corretto?: string }> }) {
+export default async function RecordReviewPage({ params, searchParams }: { params: Promise<{ id: string; recordId: string }>; searchParams: Promise<{ corretto?: string; errore?: string }> }) {
   const context = await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
   const { id, recordId } = await params;
   const record = await prisma.importedRecord.findFirst({ where: { id: recordId, importJobId: id, importJob: { sourceDocument: { organizationId: context.assignment.organizationId } } }, include: { importJob: { include: { sourceDocument: { include: { supplier: true } } } }, matchCandidates: { include: { canonicalProduct: { include: { category: true } } }, orderBy: [{ recommended: "desc" }, { score: "desc" }] }, corrections: { include: { correctedBy: true }, orderBy: { correctedAt: "desc" } }, fieldValues: { include: { confirmedBy: true }, orderBy: { fieldName: "asc" } } } });
@@ -32,8 +32,10 @@ export default async function RecordReviewPage({ params, searchParams }: { param
   const sourceLabel = locator.sheet ? `Foglio ${locator.sheet} · riga ${locator.row ?? record.recordIndex}` : locator.page ? `Pagina ${locator.page}` : `Riga ${locator.row ?? record.recordIndex}`;
   const canDecide = !["PUBLISHED", "IGNORED", "NON_COMPARABLE", "CONFIRMED", "NEW_PRODUCT_CONFIRMED"].includes(record.status);
   const isNew = recommended?.matchType === "NEW_PRODUCT" || !recommended?.canonicalProductId;
+  const feedback = await searchParams;
   return <main>
-    {(await searchParams).corretto && <div className="success">Correzione salvata e prezzo normalizzato ricalcolato.</div>}
+    {feedback.corretto && <div className="success">Correzione salvata e prezzo normalizzato ricalcolato.</div>}
+    {feedback.errore && <div className="error" role="alert">{feedback.errore}</div>}
     <PageHeader eyebrow={`Revisione record · ${sourceLabel}`} title={String(normalized.description ?? interpreted.description ?? "Descrizione da verificare")} description={`${record.importJob.sourceDocument.originalFilename} · ${record.importJob.sourceDocument.supplier?.name ?? "Fornitore da confermare"}`} action={<Link className="secondary-cta" href={`/imports/${id}?filtro=attention`}>Torna alle eccezioni</Link>} />
     <div className="record-review-status"><ImportStatus status={record.status} /><SourceReference locator={record.sourceLocator} />{record.exceptionType && <span className="warning-inline">{exceptionLabels[record.exceptionType] ?? "Dato da verificare"}</span>}</div>
 

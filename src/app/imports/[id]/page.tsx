@@ -23,7 +23,7 @@ function filterFromQuery(value: string | undefined, hasAttention: boolean): Impo
 }
 function filterHref(id: string, filter: ImportReviewFilter, count: number) { return `/imports/${id}?filtro=${filter}&conteggio=${count}`; }
 
-export default async function ImportDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ filtro?: string; q?: string; ordine?: string; pagina?: string; eccezione?: string; caricato?: string; pubblicato?: string; batch?: string }> }) {
+export default async function ImportDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ filtro?: string; q?: string; ordine?: string; pagina?: string; eccezione?: string; caricato?: string; pubblicato?: string; batch?: string; errore?: string }> }) {
   const context = await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
   const { id } = await params;
   const query = await searchParams;
@@ -56,7 +56,8 @@ export default async function ImportDetailPage({ params, searchParams }: { param
   const providerCapabilities = (job.providerCapabilities ?? {}) as Record<string, boolean>;
   return <main className="phase2-page phase2-import-detail">
     {query.caricato && <div className="success">Documento caricato e letto. Le eccezioni sono mostrate per prime.</div>}
-    {query.batch && <div className="success">Azione applicata a {query.batch} record compatibili. Gli altri sono rimasti invariati.</div>}
+    {query.batch && <div className="success">Decisione salvata su {query.batch} {query.batch === "1" ? "riga" : "righe"}. I contatori riflettono lo stato persistito.</div>}
+    {query.errore && <div className="error" role="alert">{query.errore}</div>}
     {summary.duplicateDocumentId && <div className="warning">Documento già importato: questa elaborazione è una nuova versione e non sovrascrive l’originale.</div>}
     <PageHeader eyebrow={importKindLabels[job.sourceDocument.documentKind]} title={job.sourceDocument.originalFilename} description={`${job.sourceDocument.supplier?.name ?? "Fornitore da confermare"} · ${job.totalRecords} righe · ${counts.attention} eccezioni`} action={primaryAction} />
     <section className="import-detail-facts" aria-label="Informazioni importazione">
@@ -89,10 +90,10 @@ export default async function ImportDetailPage({ params, searchParams }: { param
         <input name="q" defaultValue={query.q ?? ""} placeholder="Cerca SKU, descrizione o GTIN…" aria-label="Cerca nei record" />
         <select name="eccezione" defaultValue={query.eccezione ?? ""} aria-label="Tipo eccezione"><option value="">Tutte le eccezioni</option>{Object.entries(exceptionLabels).map(([value,label]) => <option value={value} key={value}>{label}</option>)}</select>
         <select name="ordine" defaultValue={sort} aria-label="Ordina record"><option value="confidence">Affidabilità più bassa</option><option value="delta">Delta prezzo maggiore</option><option value="price">Prezzo maggiore</option><option value="description">Descrizione A–Z</option><option value="status">Stato</option></select>
-        <button className="secondary-cta">Applica</button>
+        <button className="secondary-cta">Applica filtri</button>
       </form>
       <form action={bulkReviewRecords} className="bulk-review-form"><input type="hidden" name="jobId" value={id} />
-        <div className="bulk-review-bar"><div><strong>Azioni sui selezionati</strong><span>Le righe incompatibili vengono escluse in sicurezza.</span></div><select name="bulkAction" required aria-label="Azione multipla"><option value="">Scegli azione</option><option value="ACCEPT_RECOMMENDED">Conferma match consigliato</option><option value="ASSIGN_CATEGORY">Assegna categoria</option><option value="NON_COMPARABLE">Segna non confrontabile</option><option value="IGNORE">Ignora</option></select><select name="categoryId" aria-label="Categoria per azione multipla"><option value="">Categoria, se richiesta</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select><button className="secondary-cta">Applica</button></div>
+        <div className="bulk-review-bar"><div><strong>Decisione sui selezionati</strong><span>La selezione viene salvata solo se tutte le righe sono compatibili.</span></div><select name="bulkAction" required aria-label="Azione multipla"><option value="">Scegli azione</option><option value="ACCEPT_RECOMMENDED">Conferma match consigliato</option><option value="ASSIGN_CATEGORY">Assegna categoria</option><option value="NON_COMPARABLE">Segna non confrontabile</option><option value="IGNORE">Ignora</option></select><select name="categoryId" aria-label="Categoria per azione multipla"><option value="">Categoria, se richiesta</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select><button className="primary-cta">Applica decisione</button></div>
         {pageData.records.length ? <DataTable label="Record interpretati"><thead><tr><th><span className="sr-only">Seleziona</span></th><th>Fonte</th><th>Descrizione</th><th>Confezione</th><th>Prezzo</th><th>Prezzo normalizzato</th><th>Match</th><th>Esito</th></tr></thead><tbody>{pageData.records.map((record) => { const normalized = record.normalizedFields as NormalizedImport; const candidate = record.matchCandidates[0]; const warnings = [...asStringArray(record.validationErrors), ...asStringArray(record.warnings)]; return <tr key={record.id} className={record.requiresReview ? "review-row" : ""}>
           <td><input type="checkbox" name="recordId" value={record.id} aria-label={`Seleziona riga ${record.recordIndex}`} /></td>
           <td><Link className="table-link" href={`/imports/${id}/records/${record.id}`}>Riga {record.recordIndex}</Link><SourceReference locator={record.sourceLocator} /></td>

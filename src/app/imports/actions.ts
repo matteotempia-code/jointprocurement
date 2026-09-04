@@ -8,10 +8,17 @@ import { prisma } from "@/lib/prisma";
 import { confirmRecommendedMatches, ingestDocument, publishImport, remapImport, reprocessImport, reprocessImportForSupplier, resetImportMapping } from "@/lib/imports/service";
 import { importFields, type ImportField } from "@/lib/imports/types";
 import { normalizeImportedFields } from "@/lib/imports/normalization";
-import { applyBulkReview, type BulkReviewAction } from "@/lib/imports/bulk-review";
+import { applyBulkReview, BulkReviewValidationError, type BulkReviewAction } from "@/lib/imports/bulk-review";
 import { normalizeOptionalGtin } from "@/lib/validation/gtin";
 
 const allowedRoles = ["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"] as const;
+
+function safeDecisionError(error: unknown) {
+  if (error instanceof BulkReviewValidationError) return error.message;
+  const actionablePrefixes = ["Seleziona ", "Il candidato ", "La riga ", "Questa importazione "];
+  if (error instanceof Error && actionablePrefixes.some((prefix) => error.message.startsWith(prefix))) return error.message;
+  return "La decisione non è stata salvata. Ricarica la pagina e riprova; se il problema continua, verifica autorizzazioni e stato del record.";
+}
 
 export type UploadImportState = { error?: string };
 
@@ -37,16 +44,29 @@ async function scopedJob(jobId: string) {
 export async function acceptRecord(formData: FormData) {
   const recordId = String(formData.get("recordId")); const candidateId = String(formData.get("candidateId")); const jobId = String(formData.get("jobId"));
   const { context, job } = await scopedJob(jobId);
-  const candidate = await prisma.productMatchCandidate.findFirstOrThrow({ where: { id: candidateId, importedRecord: { id: recordId, importJobId: jobId } } });
   const record = await prisma.importedRecord.findUniqueOrThrow({ where: { id: recordId }, select: { supplierSkuText: true } });
-  if (!candidate.canonicalProductId) throw new Error("Il candidato non è collegato a un prodotto canonico.");
-  await prisma.$transaction([
-    prisma.productMatchCandidate.updateMany({ where: { importedRecordId: recordId }, data: { humanDecision: "REJECTED", decidedByUserId: context.user.id, decidedAt: new Date() } }),
-    prisma.productMatchCandidate.update({ where: { id: candidate.id }, data: { humanDecision: "ACCEPTED", decidedByUserId: context.user.id, decidedAt: new Date() } }),
-    prisma.importedRecord.update({ where: { id: recordId }, data: { canonicalProductId: candidate.canonicalProductId, status: "CONFIRMED", requiresReview: false } }),
-    prisma.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: "MATCH_ACCEPTED", metadata: { candidateId, canonicalProductId: candidate.canonicalProductId } } }),
-  ]);
-  if (record.supplierSkuText && job.sourceDocument.supplierId) await prisma.procurementMemory.upsert({ where: { organizationId_supplierId_memoryType_lookupKey: { organizationId: context.assignment.organizationId, supplierId: job.sourceDocument.supplierId, memoryType: "SUPPLIER_SKU_PRODUCT", lookupKey: record.supplierSkuText.toLocaleLowerCase("it-IT") } }, update: { canonicalValue: { canonicalProductId: candidate.canonicalProductId }, sourceEntityId: recordId, confirmedByUserId: context.user.id }, create: { organizationId: context.assignment.organizationId, supplierId: job.sourceDocument.supplierId, memoryType: "SUPPLIER_SKU_PRODUCT", lookupKey: record.supplierSkuText.toLocaleLowerCase("it-IT"), canonicalValue: { canonicalProductId: candidate.canonicalProductId }, sourceEntityId: recordId, confirmedByUserId: context.user.id } });
+  let canonicalProductId = "";
+  let changed = false;
+  try {
+    changed = await prisma.$transaction(async (tx) => {
+      const candidate = await tx.productMatchCandidate.findFirstOrThrow({ where: { id: candidateId, importedRecord: { id: recordId, importJobId: jobId } } });
+      if (!candidate.canonicalProductId) throw new Error("Il candidato non è collegato a un prodotto canonico.");
+      canonicalProductId = candidate.canonicalProductId;
+      const updated = await tx.importedRecord.updateMany({ where: { id: recordId, importJobId: jobId, status: { in: ["READY", "NEEDS_REVIEW"] } }, data: { canonicalProductId, status: "CONFIRMED", requiresReview: false, exceptionType: null } });
+      if (!updated.count) {
+        const current = await tx.importedRecord.findUniqueOrThrow({ where: { id: recordId } });
+        if (current.status === "CONFIRMED" && current.canonicalProductId === canonicalProductId) return false;
+        throw new Error("La riga è già stata decisa o è cambiata. Ricarica la pagina.");
+      }
+      await tx.productMatchCandidate.updateMany({ where: { importedRecordId: recordId }, data: { humanDecision: "REJECTED", decidedByUserId: context.user.id, decidedAt: new Date() } });
+      await tx.productMatchCandidate.update({ where: { id: candidate.id }, data: { humanDecision: "ACCEPTED", decidedByUserId: context.user.id, decidedAt: new Date() } });
+      await tx.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: "MATCH_ACCEPTED", metadata: { candidateId, canonicalProductId, importJobId: jobId } } });
+      return true;
+    });
+  } catch (error) {
+    redirect(`/imports/${jobId}/records/${recordId}?errore=${encodeURIComponent(safeDecisionError(error))}`);
+  }
+  if (changed && record.supplierSkuText && job.sourceDocument.supplierId) await prisma.procurementMemory.upsert({ where: { organizationId_supplierId_memoryType_lookupKey: { organizationId: context.assignment.organizationId, supplierId: job.sourceDocument.supplierId, memoryType: "SUPPLIER_SKU_PRODUCT", lookupKey: record.supplierSkuText.toLocaleLowerCase("it-IT") } }, update: { canonicalValue: { canonicalProductId }, sourceEntityId: recordId, confirmedByUserId: context.user.id }, create: { organizationId: context.assignment.organizationId, supplierId: job.sourceDocument.supplierId, memoryType: "SUPPLIER_SKU_PRODUCT", lookupKey: record.supplierSkuText.toLocaleLowerCase("it-IT"), canonicalValue: { canonicalProductId }, sourceEntityId: recordId, confirmedByUserId: context.user.id } });
   await refreshJob(jobId, context.user.id); redirect(`/imports/${jobId}?review=1`);
 }
 
@@ -76,7 +96,7 @@ export async function confirmNewProduct(formData: FormData) {
   const recordId = String(formData.get("recordId")); const jobId = String(formData.get("jobId")); const { context } = await scopedJob(jobId);
   const categoryId = String(formData.get("categoryId") ?? "");
   const category = await prisma.category.findUnique({ where: { id: categoryId } });
-  if (!category) throw new Error("Seleziona una categoria esistente prima di confermare il nuovo prodotto.");
+  if (!category) redirect(`/imports/${jobId}/records/${recordId}?errore=${encodeURIComponent("Seleziona una categoria esistente prima di confermare il nuovo prodotto.")}`);
   const record = await prisma.importedRecord.findFirstOrThrow({ where: { id: recordId, importJobId: jobId } });
   const currentOverride = (record.humanOverride ?? {}) as Record<string, unknown>;
   const currentNormalized = record.normalizedFields as Record<string, unknown>;
@@ -90,27 +110,54 @@ export async function confirmNewProduct(formData: FormData) {
     consumptionUom: String(formData.get("consumptionUom") ?? currentNormalized.consumptionUom ?? "PIECE"),
   };
   const normalized = normalizeImportedFields({ ...(record.interpretedFields as Record<string, string | number | null>), ...currentNormalized, ...productOverride });
-  await prisma.$transaction([
-    prisma.importedRecord.update({ where: { id: recordId }, data: { canonicalProductId: null, status: "NEW_PRODUCT_CONFIRMED", requiresReview: false, exceptionType: null, normalizedFields: normalized as Prisma.InputJsonValue, normalizedPriceValue: normalized.normalizedPrice, searchText: [productOverride.description, productOverride.brand, productOverride.ean, productOverride.manufacturerSku].filter(Boolean).join(" ").toLocaleLowerCase("it-IT"), humanOverride: { ...currentOverride, ...productOverride, categoryId, categoryName: category.name } as Prisma.InputJsonValue } }),
-    prisma.productMatchCandidate.updateMany({ where: { importedRecordId: recordId }, data: { humanDecision: "CREATE_NEW", decidedByUserId: context.user.id, decidedAt: new Date() } }),
-    prisma.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: "NEW_PRODUCT_CONFIRMED", metadata: { categoryId, categoryName: category.name } } }),
-  ]);
+  try {
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.importedRecord.updateMany({ where: { id: recordId, importJobId: jobId, status: { in: ["READY", "NEEDS_REVIEW"] } }, data: { canonicalProductId: null, status: "NEW_PRODUCT_CONFIRMED", requiresReview: false, exceptionType: null, normalizedFields: normalized as Prisma.InputJsonValue, normalizedPriceValue: normalized.normalizedPrice, searchText: [productOverride.description, productOverride.brand, productOverride.ean, productOverride.manufacturerSku].filter(Boolean).join(" ").toLocaleLowerCase("it-IT"), humanOverride: { ...currentOverride, ...productOverride, categoryId, categoryName: category.name } as Prisma.InputJsonValue } });
+      if (!updated.count) {
+        const current = await tx.importedRecord.findUniqueOrThrow({ where: { id: recordId } });
+        if (current.status === "NEW_PRODUCT_CONFIRMED") return;
+        throw new Error("La riga è già stata decisa o è cambiata. Ricarica la pagina.");
+      }
+      await tx.productMatchCandidate.updateMany({ where: { importedRecordId: recordId }, data: { humanDecision: "CREATE_NEW", decidedByUserId: context.user.id, decidedAt: new Date() } });
+      await tx.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: "NEW_PRODUCT_CONFIRMED", metadata: { categoryId, categoryName: category.name, importJobId: jobId } } });
+    });
+  } catch (error) {
+    redirect(`/imports/${jobId}/records/${recordId}?errore=${encodeURIComponent(safeDecisionError(error))}`);
+  }
   await refreshJob(jobId, context.user.id); redirect(`/imports/${jobId}?nuovo=confermato`);
 }
 
 export async function markRecord(formData: FormData) {
   const recordId = String(formData.get("recordId")); const jobId = String(formData.get("jobId")); const decision = String(formData.get("decision")); const { context } = await scopedJob(jobId);
+  if (!["NON_COMPARABLE", "IGNORED"].includes(decision)) redirect(`/imports/${jobId}/records/${recordId}?errore=${encodeURIComponent("Seleziona una decisione valida.")}`);
   const nonComparable = decision === "NON_COMPARABLE";
-  await prisma.$transaction([
-    prisma.importedRecord.update({ where: { id: recordId }, data: { status: nonComparable ? "NON_COMPARABLE" : "IGNORED", requiresReview: false } }),
-    prisma.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: nonComparable ? "RECORD_NOT_COMPARABLE" : "RECORD_IGNORED", metadata: {} } }),
-  ]);
+  try {
+    await prisma.$transaction(async (tx) => {
+      const record = await tx.importedRecord.findFirstOrThrow({ where: { id: recordId, importJobId: jobId } });
+      const nextStatus = nonComparable ? "NON_COMPARABLE" : "IGNORED";
+      if (["PUBLISHED", "CONFIRMED", "NEW_PRODUCT_CONFIRMED"].includes(record.status)) throw new Error("La riga è già stata decisa e non può essere riclassificata.");
+      const updated = await tx.importedRecord.updateMany({ where: { id: recordId, importJobId: jobId, status: { in: ["READY", "NEEDS_REVIEW"] } }, data: { status: nextStatus, requiresReview: false } });
+      if (!updated.count) {
+        if (record.status === nextStatus) return;
+        throw new Error("La riga è già stata decisa o è cambiata. Ricarica la pagina.");
+      }
+      await tx.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: nonComparable ? "RECORD_NOT_COMPARABLE" : "RECORD_IGNORED", metadata: { importJobId: jobId } } });
+    });
+  } catch (error) {
+    redirect(`/imports/${jobId}/records/${recordId}?errore=${encodeURIComponent(safeDecisionError(error))}`);
+  }
   await refreshJob(jobId, context.user.id); redirect(`/imports/${jobId}?review=1`);
 }
 
 export async function approveHighConfidence(formData: FormData) {
   const jobId = String(formData.get("jobId")); const { context } = await scopedJob(jobId);
-  await confirmRecommendedMatches(jobId, context.user.id, context.assignment.organizationId, .88);
+  let confirmed = 0;
+  try {
+    confirmed = await confirmRecommendedMatches(jobId, context.user.id, context.assignment.organizationId, .88);
+  } catch (error) {
+    redirect(`/imports/${jobId}?errore=${encodeURIComponent(safeDecisionError(error))}`);
+  }
+  if (!confirmed) redirect(`/imports/${jobId}?errore=${encodeURIComponent("Nessuna proposta è più confermabile. Ricarica la pagina e verifica le righe aggiornate.")}`);
   await refreshJob(jobId, context.user.id); redirect(`/imports/${jobId}?alta=approvata`);
 }
 
@@ -119,10 +166,16 @@ export async function bulkReviewRecords(formData: FormData) {
   const action = String(formData.get("bulkAction"));
   const recordIds = formData.getAll("recordId").map(String).filter(Boolean).slice(0, 100);
   const { context } = await scopedJob(jobId);
-  if (!recordIds.length) redirect(`/imports/${jobId}?filtro=attenzione&selezione=vuota`);
-  if (!["ACCEPT_RECOMMENDED", "ASSIGN_CATEGORY", "NON_COMPARABLE", "IGNORE"].includes(action)) throw new Error("Seleziona un’azione multipla valida.");
-  const { changed } = await applyBulkReview(prisma, { jobId, recordIds, action: action as BulkReviewAction, actorUserId: context.user.id, categoryId: String(formData.get("categoryId") ?? "") || undefined });
+  if (!recordIds.length) redirect(`/imports/${jobId}?filtro=attenzione&errore=${encodeURIComponent("Seleziona almeno una riga prima di applicare una decisione.")}`);
+  if (!["ACCEPT_RECOMMENDED", "ASSIGN_CATEGORY", "NON_COMPARABLE", "IGNORE"].includes(action)) redirect(`/imports/${jobId}?filtro=attenzione&errore=${encodeURIComponent("Seleziona un’azione multipla valida.")}`);
+  let changed = 0;
+  try {
+    ({ changed } = await applyBulkReview(prisma, { jobId, recordIds, action: action as BulkReviewAction, actorUserId: context.user.id, categoryId: String(formData.get("categoryId") ?? "") || undefined }));
+  } catch (error) {
+    redirect(`/imports/${jobId}?filtro=attenzione&errore=${encodeURIComponent(safeDecisionError(error))}`);
+  }
   await refreshJob(jobId, context.user.id);
+  revalidatePath(`/imports/${jobId}`);
   redirect(`/imports/${jobId}?filtro=attenzione&batch=${changed}`);
 }
 
@@ -180,4 +233,6 @@ async function refreshJob(jobId: string, actorUserId: string) {
   const current = await prisma.importJob.findUniqueOrThrow({ where: { id: jobId }, select: { status: true } });
   await prisma.importJob.update({ where: { id: jobId }, data: { status: review + proposed ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", reviewRequiredRecords: review, publishableRecords: publishable } });
   if (!review && !proposed && current.status !== "READY_TO_PUBLISH") await prisma.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: jobId, action: "IMPORT_READY", metadata: { publishableRecords: publishable } } });
+  revalidatePath(`/imports/${jobId}`);
+  revalidatePath(`/imports/${jobId}/summary`);
 }

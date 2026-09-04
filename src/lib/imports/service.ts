@@ -185,6 +185,12 @@ export async function ingestDocument(input: { buffer: Buffer; filename: string; 
 }
 
 async function processExistingJob(input: { jobId: string; sourceDocumentId: string; buffer: Buffer; filename: string; supplierId: string | null; userId: string; mapping?: Record<string, ImportField>; expectedByteLength?: number; expectedChecksum?: string }) {
+  const humanDecisions = await prisma.importedRecord.count({ where: { importJobId: input.jobId, OR: [
+    { status: { in: ["CONFIRMED", "NEW_PRODUCT_CONFIRMED", "NON_COMPARABLE", "IGNORED", "PUBLISHED"] } },
+    { humanOverride: { not: Prisma.DbNull } },
+    { matchCandidates: { some: { humanDecision: { not: "PENDING" } } } },
+  ] } });
+  if (humanDecisions) throw new Error(`Questa importazione contiene ${humanDecisions} decisioni umane. Mapping, fornitore e interpretazione non possono essere ricalcolati: crea una nuova versione per preservare le decisioni.`);
   let parsed: Awaited<ReturnType<typeof parseDocument>>;
   try {
     parsed = await parseDocument(input.buffer, input.filename, { byteLength: input.expectedByteLength, checksum: input.expectedChecksum });
@@ -252,10 +258,12 @@ export async function confirmRecommendedMatches(jobId: string, actorUserId: stri
       const candidate = record.matchCandidates[0];
       const normalized = record.normalizedFields as NormalizedImport;
       if (!candidate?.canonicalProductId || !normalized.comparable || candidate.packagingCompatibility === false) continue;
-      await tx.importedRecord.update({ where: { id: record.id }, data: { status: "CONFIRMED", requiresReview: false, canonicalProductId: candidate.canonicalProductId } });
+      const updated = await tx.importedRecord.updateMany({ where: { id: record.id, status: { in: ["READY", "NEEDS_REVIEW"] } }, data: { status: "CONFIRMED", requiresReview: false, exceptionType: null, canonicalProductId: candidate.canonicalProductId } });
+      if (!updated.count) continue;
+      await tx.productMatchCandidate.updateMany({ where: { importedRecordId: record.id }, data: { humanDecision: "REJECTED", decidedByUserId: actorUserId, decidedAt: new Date() } });
       await tx.productMatchCandidate.update({ where: { id: candidate.id }, data: { humanDecision: "ACCEPTED", decidedByUserId: actorUserId, decidedAt: new Date() } }); confirmed += 1;
     }
-    await tx.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: job.id, action: "MATCH_ACCEPTED", metadata: { bulk: true, records: confirmed, minimumScore } } });
+    if (confirmed) await tx.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: job.id, action: "MATCH_ACCEPTED", metadata: { bulk: true, records: confirmed, minimumScore } } });
     const remaining = await tx.importedRecord.count({ where: { importJobId: job.id, status: { in: ["READY", "NEEDS_REVIEW"] } } });
     await tx.importJob.update({ where: { id: job.id }, data: { status: remaining ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", reviewRequiredRecords: await tx.importedRecord.count({ where: { importJobId: job.id, status: "NEEDS_REVIEW" } }), publishableRecords: await tx.importedRecord.count({ where: { importJobId: job.id, status: { in: ["CONFIRMED", "NEW_PRODUCT_CONFIRMED"] } } }) } });
   });

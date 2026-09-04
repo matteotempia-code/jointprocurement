@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import test, { after } from "node:test";
-import { applyBulkReview } from "../src/lib/imports/bulk-review";
+import { applyBulkReview, BulkReviewValidationError } from "../src/lib/imports/bulk-review";
 import { parseDocument } from "../src/lib/imports/parser";
 import { LocalHeuristicProvider, providerRuntimeStatus, providerSupportsScannedDocuments } from "../src/lib/imports/provider";
-import { getImportRecordPage } from "../src/lib/imports/review-query";
+import { getImportRecordCounts, getImportRecordPage } from "../src/lib/imports/review-query";
 import { ingestDocument } from "../src/lib/imports/service";
 import { prisma } from "../src/lib/prisma";
 
@@ -54,22 +54,29 @@ test("parser e paginazione gestiscono 1.000 righe senza renderizzarle tutte", as
   }
 });
 
-test("bulk review conferma solo record compatibili ed è idempotente", async () => {
+test("bulk review rifiuta selezioni miste, aggiorna contatori e non duplica audit", async () => {
   const { user, assignment, supplier, product } = await fixtureContext();
   const source = await prisma.sourceDocument.create({ data: { organizationId: assignment.organizationId, supplierId: supplier.id, uploadedByUserId: user.id, originalFilename: "fixture-bulk.csv", mimeType: "text/csv", fileSize: 10, checksum: `fixture-bulk-${process.pid}`, sourceType: "CSV", documentKind: "OFFER", storagePath: "test/fixture-bulk.csv", status: "PROCESSED" } });
   try {
     const job = await prisma.importJob.create({ data: { sourceDocumentId: source.id, status: "NEEDS_REVIEW", interpretationProvider: "LOCAL_HEURISTIC", createdByUserId: user.id, totalRecords: 2, reviewRequiredRecords: 2 } });
-    const records = [];
+    const records: { id: string }[] = [];
     for (let index = 0; index < 2; index += 1) {
       const record = await prisma.importedRecord.create({ data: { importJobId: job.id, recordIndex: index + 1, rawSource: `riga ${index + 1}`, rawFields: {}, interpretedFields: {}, normalizedFields: { comparable: true }, sourceLocator: { row: index + 1 }, normalizedPriceValue: .025, status: "READY", requiresReview: true } });
       await prisma.productMatchCandidate.create({ data: { importedRecordId: record.id, canonicalProductId: product.id, matchType: "PROBABLE_MATCH", score: .95, reasons: ["test"], uomCompatibility: true, packagingCompatibility: index === 0, recommended: true } });
       records.push(record);
     }
-    const first = await applyBulkReview(prisma, { jobId: job.id, recordIds: records.map(({ id }) => id), action: "ACCEPT_RECOMMENDED", actorUserId: user.id });
-    const second = await applyBulkReview(prisma, { jobId: job.id, recordIds: records.map(({ id }) => id), action: "ACCEPT_RECOMMENDED", actorUserId: user.id });
+    await assert.rejects(() => applyBulkReview(prisma, { jobId: job.id, recordIds: records.map(({ id }) => id), action: "ACCEPT_RECOMMENDED", actorUserId: user.id }), BulkReviewValidationError);
+    assert.equal(await prisma.importedRecord.count({ where: { importJobId: job.id, status: "CONFIRMED" } }), 0, "una selezione mista deve essere atomica");
+    const first = await applyBulkReview(prisma, { jobId: job.id, recordIds: [records[0].id], action: "ACCEPT_RECOMMENDED", actorUserId: user.id });
+    const auditAfterFirst = await prisma.auditEvent.count({ where: { OR: [{ entityType: "IMPORTED_RECORD", entityId: records[0].id }, { entityType: "IMPORT_JOB", entityId: job.id }], action: "MATCH_ACCEPTED" } });
+    await assert.rejects(() => applyBulkReview(prisma, { jobId: job.id, recordIds: [records[0].id], action: "ACCEPT_RECOMMENDED", actorUserId: user.id }), BulkReviewValidationError);
     assert.equal(first.changed, 1);
-    assert.equal(second.changed, 0);
+    assert.equal(auditAfterFirst, 2, "la decisione bulk deve lasciare audit sia sul record sia sul job");
+    assert.equal(await prisma.auditEvent.count({ where: { OR: [{ entityType: "IMPORTED_RECORD", entityId: records[0].id }, { entityType: "IMPORT_JOB", entityId: job.id }], action: "MATCH_ACCEPTED" } }), auditAfterFirst, "la ripetizione non deve duplicare audit");
     assert.equal(await prisma.importedRecord.count({ where: { importJobId: job.id, status: "CONFIRMED" } }), 1);
+    const counts = await getImportRecordCounts(prisma, job.id);
+    assert.equal(counts.confirmed, 1);
+    assert.equal(counts.proposed, 1);
   } finally {
     await prisma.sourceDocument.delete({ where: { id: source.id } });
   }
