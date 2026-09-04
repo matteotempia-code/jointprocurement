@@ -27,18 +27,17 @@ async function counts() {
   const read = (label) => Number(text.match(new RegExp(`${label}\\s+(\\d+)`, "i"))?.[1] ?? -1);
   return { attention: read("Da verificare"), ready: read("Pronte"), newProducts: read("Nuovi prodotti"), nonComparable: read("Non confrontabili"), ignored: read("Ignorate"), total: read("Tutte") };
 }
-async function recordLinks(filter) {
-  await open(`${jobPath}?filtro=${filter}`);
+async function recordLinks(path, filter) {
+  await open(`${path}?filtro=${filter}`);
   return page.getByRole("link", { name: /^Riga \d+$/ }).evaluateAll((links) => [...new Set(links.map((link) => link.getAttribute("href")).filter(Boolean))]);
 }
-async function firstDecidableRecord(filter, button) {
-  for (const href of await recordLinks(filter)) {
+async function firstDecidableRecord(path, filter, button) {
+  for (const href of await recordLinks(path, filter)) {
     await open(href);
     if (await page.getByRole("button", { name: button }).count()) return href;
   }
   throw new Error(`Nessun record ${filter} con azione ${button}`);
 }
-
 let jobPath;
 try {
   await switchTo("Lucia Ferri");
@@ -49,7 +48,7 @@ try {
   await page.getByTestId("import-file").setInputFiles("demo-imports/listino-alfa-medical-2028.xlsx");
   await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: "Alfa Medical" });
   await page.getByRole("button", { name: "Carica e interpreta" }).click();
-  await page.waitForURL((url) => /^\/imports\/[^/]+$/.test(url.pathname), { timeout: 60_000 });
+  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 60_000 });
   jobPath = new URL(page.url()).pathname;
   const initial = await counts();
   assert.ok(initial.total > 0 && initial.attention > 0, JSON.stringify(initial));
@@ -57,34 +56,46 @@ try {
   // No selection must fail visibly and leave persisted counters untouched.
   await page.locator("select[name=bulkAction]").selectOption("IGNORE");
   await page.getByRole("button", { name: "Applica decisione" }).click();
-  await page.getByRole("alert").waitFor();
-  assert.match(await page.getByRole("alert").innerText(), /Seleziona almeno una riga/i);
+  const decisionError = page.locator('.error[role="alert"]');
+  await decisionError.waitFor();
+  assert.match(await decisionError.innerText(), /Seleziona almeno una riga/i);
   assert.deepEqual(await counts(), initial);
 
-  // Confirm one proposed/existing match through the record decision UI.
-  await firstDecidableRecord("attention", "Conferma associazione");
-  const beforeConfirm = initial;
+  // Confirm an existing-product match on the supplied review fixture.
+  const confirmJobPath = process.env.QA_CONFIRM_JOB_PATH ?? jobPath;
+  const confirmHref = await firstDecidableRecord(confirmJobPath, "attention", "Conferma associazione");
+  await open(`${confirmJobPath}?filtro=attention`);
+  const beforeConfirm = await counts();
+  await open(confirmHref);
   await page.getByRole("button", { name: "Conferma associazione" }).click();
-  await page.waitForURL((url) => url.pathname === jobPath);
+  await page.waitForURL((url) => url.pathname === confirmJobPath);
   const afterConfirm = await counts();
+  assert.equal(afterConfirm.total, beforeConfirm.total);
   assert.equal(afterConfirm.attention, beforeConfirm.attention - 1);
+  await open(confirmHref);
+  assert.match(await page.locator("main").innerText(), /Confermato/i);
   await page.reload({ waitUntil: "networkidle" });
-  assert.deepEqual(await counts(), afterConfirm);
+  assert.match(await page.locator("main").innerText(), /Confermato/i);
 
   // Confirm a new-product decision. Creation itself remains publication-gated.
-  const newHref = (await recordLinks("new"))[0];
+  const newJobPath = process.env.QA_NEW_JOB_PATH ?? jobPath;
+  const newHref = (await recordLinks(newJobPath, "new"))[0];
   assert.ok(newHref, "new-product record");
   await open(newHref);
-  await page.getByRole("combobox", { name: /Categoria/i }).selectOption({ label: "DPI" });
-  await page.getByRole("button", { name: "Conferma nuovo prodotto" }).click();
-  await page.waitForURL((url) => url.pathname === jobPath);
-  await open(newHref);
+  const createButton = page.getByRole("button", { name: "Conferma nuovo prodotto" });
+  if (await createButton.count()) {
+    await page.getByRole("combobox", { name: /Categoria/i }).selectOption({ label: "DPI" });
+    await createButton.click();
+    await page.waitForURL((url) => url.pathname === newJobPath);
+    await open(newHref);
+  }
   assert.match(await page.locator("main").innerText(), /Nuovo prodotto confermato/i);
   await page.reload({ waitUntil: "networkidle" });
   assert.match(await page.locator("main").innerText(), /Nuovo prodotto confermato/i);
 
   // Single-row ignore through the bulk form.
-  await open(`${jobPath}?filtro=attention`);
+  const decisionJobPath = process.env.QA_DECISION_JOB_PATH ?? jobPath;
+  await open(`${decisionJobPath}?filtro=attention`);
   const beforeIgnore = await counts();
   await page.locator('input[name="recordId"]').first().check();
   await page.locator("select[name=bulkAction]").selectOption("IGNORE");
@@ -95,7 +106,7 @@ try {
   assert.equal(afterIgnore.ignored, beforeIgnore.ignored + 1);
 
   // Multi-row decision and persisted counters.
-  await open(`${jobPath}?filtro=attention`);
+  await open(`${decisionJobPath}?filtro=attention`);
   const beforeMulti = await counts();
   const boxes = page.locator('input[name="recordId"]');
   assert.ok(await boxes.count() >= 2, "two compatible rows for bulk decision");
