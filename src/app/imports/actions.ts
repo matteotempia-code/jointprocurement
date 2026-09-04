@@ -203,14 +203,22 @@ export async function updateColumnMapping(formData: FormData) {
     if (importFields.includes(value as ImportField)) mapping[header] = value as ImportField;
   }
   if (!Object.keys(mapping).length) throw new Error("Mantieni almeno una colonna riconosciuta.");
-  await remapImport(jobId, mapping, context.user.id, context.assignment.organizationId);
+  try {
+    await remapImport(jobId, mapping, context.user.id, context.assignment.organizationId);
+  } catch (error) {
+    redirect(`/imports/${jobId}/mapping?errore=${encodeURIComponent(safeDecisionError(error))}`);
+  }
   redirect(`/imports/${jobId}/mapping?salvato=1`);
 }
 
 export async function resetColumnMapping(formData: FormData) {
   const jobId = String(formData.get("jobId"));
   const { context } = await scopedJob(jobId);
-  await resetImportMapping(jobId, context.user.id, context.assignment.organizationId);
+  try {
+    await resetImportMapping(jobId, context.user.id, context.assignment.organizationId);
+  } catch (error) {
+    redirect(`/imports/${jobId}/mapping?errore=${encodeURIComponent(safeDecisionError(error))}`);
+  }
   redirect(`/imports/${jobId}/mapping?automatico=1`);
 }
 
@@ -219,7 +227,11 @@ export async function confirmImportSupplier(formData: FormData) {
   const supplierId = String(formData.get("supplierId"));
   const { context, job } = await scopedJob(jobId);
   const supplier = await prisma.supplier.findFirstOrThrow({ where: { id: supplierId, active: true } });
-  await reprocessImportForSupplier(jobId, supplier.id, context.user.id, context.assignment.organizationId);
+  try {
+    await reprocessImportForSupplier(jobId, supplier.id, context.user.id, context.assignment.organizationId);
+  } catch (error) {
+    redirect(`/imports/${jobId}?errore=${encodeURIComponent(safeDecisionError(error))}`);
+  }
   await prisma.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "SOURCE_DOCUMENT", entityId: job.sourceDocumentId, action: "SUPPLIER_CONFIRMED", metadata: { supplierId: supplier.id, supplierName: supplier.name, matchingRecomputed: true } } });
   revalidatePath(`/imports/${jobId}`);
   redirect(`/imports/${jobId}?fornitore=confermato`);

@@ -7,7 +7,7 @@ import { fieldLabels, parserLabel } from "@/lib/imports/presentation";
 import { importFields } from "@/lib/imports/types";
 import { prisma } from "@/lib/prisma";
 
-export default async function ColumnMappingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ salvato?: string; automatico?: string }> }) {
+export default async function ColumnMappingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ salvato?: string; automatico?: string; errore?: string }> }) {
   const context = await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
   const job = await prisma.importJob.findFirst({ where: { id: (await params).id, sourceDocument: { organizationId: context.assignment.organizationId } }, include: { sourceDocument: true, records: { orderBy: { recordIndex: "asc" }, take: 5, select: { id: true, recordIndex: true, rawFields: true } } } });
   if (!job) notFound();
@@ -21,6 +21,7 @@ export default async function ColumnMappingPage({ params, searchParams }: { para
   return <main>
     {query.salvato && <div className="success">Mapping aggiornato. I record sono stati ricalcolati usando le nuove associazioni.</div>}
     {query.automatico && <div className="success">Mapping automatico ripristinato e staging ricalcolato.</div>}
+    {query.errore && <div className="error" role="alert">{query.errore}</div>}
     <PageHeader eyebrow="Interpretazione struttura" title="Mapping delle colonne" description={`${job.sourceDocument.originalFilename} · ${parserLabel(job.parserType)}. Correggi solo ciò che non rappresenta la fonte.`} />
     <ImportProgress status={job.status} /><ImportTabs jobId={job.id} active="mapping" />
     {sheets.length > 0 && <section className="sheet-selection"><div><p className="eyebrow">Fogli rilevati</p><h2>Origine dei record</h2></div>{sheets.map((sheet) => <article key={sheet.name} className={sheet.selected ? "selected" : ""}><strong>{sheet.name}</strong><span>{sheet.records} righe</span><small>{sheet.selected ? "Foglio selezionato" : "Escluso dalla lettura"}</small></article>)}</section>}

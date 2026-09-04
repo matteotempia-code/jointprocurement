@@ -77,6 +77,15 @@ try {
   await page.reload({ waitUntil: "networkidle" });
   assert.match(await page.locator("main").innerText(), /Confermato/i);
 
+  // Machine reprocessing must not overwrite a persisted human decision.
+  await open(`${confirmJobPath}/mapping`);
+  await page.getByRole("button", { name: "Ripristina mapping automatico" }).click();
+  const reprocessError = page.locator('.error[role="alert"]');
+  await reprocessError.waitFor();
+  assert.match(await reprocessError.innerText(), /decisioni umane/i);
+  await open(confirmHref);
+  assert.match(await page.locator("main").innerText(), /Confermato/i);
+
   // Confirm a new-product decision. Creation itself remains publication-gated.
   const newJobPath = process.env.QA_NEW_JOB_PATH ?? jobPath;
   const newHref = (await recordLinks(newJobPath, "new"))[0];
