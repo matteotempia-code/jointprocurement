@@ -15,6 +15,7 @@
     "lint": "eslint",
     "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts",
     "qa:browser": "node tests/browser-qa.mjs",
+    "qa:develop:remote": "node tests/develop-cloud-smoke.mjs",
     "qa:smart-import:remote": "node tests/smart-import-review-remote.mjs",
     "demo:video:prepare": "node scripts/video-demo/prepare.mjs",
     "demo:video:check": "node scripts/video-demo/check.mjs",
