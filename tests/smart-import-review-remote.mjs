@@ -115,6 +115,7 @@ try {
   assert.ok(initial.total > 0 && initial.attention > 0, JSON.stringify(initial));
 
   // No selection must fail visibly and leave persisted counters untouched.
+  checkpoint = "xlsx-empty-bulk-decision";
   await page.locator("select[name=bulkAction]").selectOption("IGNORE");
   await page.getByRole("button", { name: "Applica decisione" }).click();
   const decisionError = page.locator('.error[role="alert"]');
@@ -123,6 +124,7 @@ try {
   assert.deepEqual(await counts(), initial);
 
   // Confirm an existing-product match on the supplied review fixture.
+  checkpoint = "xlsx-confirm-match";
   const confirmJobPath = process.env.QA_CONFIRM_JOB_PATH ?? jobPath;
   const confirmHref = await firstDecidableRecord(confirmJobPath, "attention", "Conferma associazione");
   await open(`${confirmJobPath}?filtro=attention`);
@@ -139,6 +141,7 @@ try {
   assert.match(await page.locator("main").innerText(), /Confermato/i);
 
   // Machine reprocessing must not overwrite a persisted human decision.
+  checkpoint = "xlsx-human-decision-guard";
   await open(`${confirmJobPath}/mapping`);
   await page.getByRole("button", { name: "Ripristina mapping automatico" }).click();
   const reprocessError = page.locator('.error[role="alert"]');
@@ -148,6 +151,7 @@ try {
   assert.match(await page.locator("main").innerText(), /Confermato/i);
 
   // Confirm a new-product decision. Creation itself remains publication-gated.
+  checkpoint = "xlsx-new-product";
   const newJobPath = process.env.QA_NEW_JOB_PATH ?? jobPath;
   const newHref = (await recordLinks(newJobPath, "new"))[0];
   assert.ok(newHref, "new-product record");
@@ -164,6 +168,7 @@ try {
   assert.match(await page.locator("main").innerText(), /Nuovo prodotto confermato/i);
 
   // Single-row ignore through the bulk form.
+  checkpoint = "xlsx-single-ignore";
   const decisionJobPath = process.env.QA_DECISION_JOB_PATH ?? jobPath;
   // Earlier decisions may legitimately exhaust the attention queue. Use the
   // still-pending high-confidence queue for independent bulk-decision proof.
@@ -174,10 +179,11 @@ try {
   await page.getByRole("button", { name: "Applica decisione" }).click();
   await page.waitForURL(/batch=1/);
   const afterIgnore = await counts();
-  assert.equal(afterIgnore.attention, beforeIgnore.attention - 1);
+  assert.equal(afterIgnore.ready, beforeIgnore.ready - 1);
   assert.equal(afterIgnore.ignored, beforeIgnore.ignored + 1);
 
   // Multi-row decision and persisted counters.
+  checkpoint = "xlsx-multi-decision";
   await open(`${decisionJobPath}?filtro=ready`);
   const beforeMulti = await counts();
   const boxes = page.locator('input[name="recordId"]');
@@ -187,7 +193,7 @@ try {
   await page.getByRole("button", { name: "Applica decisione" }).click();
   await page.waitForURL(/batch=2/);
   const afterMulti = await counts();
-  assert.equal(afterMulti.attention, beforeMulti.attention - 2);
+  assert.equal(afterMulti.ready, beforeMulti.ready - 2);
   assert.equal(afterMulti.nonComparable, beforeMulti.nonComparable + 2);
   await page.reload({ waitUntil: "networkidle" });
   assert.deepEqual(await counts(), afterMulti);
