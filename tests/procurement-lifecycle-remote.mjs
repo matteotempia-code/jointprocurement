@@ -228,7 +228,7 @@ try {
   const listId = new URL(page.url()).pathname.split("/").at(-1);
   assert.ok(await db.shoppingList.findUnique({ where: { id: listId } }));
   await open(`/products/${product.id}`);
-  await page.getByRole("button", { name: `Altre azioni per ${product.name}` }).click();
+  await page.getByLabel(`Altre azioni per ${product.name}`, { exact: true }).click();
   await page.getByRole("button", { name: `${marker} riordino`, exact: true }).click();
   await page.waitForLoadState("networkidle");
   assert.equal(await db.shoppingListItem.count({ where: { shoppingListId: listId, canonicalProductId: product.id } }), 1);
