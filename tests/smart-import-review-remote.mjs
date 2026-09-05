@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+import path from "node:path";
 import { chromium } from "playwright";
 
 const base = process.env.QA_BASE_URL;
@@ -26,6 +28,61 @@ async function counts() {
   const text = await page.locator(".review-toolbar nav").innerText();
   const read = (label) => Number(text.match(new RegExp(`${label}\\s+(\\d+)`, "i"))?.[1] ?? -1);
   return { attention: read("Da verificare"), ready: read("Pronte"), newProducts: read("Nuovi prodotti"), nonComparable: read("Non confrontabili"), ignored: read("Ignorate"), total: read("Tutte") };
+}
+async function databaseDiagnostic() {
+  if (!process.env.DATABASE_URL || !jobPath) return { available: false };
+  const jobId = jobPath.split("/").filter(Boolean).at(-1);
+  try {
+    const [{ PrismaPg }, clientModule] = await Promise.all([import("@prisma/adapter-pg"), import("@prisma/client")]);
+    const PrismaClient = clientModule.PrismaClient ?? clientModule.default?.PrismaClient;
+    if (!PrismaClient) return { available: false, reason: "PrismaClient unavailable" };
+    const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+    try {
+      const job = await db.importJob.findUnique({
+        where: { id: jobId },
+        select: {
+          status: true, errorMessage: true, totalRecords: true, reviewRequiredRecords: true,
+          publishableRecords: true, interpretationProvider: true, externalProcessing: true,
+          sourceDocument: { select: { storageProvider: true, storageBucket: true, storageObjectKey: true } },
+          _count: { select: { records: true } },
+        },
+      });
+      if (!job) return { available: true, jobFound: false };
+      const groups = await db.importedRecord.groupBy({ by: ["status"], where: { importJobId: jobId }, _count: { _all: true } });
+      return {
+        available: true, jobFound: true, status: job.status,
+        error: job.errorMessage?.slice(0, 300) ?? null,
+        totalRecords: job.totalRecords, reviewRequiredRecords: job.reviewRequiredRecords,
+        publishableRecords: job.publishableRecords, persistedRecords: job._count.records,
+        interpretationProvider: job.interpretationProvider, externalProcessing: job.externalProcessing,
+        storage: {
+          provider: job.sourceDocument.storageProvider,
+          bucketPresent: Boolean(job.sourceDocument.storageBucket),
+          objectKeyPresent: Boolean(job.sourceDocument.storageObjectKey),
+        },
+        groups: Object.fromEntries(groups.map((group) => [group.status, group._count._all])),
+      };
+    } finally {
+      await db.$disconnect();
+    }
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : null;
+    return { available: false, reason: error instanceof Error ? error.name : "unknown diagnostic error", code };
+  }
+}
+async function captureFailureEvidence() {
+  const directory = path.join(process.cwd(), "artifacts", "remote-certification");
+  await mkdir(directory, { recursive: true });
+  await page.screenshot({ path: path.join(directory, "smart-import-failure.png"), fullPage: true }).catch(() => undefined);
+  const alerts = await page.locator('[role="alert"], .error, .warning').allInnerTexts().catch(() => []);
+  return {
+    urlPath: new URL(page.url()).pathname,
+    title: await page.title().catch(() => "unavailable"),
+    alerts: alerts.map((value) => value.replace(/\s+/g, " ").slice(0, 300)).slice(0, 5),
+    reviewToolbarPresent: await page.locator(".review-toolbar").count(),
+    selectableRecordCount: await page.locator('input[name="recordId"]').count(),
+    database: await databaseDiagnostic(),
+  };
 }
 async function recordLinks(path, filter) {
   await open(`${path}?filtro=${filter}`);
@@ -108,7 +165,9 @@ try {
 
   // Single-row ignore through the bulk form.
   const decisionJobPath = process.env.QA_DECISION_JOB_PATH ?? jobPath;
-  await open(`${decisionJobPath}?filtro=attention`);
+  // Earlier decisions may legitimately exhaust the attention queue. Use the
+  // still-pending high-confidence queue for independent bulk-decision proof.
+  await open(`${decisionJobPath}?filtro=ready`);
   const beforeIgnore = await counts();
   await page.locator('input[name="recordId"]').first().check();
   await page.locator("select[name=bulkAction]").selectOption("IGNORE");
@@ -119,7 +178,7 @@ try {
   assert.equal(afterIgnore.ignored, beforeIgnore.ignored + 1);
 
   // Multi-row decision and persisted counters.
-  await open(`${decisionJobPath}?filtro=attention`);
+  await open(`${decisionJobPath}?filtro=ready`);
   const beforeMulti = await counts();
   const boxes = page.locator('input[name="recordId"]');
   assert.ok(await boxes.count() >= 2, "two compatible rows for bulk decision");
@@ -141,7 +200,8 @@ try {
   console.log(JSON.stringify({ status: "PASS", jobPath, initial, afterConfirm, afterIgnore, afterMulti }));
 } catch (error) {
   const safeMessage = (error instanceof Error ? error.message : String(error)).replace(/https?:\/\/\S+/g, "[url]").slice(0, 500);
-  if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Remote Smart Import ${checkpoint}::${safeMessage}`);
+  const evidence = await captureFailureEvidence().catch(() => ({ unavailable: true }));
+  if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Remote Smart Import ${checkpoint}::${safeMessage} | ${JSON.stringify(evidence).slice(0, 1800)}`);
   throw error;
 } finally {
   await browser.close();

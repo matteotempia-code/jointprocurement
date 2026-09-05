@@ -27,6 +27,11 @@ jobs:
     steps:
       - name: Check out develop commit
         uses: actions/checkout@v4
+        with:
+          # The whitespace gate compares the current commit with its parent.
+          # Two commits also cover workflow_dispatch while the root-commit
+          # fallback below keeps a newly-created repository valid.
+          fetch-depth: 2
 
       - name: Use Node.js 22
         uses: actions/setup-node@v4
@@ -64,7 +69,13 @@ jobs:
         run: npm run build
 
       - name: Check patch whitespace
-        run: git diff --check HEAD^ HEAD
+        shell: bash
+        run: |
+          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            git diff --check HEAD^ HEAD
+          else
+            git diff-tree --check --root --no-commit-id -r HEAD
+          fi
 
   remote-smoke:
     name: Vercel develop remote smoke
@@ -74,6 +85,7 @@ jobs:
     environment: develop
     timeout-minutes: 25
     env:
+      DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
       VERCEL_TOKEN: ${{ secrets.DEV_VERCEL_TOKEN }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.DEV_VERCEL_AUTOMATION_BYPASS_SECRET }}
       VERCEL_PROJECT_ID: ${{ vars.DEV_VERCEL_PROJECT_ID }}
@@ -122,3 +134,12 @@ jobs:
         env:
           QA_BASE_URL: ${{ steps.deployment.outputs.url }}
         run: npm run qa:develop:remote
+
+      - name: Upload remote certification evidence
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: remote-certification-evidence-${{ github.sha }}
+          path: artifacts/remote-certification/
+          if-no-files-found: ignore
+          retention-days: 7
