@@ -20,7 +20,11 @@ async function main() {
   try { personas = await prisma.user.findMany({ where: { email: { endsWith: "@demo.local" } }, select: { id: true, email: true } }); }
   catch (error) { failures.push({ query: "personas", errorName: error instanceof Error ? error.name : "UnknownError", errorCode: error && typeof error === "object" && "code" in error ? String(error.code) : null }); }
   console.log(JSON.stringify({ counts, personas, failures }, null, 2));
-  if (failures.length) throw new Error(`DEV state audit failed in ${failures.map((item) => item.query).join(", ")}; only safe error classes/codes were emitted.`);
+  if (failures.length) {
+    const safeSummary = failures.map((item) => `${item.query}:${item.errorName}:${item.errorCode ?? "NO_CODE"}`).join(", ");
+    if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Supabase DEV state audit::${safeSummary}`);
+    throw new Error(`DEV state audit failed in ${failures.map((item) => item.query).join(", ")}; only safe error classes/codes were emitted.`);
+  }
 }
 
 main().catch((error) => { console.error(error instanceof Error ? error.message : "DEV state audit failed."); process.exitCode = 1; }).finally(() => prisma.$disconnect());
