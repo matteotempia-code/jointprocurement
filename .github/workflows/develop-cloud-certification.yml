@@ -130,6 +130,11 @@ jobs:
           QA_BASE_URL: ${{ steps.deployment.outputs.url }}
         run: npm run qa:smart-import:remote
 
+      - name: Certify Procurement AI on a new remote import
+        env:
+          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
+        run: npm run qa:procurement-ai:remote
+
       - name: Run remote critical smoke
         env:
           QA_BASE_URL: ${{ steps.deployment.outputs.url }}

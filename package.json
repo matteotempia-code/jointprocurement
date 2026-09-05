@@ -17,6 +17,7 @@
     "qa:browser": "node tests/browser-qa.mjs",
     "qa:develop:remote": "node tests/develop-cloud-smoke.mjs",
     "qa:smart-import:remote": "node tests/smart-import-review-remote.mjs",
+    "qa:procurement-ai:remote": "node tests/procurement-ai-remote.mjs",
     "qa:dev:state": "tsx scripts/qa/dev-state.ts",
     "demo:video:prepare": "node scripts/video-demo/prepare.mjs",
     "demo:video:check": "node scripts/video-demo/check.mjs",
