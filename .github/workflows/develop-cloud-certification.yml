@@ -126,6 +126,11 @@ jobs:
           EXPECTED_GIT_SHA: ${{ github.sha }}
         run: node scripts/qa/wait-for-vercel-develop.mjs
 
+      - name: Certify remote procurement lifecycle and personas
+        env:
+          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
+        run: npm run qa:demo:remote
+
       - name: Certify Procurement AI on a new remote import
         env:
           QA_BASE_URL: ${{ steps.deployment.outputs.url }}
@@ -140,11 +145,6 @@ jobs:
         env:
           QA_BASE_URL: ${{ steps.deployment.outputs.url }}
         run: npm run qa:develop:remote
-
-      - name: Certify remote procurement lifecycle and personas
-        env:
-          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
-        run: npm run qa:demo:remote
 
       - name: Upload remote certification evidence
         if: ${{ failure() }}

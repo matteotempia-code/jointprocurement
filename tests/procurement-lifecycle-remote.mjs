@@ -86,7 +86,12 @@ async function addSelectedProduct(quantity) {
   assert.equal(await form.count(), 1, "selected offer is actionable in Product 360");
   await form.locator('input[name="quantity"]').fill(String(quantity));
   await form.getByRole("button", { name: "Aggiungi al carrello" }).click();
-  await page.waitForURL(/\/cart\?added=1/, { timeout: 60_000 });
+  await waitForDb(
+    () => db.cartLine.findFirst({ where: { cart: { userId: lucia.id, facilityId }, supplierOfferId: selectedProduct.offer.id }, select: { quantity: true } }),
+    (line) => Number(line?.quantity) === quantity,
+    "cart add",
+  );
+  await open("/cart");
 }
 
 async function submitRequest(quantity, scenario) {
