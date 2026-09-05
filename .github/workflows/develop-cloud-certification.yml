@@ -51,6 +51,9 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      - name: Inspect Supabase DEV state
+        run: npm run qa:dev:state
+
       - name: Run unit and Supabase DEV integration tests
         run: npm test
 
@@ -108,6 +111,11 @@ jobs:
         env:
           EXPECTED_GIT_SHA: ${{ github.sha }}
         run: node scripts/qa/wait-for-vercel-develop.mjs
+
+      - name: Run remote Smart Import certification
+        env:
+          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
+        run: npm run qa:smart-import:remote
 
       - name: Run remote critical smoke
         env:

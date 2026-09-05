@@ -28,7 +28,7 @@ Stima complessiva dell’MVP operativo: **84%**. Il denominatore comprende organ
 | Design system e UX coherence | Final polish | DONE | 92% | `design-system.css`, `STYLE_SYSTEM.md`, visual QA | Un solo entry CSS, token e responsive centralizzati; resta evolvibile senza nuova cascata |
 | Organization model | Foundation | DONE | 100% | Prisma, Organizzazione | 2 organizzazioni, 4 entità, 6 aree, 102 strutture sintetiche |
 | Role / scope / authority | Foundation | DONE | 100% | Assignment, resolver, guard, test | ORGANIZATION / AREA / FACILITY server-side |
-| Catalogo | Recovery | DONE | 95% | `/catalog` | 780 prodotti sintetici, filtri estesi, acquisto e convenzionato |
+| Catalogo | Recovery | DONE | 95% | `/catalog` | 227 prodotti sintetici nel master DEV certificato, filtri estesi, acquisto e convenzionato |
 | Product 360 | Recovery | DONE | 95% | `/products/[id]` | Hero decisionale e disclosure progressiva per specifiche, storico, utilizzo, documenti e alternative |
 | Confronto prodotti | Hardening | DONE | 90% | `/compare-products` | Side-by-side 2–4 con specifiche, prezzi normalizzati, documenti e utilizzo |
 | Supplier 360 | Hardening | DONE | 92% | `/suppliers/[id]` | Dipendenza in apertura, trend, prezzo, termini, contatti, delivery e qualità con campione |
@@ -72,7 +72,7 @@ Stima complessiva dell’MVP operativo: **84%**. Il denominatore comprende organ
 | Smart Import — review umana | AI-native | DONE | 95% | review per eccezione, record three-way | Accetta, correggi, nuovo prodotto, ignora e non confrontabile con audit |
 | Smart Import — publish | AI-native | DONE | 95% | transazione e test idempotenza | Nessuna scrittura canonica prima della conferma; versioning e provenienza offerta |
 | Smart Import — variazioni e prezzi | AI-native | DONE | 90% | `/imports/[id]/changes` | Vecchio/nuovo normalizzato, pack change, nuovi/rimossi e migliore offerta |
-| Smart Import — provider AI | AI-native | IN PROGRESS | 35% | provider abstraction, `LOCAL_HEURISTIC` | Nessun modello esterno configurato; UI dichiara “Interpretazione locale” |
+| Smart Import — provider AI | AI-native | IN PROGRESS | 45% | provider abstraction, OpenAI + fallback `LOCAL_HEURISTIC` | OpenAI interpreta contesto/condizioni e fino a 12 righe ambigue; matching semantico, equivalenza e riuso memoria non collegati |
 | Smart Import — UX scalabile | AI-native hardening | DONE | 96% | work queue, paginazione, filtri, batch, 20 screenshot UX | Review by exception fino a migliaia di righe; resta desktop-primary |
 | Smart Import — large import review | AI-native hardening | DONE | 95% | fixture/test 1.000 righe, query paginate | 25 righe per pagina; ricerca e sort server-side; queue asincrona futura |
 | Smart Import — provider readiness | AI-native hardening | DONE | 85% | capability contract, env detection, evidence per campo | Vendor-neutral e data-residency esplicita; nessun adapter esterno attivo |

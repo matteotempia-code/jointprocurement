@@ -53,7 +53,6 @@ async function snapshot() {
     ...users.map((item) => `user|${item.id}|${item.email}`), ...suppliers.map((item) => `supplier|${item.id}|${item.vatNumber}`),
     ...products.map((item) => `product|${item.id}|${item.manufacturerSku}`), ...offers.map((item) => `offer|${item.id}|${item.supplierSku}`),
     ...categories.map((item) => `category|${item.id}|${item.code}`), ...priceLists.map((item) => `price-list|${item.id}|${item.name}`),
-    ...budgets.map((item) => `budget|${item.id}|${item.approvedAmount}|${item.actualAmount}`),
   ];
   return {
     counts: { sourceDocuments: sourceDocuments.length, imports: imports.length, operationalAttachments: attachments.length, storageObjects, organizations: organizations.length, facilities: facilities.length, users: users.length, suppliers: suppliers.length, products: products.length, offers: offers.length, categories: categories.length, priceLists: priceLists.length, budgets: budgets.length },
@@ -64,6 +63,8 @@ async function snapshot() {
 }
 
 async function audit() {
+  const budgetIds = Array.from({ length: 102 }, (_, index) => id("budget", index));
+  const limitIds = Array.from({ length: 3 }, (_, index) => id("limit", index));
   const potential = await prisma.purchaseRequisition.findMany({ where: { requisitionNumber: { startsWith: "PR-2026-" } }, select: { id: true, requisitionNumber: true, policyEvaluation: true } });
   const seeded = potential.filter(isSeededProcurement);
   const requisitionIds = seeded.map((item) => item.id);
@@ -75,6 +76,8 @@ async function audit() {
   const auditIds = auditCandidates.filter((item) => { const value = item.metadata; return Boolean(value && typeof value === "object" && !Array.isArray(value) && value.seeded === true); }).map((item) => item.id);
   const blockingAttachments = await prisma.operationalAttachment.findMany({ where: { OR: [{ receiptId: { in: receiptIds } }, { qualityIssueId: { in: issueIds } }] }, select: { id: true, receiptId: true, qualityIssueId: true, storageObjectKey: true } });
   const counts = {
+    budgets: await prisma.budget.count({ where: { id: { in: budgetIds } } }),
+    procurementLimits: await prisma.procurementLimit.count({ where: { id: { in: limitIds } } }),
     purchaseRequisitions: seeded.length,
     purchaseRequisitionLines: await prisma.purchaseRequisitionLine.count({ where: { requisitionId: { in: requisitionIds } } }),
     approvals: await prisma.approvalRequest.count({ where: { requisitionId: { in: requisitionIds } } }),
@@ -85,7 +88,7 @@ async function audit() {
     qualityIssues: issues.length,
     auditEvents: auditIds.length,
   };
-  return { seeded, requisitionIds, orderIds, orderLineIds, receiptIds, issueIds, auditIds, blockingAttachments, counts };
+  return { seeded, requisitionIds, orderIds, orderLineIds, receiptIds, issueIds, auditIds, budgetIds, limitIds, blockingAttachments, counts };
 }
 
 async function references() {
@@ -105,6 +108,18 @@ function plan(refs: Awaited<ReturnType<typeof references>>) {
   const issueTypes: IssueType[] = ["MISSING", "DAMAGED", "WRONG_ITEM", "QUALITY", "PACKAGING"];
   const requisitions: Prisma.PurchaseRequisitionCreateManyInput[] = [], lines: Prisma.PurchaseRequisitionLineCreateManyInput[] = [], approvals: Prisma.ApprovalRequestCreateManyInput[] = [];
   const orders: Prisma.PurchaseOrderCreateManyInput[] = [], orderLines: Prisma.PurchaseOrderLineCreateManyInput[] = [], receipts: Prisma.ReceiptCreateManyInput[] = [], receiptLines: Prisma.ReceiptLineCreateManyInput[] = [], issues: Prisma.QualityIssueCreateManyInput[] = [], audits: Prisma.AuditEventCreateManyInput[] = [];
+  const budgets: Prisma.BudgetCreateManyInput[] = refs.facilities.map((facility, index) => ({
+    id: id("budget", index), organizationId: facility.area.legalEntity.organizationId, legalEntityId: facility.area.legalEntityId,
+    areaId: facility.areaId, facilityId: facility.id, costCenterId: facility.costCenters[0]!.id,
+    periodStart: new Date("2026-01-01T00:00:00.000Z"), periodEnd: new Date("2026-12-31T23:59:59.999Z"),
+    approvedAmount: 240_000 + (index % 9) * 28_000, actualAmount: 95_000 + (index % 11) * 12_000, status: "ACTIVE",
+  }));
+  const primaryFacility = refs.facilities[0], primaryOffer = refs.offers[0];
+  const limits: Prisma.ProcurementLimitCreateManyInput[] = [
+    { id: id("limit", 0), organizationId: primaryFacility.area.legalEntity.organizationId, facilityId: primaryFacility.id, canonicalProductId: primaryOffer.canonicalProductId, limitType: "MONETARY", periodStart: new Date("2026-09-01T00:00:00.000Z"), periodEnd: new Date("2026-09-30T23:59:59.999Z"), maximumAmount: 1_800 },
+    { id: id("limit", 1), organizationId: primaryFacility.area.legalEntity.organizationId, facilityId: primaryFacility.id, canonicalProductId: primaryOffer.canonicalProductId, limitType: "QUANTITY", periodStart: new Date("2026-09-01T00:00:00.000Z"), periodEnd: new Date("2026-09-30T23:59:59.999Z"), maximumQuantity: 10_000, quantityUom: "pezzi" },
+    { id: id("limit", 2), organizationId: primaryFacility.area.legalEntity.organizationId, facilityId: primaryFacility.id, categoryId: primaryOffer.canonicalProduct.categoryId, limitType: "MONETARY", periodStart: new Date("2026-09-01T00:00:00.000Z"), periodEnd: new Date("2026-09-30T23:59:59.999Z"), maximumAmount: 12_000 },
+  ];
   const reasons = ["Importo sopra l’autonomia della struttura", "Verifica limite prodotto del periodo", "Fornitore non convenzionato", "Condizioni commerciali sotto soglia", "Eccezione motivata rispetto al budget di categoria"];
   const justifications = ["Ripristino scorta minima di reparto", "Fabbisogno assistenziale programmato", "Reintegro dotazione mensile", "Continuità operativa dei servizi", "Acquisto per fabbisogno stagionale"];
   for (let i = 0; i < 520; i += 1) {
@@ -136,12 +151,17 @@ function plan(refs: Awaited<ReturnType<typeof references>>) {
     receiptLines.push({ id: receiptLineId, receiptId, purchaseOrderLineId: poLineId, quantityOrdered: quantity, quantityReceived: received, quantityAccepted: hasIssue ? Math.max(0, received - 1) : received, quantityRejected: hasIssue ? 1 : 0 });
     if (hasIssue) issues.push({ id: id("issue", i), receiptLineId, purchaseOrderLineId: poLineId, issueType: issueTypes[i % issueTypes.length], severity: i % 4 === 0 ? "HIGH" : "MEDIUM", affectedQuantity: 1, description: ["Unità mancante", "Imballo danneggiato", "Referenza non corrispondente", "Qualità da verificare", "Confezione non integra"][i % 5], status: i % 3 === 0 ? "RESOLVED" : "OPEN", openedAt: new Date(receivedAt.getTime() + 2 * 60 * 60 * 1000), resolvedAt: i % 3 === 0 ? new Date(receivedAt.getTime() + 2 * day) : null, resolutionType: i % 3 === 0 ? "replacement" : null, resolutionNote: i % 3 === 0 ? "Sostituzione concordata." : null });
   }
-  return { requisitions, lines, approvals, orders, orderLines, receipts, receiptLines, issues, audits };
+  return { budgets, limits, requisitions, lines, approvals, orders, orderLines, receipts, receiptLines, issues, audits };
 }
 
-function assertPreserved(before: Snapshot, after: Snapshot) {
+function assertPreserved(before: Snapshot, after: Snapshot, previousDemoBudgetCount: number, plannedBudgetCount: number) {
   const failures: string[] = [];
-  for (const key of Object.keys(before.counts) as Array<keyof Snapshot["counts"]>) if (before.counts[key] !== after.counts[key]) failures.push(`${key}: ${before.counts[key]} -> ${after.counts[key]}`);
+  for (const key of Object.keys(before.counts) as Array<keyof Snapshot["counts"]>) {
+    if (key === "budgets") continue;
+    if (before.counts[key] !== after.counts[key]) failures.push(`${key}: ${before.counts[key]} -> ${after.counts[key]}`);
+  }
+  const expectedBudgetCount = before.counts.budgets - previousDemoBudgetCount + plannedBudgetCount;
+  if (after.counts.budgets !== expectedBudgetCount) failures.push(`budgets: attesi ${expectedBudgetCount}, trovati ${after.counts.budgets}`);
   if (before.sourceLocatorDigest !== after.sourceLocatorDigest) failures.push("locator SourceDocument modificati");
   if (before.attachmentLocatorDigest !== after.attachmentLocatorDigest) failures.push("locator OperationalAttachment modificati");
   if (before.importDigest !== after.importDigest) failures.push("Smart Import modificato");
@@ -152,6 +172,8 @@ function assertPreserved(before: Snapshot, after: Snapshot) {
 
 async function applyRefresh(auditResult: Awaited<ReturnType<typeof audit>>, data: ReturnType<typeof plan>) {
   await prisma.$transaction(async (tx) => {
+    await tx.procurementLimit.deleteMany({ where: { id: { in: data.limits.map((item) => item.id!) } } });
+    await tx.budget.deleteMany({ where: { id: { in: data.budgets.map((item) => item.id!) } } });
     await tx.auditEvent.deleteMany({ where: { id: { in: auditResult.auditIds } } });
     await tx.qualityIssue.deleteMany({ where: { id: { in: auditResult.issueIds } } });
     await tx.receiptLine.deleteMany({ where: { receiptId: { in: auditResult.receiptIds } } });
@@ -161,6 +183,7 @@ async function applyRefresh(auditResult: Awaited<ReturnType<typeof audit>>, data
     await tx.approvalRequest.deleteMany({ where: { requisitionId: { in: auditResult.requisitionIds } } });
     await tx.purchaseRequisitionLine.deleteMany({ where: { requisitionId: { in: auditResult.requisitionIds } } });
     await tx.purchaseRequisition.deleteMany({ where: { id: { in: auditResult.requisitionIds } } });
+    await tx.budget.createMany({ data: data.budgets }); await tx.procurementLimit.createMany({ data: data.limits });
     await tx.purchaseRequisition.createMany({ data: data.requisitions }); await tx.purchaseRequisitionLine.createMany({ data: data.lines });
     await tx.approvalRequest.createMany({ data: data.approvals }); await tx.purchaseOrder.createMany({ data: data.orders }); await tx.purchaseOrderLine.createMany({ data: data.orderLines });
     await tx.receipt.createMany({ data: data.receipts }); await tx.receiptLine.createMany({ data: data.receiptLines }); await tx.qualityIssue.createMany({ data: data.issues }); await tx.auditEvent.createMany({ data: data.audits });
@@ -190,9 +213,11 @@ async function main() {
   if (before.invalidLocators.length) throw new Error(`Sono presenti ${before.invalidLocators.length} locator cloud invalidi: refresh annullato.`);
   if (audited.blockingAttachments.length) throw new Error(`Trovati ${audited.blockingAttachments.length} allegati legati a record candidati: refresh annullato.`);
   if (!APPLY) { console.log("DRY RUN COMPLETATO: zero mutazioni."); return; }
+  const target = process.env.SORGENCE_ENVIRONMENT?.trim().toLocaleLowerCase("en-US");
+  if (process.env.NODE_ENV === "production" || !["development", "dev", "demo"].includes(target ?? "")) throw new Error("Refresh demo bloccato: SORGENCE_ENVIRONMENT deve identificare esplicitamente DEV/demo e NODE_ENV non può essere production.");
   if (process.env.ALLOW_DEMO_PROCUREMENT_REFRESH !== "true") throw new Error("Impostare ALLOW_DEMO_PROCUREMENT_REFRESH=true per la sola esecuzione live.");
   await applyRefresh(audited, data);
-  const after = await snapshot(); assertPreserved(before, after);
+  const after = await snapshot(); assertPreserved(before, after, audited.counts.budgets, data.budgets.length);
   const finalAudit = await audit();
   console.log(JSON.stringify({ liveRefresh: "PASS", deleted: audited.counts, created: creates, before: before.counts, after: after.counts, refreshedProcurement: finalAudit.counts, quality: await procurementQuality() }, null, 2));
 }

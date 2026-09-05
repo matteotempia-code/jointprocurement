@@ -6,7 +6,7 @@ MVP operativo database-backed per acquisti di struttura governati. Il core itali
 
 - Six demo personas, role navigation and organization/area/facility scope
 - Operational RSA, Area, Procurement, Finance and Executive dashboards
-- Catalogo da 156 prodotti e 468 offerte, Product 360, storico prezzi e documenti demo versionati
+- Catalogo DEV da 227 prodotti e 525 offerte, Product 360, storico prezzi e documenti demo versionati
 - Persistent cart, budget impact and purchase request submission
 - Rule-based policy, auto approval, Area/Procurement approvals
 - Atomic multi-supplier PO generation and downloadable local PDF
@@ -22,11 +22,11 @@ MVP operativo database-backed per acquisti di struttura governati. Il core itali
 - Matching identifier-first spiegabile, review per eccezione e publish transazionale idempotente
 - Versioning listini e confronto vecchio/nuovo su prezzi normalizzati e cambi confezione
 
-Non è configurato un provider AI/OCR esterno: l’interfaccia dichiara correttamente “Interpretazione locale”. PDF scannerizzati e immagini vengono conservati ma non interpretati automaticamente. Invoice matching, sourcing e supplier portal non sono implementati.
+Procurement AI può usare OpenAI in DEV quando le quattro variabili dedicate sono complete; in caso contrario la UI dichiara `FALLBACK` o `DISABLED`. OpenAI è oggi limitato al contesto documento, alle condizioni commerciali e a un massimo di 12 righe ambigue. Non è configurato un provider OCR: PDF scannerizzati e immagini vengono conservati ma non interpretati automaticamente. Matching semantico, equivalenza funzionale, invoice matching, sourcing e supplier portal non sono implementati.
 
 ## Stack
 
-Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, Prisma 7 PostgreSQL adapter, Supabase PostgreSQL + Storage, Playwright, ExcelJS, Mammoth e pdf-parse.
+Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, Prisma 7 PostgreSQL adapter, Supabase PostgreSQL + Storage, Playwright, read-excel-file per la lettura XLSX, ExcelJS per la generazione delle fixture, Mammoth e pdf-parse.
 
 ## Start locally
 

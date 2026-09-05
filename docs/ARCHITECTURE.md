@@ -92,7 +92,7 @@ The recovered experience is Italian-first and decision-oriented. The shell expos
 
 Quality issues now have a lifecycle (`OPEN → UNDER_REVIEW → RESOLVED → CLOSED`) with resolution type and note. Changes are transactional with an audit event. Deliveries are a derived operational view of scoped purchase orders and receipts, not a duplicate balance table.
 
-The expanded deterministic seed contains 2 organizations, 4 legal entities, 6 areas, 102 facilities, 111 cost centers, 75 suppliers, 12 categories, 780 canonical products, 2,964 offers, 80 price lists, 102 annual budgets, 520 requisitions and 420 purchase orders. Historical price points and operational history are stored in PostgreSQL; no chart uses random runtime values.
+The deterministic DEV master currently certified contains 2 organizations, 4 legal entities, 6 areas, 102 facilities, 75 suppliers, 12 categories, 227 canonical products, 525 offers and 80 price lists. The scoped procurement refresh restores 102 annual budgets, 3 procurement limits, 520 requisitions, 400 purchase orders, 300 receipts and 11 quality issues without deleting Smart Import, Storage locators, attachments or AI telemetry. Historical price points and operational history are stored in PostgreSQL; no chart uses random runtime values.
 
 ## Last-mile core freeze
 
@@ -114,7 +114,7 @@ Il responsive usa soltanto quattro breakpoint condivisi (1100, 900, 760 e 440 px
 
 ### Parser e provider
 
-`src/lib/imports/parser.ts` seleziona parser deterministici: ExcelJS per XLSX, parser delimitato Italy-first per CSV/TSV, estrazione testo per PDF nativi e Mammoth per DOCX. File immagine, PDF scannerizzati e XLS legacy vengono conservati ma falliscono con una spiegazione esplicita quando il provider necessario non è disponibile. Macro e contenuto documento non vengono mai eseguiti.
+`src/lib/imports/parser.ts` seleziona parser deterministici: `read-excel-file` per la lettura XLSX serverless-safe, parser delimitato Italy-first per CSV/TSV, estrazione testo per PDF nativi e Mammoth per DOCX. ExcelJS resta limitato alla generazione delle fixture. File immagine, PDF scannerizzati e XLS legacy vengono conservati con stato `REQUIRES_PROVIDER` quando il provider necessario non è disponibile. Macro e contenuto documento non vengono mai eseguiti.
 
 `DocumentInterpretationProvider` separa il dominio da qualunque vendor. L’implementazione attiva è `LocalHeuristicProvider`: non è AI e viene presentata come “Interpretazione locale”. Un provider futuro potrà contribuire a mapping, document understanding e similarità semantica senza modificare staging, review o publish.
 
@@ -146,7 +146,7 @@ Le proiezioni indicizzate su `ImportedRecord` rendono interrogabili descrizione/
 
 ### Provider readiness e data residency
 
-Il provider espone capability, model version, schema version ed `externalProcessing`. La configurazione è vendor-neutral tramite `DOCUMENT_INTELLIGENCE_PROVIDER`. Finché non esiste un adapter esplicitamente configurato, il runtime seleziona `LOCAL_HEURISTIC`, `externalProcessing=false`. Immagini e scansioni assumono `REQUIRES_PROVIDER`, non `FAILED`: il file resta disponibile per reprocessing, ma non vengono creati record né mutate entità canoniche.
+Il parser documentale espone capability, model version, schema version ed `externalProcessing`; senza OCR usa `LOCAL_HEURISTIC`. La Procurement AI è separata e, quando `PROCUREMENT_AI_ENABLED=true`, provider `OPENAI` e chiave/modello sono configurati, interpreta contesto documento, condizioni commerciali e fino a 12 righe ambigue. Matching semantico, equivalenza funzionale e riuso della Procurement Memory non sono ancora collegati al normale workflow. Immagini e scansioni assumono `REQUIRES_PROVIDER`, non `FAILED`.
 
 L’evidenza per campo conserva provider/modello/schema/timestamp. Un futuro adapter OCR/vision deve restituire output compatibile con `ImportedFieldValue`; non può bypassare staging, review e publish transazionale.
 

@@ -23,7 +23,7 @@ Il file originale non viene sovrascritto. Retry e futura rielaborazione creano v
 
 | Formato | Strategia attuale | Stato |
 | --- | --- | --- |
-| XLSX | ExcelJS, header detection, fogli e celle | Completo per il percorso MVP |
+| XLSX | `read-excel-file`, header detection, fogli e celle; diagnostica `XLSX_RUNTIME_DIAG_V1` | Implementato; PASS remoto richiesto dalla certificazione develop |
 | CSV / TSV / TXT | Delimitatore, quoted values, encoding UTF-8, decimal comma | Completo per il percorso MVP |
 | PDF nativo | Estrazione testo, righe delimitate | Supportato; layout complessi possono richiedere review |
 | DOCX | Mammoth, paragrafi e testo delle tabelle | Supporto strutturale iniziale |
@@ -114,7 +114,7 @@ Opportunità economiche vengono quantificate soltanto quando esiste volume osser
 
 ## Provider status
 
-Non è configurato alcun provider AI/OCR esterno. `DocumentInterpretationProvider` rende possibile aggiungerne uno in futuro senza legare il dominio a OpenAI, Anthropic, Google o altri vendor. Oggi l’app usa parser deterministici e `LocalHeuristicProvider`, presentato esplicitamente come “Interpretazione locale”.
+Non è configurato alcun provider OCR esterno. I parser deterministici e `LocalHeuristicProvider` restano sempre disponibili. La Procurement AI può usare OpenAI per contesto documento, condizioni commerciali e un massimo di 12 righe incomplete; la UI espone esplicitamente `OPENAI`, `FALLBACK` o `DISABLED`. Matching semantico, equivalenza funzionale e technical-sheet loop non sono ancora collegati.
 
 ## Demo e test
 
