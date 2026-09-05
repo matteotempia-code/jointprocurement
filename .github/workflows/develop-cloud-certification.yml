@@ -125,15 +125,15 @@ jobs:
           EXPECTED_GIT_SHA: ${{ github.sha }}
         run: node scripts/qa/wait-for-vercel-develop.mjs
 
-      - name: Run remote Smart Import certification
-        env:
-          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
-        run: npm run qa:smart-import:remote
-
       - name: Certify Procurement AI on a new remote import
         env:
           QA_BASE_URL: ${{ steps.deployment.outputs.url }}
         run: npm run qa:procurement-ai:remote
+
+      - name: Run remote Smart Import certification
+        env:
+          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
+        run: npm run qa:smart-import:remote
 
       - name: Run remote critical smoke
         env:
