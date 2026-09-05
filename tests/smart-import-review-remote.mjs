@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
+import AdmZip from "adm-zip";
 import { chromium } from "playwright";
 
 const base = process.env.QA_BASE_URL;
@@ -94,6 +95,25 @@ async function firstDecidableRecord(path, filter, button) {
     if (await page.getByRole("button", { name: button }).count()) return href;
   }
   throw new Error(`Nessun record ${filter} con azione ${button}`);
+}
+async function uploadAndVerify({ file, supplier, checkpointName }) {
+  checkpoint = checkpointName;
+  await open("/imports/new");
+  await page.getByTestId("import-file").setInputFiles(file);
+  await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: supplier });
+  await page.getByRole("button", { name: "Carica e interpreta" }).click();
+  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 60_000 });
+  const path = new URL(page.url()).pathname;
+  const result = await counts();
+  assert.ok(result.total > 0, `${checkpointName}: no persisted records`);
+  return { path, counts: result };
+}
+function docxFixture() {
+  const zip = new AdmZip();
+  zip.addFile("[Content_Types].xml", Buffer.from('<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'));
+  zip.addFile("_rels/.rels", Buffer.from('<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'));
+  zip.addFile("word/document.xml", Buffer.from('<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>sku;descrizione;prezzo;pezzi</w:t></w:r></w:p><w:p><w:r><w:t>REMOTE-DOCX-1;Guanto nitrile demo;2,50;100</w:t></w:r></w:p></w:body></w:document>'));
+  return { name: "remote-certification.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: zip.toBuffer() };
 }
 let jobPath;
 let checkpoint = "startup";
@@ -198,12 +218,34 @@ try {
   await page.reload({ waitUntil: "networkidle" });
   assert.deepEqual(await counts(), afterMulti);
 
+  checkpoint = "xlsx-publish";
+  await open(jobPath);
+  const confirmAll = page.getByRole("button", { name: "Conferma tutte le proposte affidabili" });
+  if (await confirmAll.count()) {
+    await confirmAll.click();
+    await page.waitForURL((url) => url.pathname === jobPath);
+  }
+  await open(`${jobPath}/summary`);
+  await page.getByRole("button", { name: "Pubblica importazione" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Pubblica", exact: true }).click();
+  await page.waitForURL((url) => url.pathname === jobPath && url.searchParams.has("pubblicato"), { timeout: 60_000 });
+  await open(`${jobPath}/summary`);
+  assert.match(await page.locator("main").innerText(), /Importazione completata|offerte pubblicate/i);
+  assert.ok(await page.getByRole("link", { name: "Apri listino" }).count(), "published price-list link");
+  await open(confirmHref);
+  assert.match(await page.locator("main").innerText(), /Provenienza|Riga \d+|Documento/i);
+
+  const csv = await uploadAndVerify({ file: "demo-imports/offerta-caresupply-sporca.csv", supplier: "CareSupply", checkpointName: "csv-upload" });
+  const docx = await uploadAndVerify({ file: docxFixture(), supplier: "Alfa Medical", checkpointName: "docx-upload" });
+  const pdf = await uploadAndVerify({ file: "demo-imports/listino-medika-testuale.pdf", supplier: "Medika Network", checkpointName: "pdf-upload" });
+
   await switchTo("Marco Villa");
   checkpoint = "admin-readback";
   await open("/imports");
   assert.match(await page.locator("main").innerText(), /Importazioni/i);
   assert.deepEqual(errors, []);
-  console.log(JSON.stringify({ status: "PASS", jobPath, initial, afterConfirm, afterIgnore, afterMulti }));
+  console.log(JSON.stringify({ status: "PASS", jobPath, initial, afterConfirm, afterIgnore, afterMulti, formats: { csv, docx, pdf } }));
 } catch (error) {
   const safeMessage = (error instanceof Error ? error.message : String(error)).replace(/https?:\/\/\S+/g, "[url]").slice(0, 500);
   const evidence = await captureFailureEvidence().catch(() => ({ unavailable: true }));
