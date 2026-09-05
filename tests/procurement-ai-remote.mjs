@@ -128,7 +128,7 @@ try {
 } catch (error) {
   const runtimeStatus = await page.locator(".provider-runtime-status").innerText().catch(() => "status unavailable");
   const safeStatus = runtimeStatus.replace(/\s+/g, " ").replace(/sk-[A-Za-z0-9_-]+/g, "[redacted]").slice(0, 300);
-  const safeMessage = (error instanceof Error ? error.message : String(error)).replace(/https?:\/\/\S+/g, "[url]").slice(0, 400);
+  const safeMessage = (error instanceof Error ? error.message : String(error)).replace(/https?:\/\/\S+/g, "[url]").replace(/\s+/g, " ").slice(0, 400);
   const jobDiagnostic = createdJobId ? await db.importJob.findUnique({
     where: { id: createdJobId },
     select: {
