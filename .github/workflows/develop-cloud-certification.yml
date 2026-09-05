@@ -69,6 +69,7 @@ jobs:
   remote-smoke:
     name: Vercel develop remote smoke
     needs: quality-and-db
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     environment: develop
     timeout-minutes: 25
