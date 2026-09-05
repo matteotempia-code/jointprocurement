@@ -52,6 +52,17 @@ async function assertNoOverflow() {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1), false, `horizontal overflow at ${new URL(page.url()).pathname}`);
 }
 
+async function waitForDb(read, predicate, label, timeoutMs = 15_000) {
+  const started = Date.now();
+  let value;
+  do {
+    value = await read();
+    if (predicate(value)) return value;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  } while (Date.now() - started < timeoutMs);
+  assert.fail(`${label}: persisted state did not converge (last=${JSON.stringify(value)})`);
+}
+
 async function certifyRoutes(name, allowed, denied) {
   await switchTo(name);
   for (const route of allowed) { await open(route); await assertNoOverflow(); }
@@ -204,8 +215,11 @@ try {
   favoriteBefore = await db.favorite.count({ where: { userId: lucia.id, facilityId, canonicalProductId: product.id } });
   favoriteProductId = product.id;
   await page.getByRole("button", { name: favoriteBefore ? "Salvato nei preferiti" : "Salva nei preferiti" }).click();
-  await page.waitForLoadState("networkidle");
-  assert.notEqual(await db.favorite.count({ where: { userId: lucia.id, facilityId, canonicalProductId: product.id } }), favoriteBefore);
+  await waitForDb(
+    () => db.favorite.count({ where: { userId: lucia.id, facilityId, canonicalProductId: product.id } }),
+    (count) => count !== favoriteBefore,
+    "favorite toggle",
+  );
   await open("/liste");
   await page.getByText("Nuova lista", { exact: true }).click();
   await page.locator('.phase2-create-popover input[name="name"]').fill(`${marker} riordino`);
