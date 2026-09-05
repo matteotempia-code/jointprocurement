@@ -55,7 +55,12 @@ async function assertNoOverflow() {
 async function certifyRoutes(name, allowed, denied) {
   await switchTo(name);
   for (const route of allowed) { await open(route); await assertNoOverflow(); }
-  for (const route of denied) await open(route, 404);
+  for (const route of denied) {
+    const response = await page.goto(new URL(route, base).toString(), { waitUntil: "networkidle", timeout: 60_000 });
+    assert.ok([200, 404].includes(response?.status() ?? 0), `denied GET ${route} has an explicit response`);
+    await page.getByRole("heading", { name: "This view is outside your current role or scope." }).waitFor();
+    assert.equal(new URL(page.url()).pathname, route, `denied direct route remains bounded at ${route}`);
+  }
 }
 
 async function clearCart() {
