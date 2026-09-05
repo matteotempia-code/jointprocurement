@@ -266,7 +266,7 @@ export async function confirmRecommendedMatches(jobId: string, actorUserId: stri
     if (confirmed) await tx.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: job.id, action: "MATCH_ACCEPTED", metadata: { bulk: true, records: confirmed, minimumScore } } });
     const remaining = await tx.importedRecord.count({ where: { importJobId: job.id, status: { in: ["READY", "NEEDS_REVIEW"] } } });
     await tx.importJob.update({ where: { id: job.id }, data: { status: remaining ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", reviewRequiredRecords: await tx.importedRecord.count({ where: { importJobId: job.id, status: "NEEDS_REVIEW" } }), publishableRecords: await tx.importedRecord.count({ where: { importJobId: job.id, status: { in: ["CONFIRMED", "NEW_PRODUCT_CONFIRMED"] } } }) } });
-  });
+  }, { maxWait: 10_000, timeout: 30_000 });
   return confirmed;
 }
 
