@@ -39,17 +39,21 @@ async function firstDecidableRecord(path, filter, button) {
   throw new Error(`Nessun record ${filter} con azione ${button}`);
 }
 let jobPath;
+let checkpoint = "startup";
 try {
+  checkpoint = "unauthorized-role";
   await switchTo("Lucia Ferri");
   await open("/imports");
   assert.match(await page.locator("main").innerText(), /outside your current role|fuori dal perimetro/i);
   await switchTo("Giulia Bianchi");
+  checkpoint = "xlsx-upload";
   await open("/imports/new");
   await page.getByTestId("import-file").setInputFiles("demo-imports/listino-alfa-medical-2028.xlsx");
   await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: "Alfa Medical" });
   await page.getByRole("button", { name: "Carica e interpreta" }).click();
   await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 60_000 });
   jobPath = new URL(page.url()).pathname;
+  checkpoint = "xlsx-initial-counts";
   const initial = await counts();
   assert.ok(initial.total > 0 && initial.attention > 0, JSON.stringify(initial));
 
@@ -130,10 +134,15 @@ try {
   assert.deepEqual(await counts(), afterMulti);
 
   await switchTo("Marco Villa");
+  checkpoint = "admin-readback";
   await open("/imports");
   assert.match(await page.locator("main").innerText(), /Importazioni/i);
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ status: "PASS", jobPath, initial, afterConfirm, afterIgnore, afterMulti }));
+} catch (error) {
+  const safeMessage = (error instanceof Error ? error.message : String(error)).replace(/https?:\/\/\S+/g, "[url]").slice(0, 500);
+  if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Remote Smart Import ${checkpoint}::${safeMessage}`);
+  throw error;
 } finally {
   await browser.close();
 }
