@@ -116,10 +116,18 @@ async function firstDecidableRecord(path, filter, button) {
   }
   throw new Error(`Nessun record ${filter} con azione ${button}`);
 }
+async function uniqueFixture(file) {
+  const source = typeof file === "string"
+    ? { name: path.basename(file), mimeType: file.endsWith(".csv") ? "text/csv" : file.endsWith(".pdf") ? "application/pdf" : "application/octet-stream", buffer: await readFile(file) }
+    : file;
+  const name = `remote-cert-${randomUUID()}${path.extname(source.name)}`;
+  uploadedFixture = { name, byteLength: source.buffer.length, checksum: createHash("sha256").update(source.buffer).digest("hex") };
+  return { ...source, name };
+}
 async function uploadAndVerify({ file, supplier, checkpointName }) {
   checkpoint = checkpointName;
   await open("/imports/new");
-  await page.getByTestId("import-file").setInputFiles(file);
+  await page.getByTestId("import-file").setInputFiles(await uniqueFixture(file));
   await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: supplier });
   await page.getByRole("button", { name: "Carica e interpreta" }).click();
   await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 60_000 });

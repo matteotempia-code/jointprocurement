@@ -6,6 +6,14 @@ type OpenAIErrorPayload = {
   };
 };
 
+export function openAIRequestSignal(timeoutMs = 20_000) {
+  return AbortSignal.timeout(timeoutMs);
+}
+
+export function isOpenAIRequestTimeout(error: unknown) {
+  return error instanceof Error && ["AbortError", "TimeoutError"].includes(error.name);
+}
+
 const safeString = (value: unknown, fallback: string, maxLength = 300) => {
   if (typeof value !== "string" || !value.trim()) return fallback;
   return value

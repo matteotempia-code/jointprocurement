@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { safeOpenAIErrorDiagnostic } from "../src/lib/procurement-ai/openai-error";
+import { isOpenAIRequestTimeout, openAIRequestSignal, safeOpenAIErrorDiagnostic } from "../src/lib/procurement-ai/openai-error";
 
 test("OpenAI failure diagnostics preserve quota category without leaking credentials", () => {
   const diagnostic = safeOpenAIErrorDiagnostic({
@@ -28,4 +28,11 @@ test("OpenAI failure diagnostics use bounded safe fallbacks for malformed respon
   assert.equal(diagnostic.type, "unknown");
   assert.equal(diagnostic.code, "HTTP_429");
   assert.equal(diagnostic.requestId, null);
+});
+
+test("OpenAI requests have a bounded timeout that can trigger local fallback", async () => {
+  const signal = openAIRequestSignal(5);
+  await new Promise((resolve) => signal.addEventListener("abort", resolve, { once: true }));
+  assert.equal(signal.aborted, true);
+  assert.equal(isOpenAIRequestTimeout(signal.reason), true);
 });
