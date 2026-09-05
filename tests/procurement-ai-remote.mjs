@@ -57,6 +57,7 @@ async function fixture(vatNumber) {
 }
 
 let checkpoint = "startup";
+let createdJobId;
 try {
   checkpoint = "supplier-fixture";
   const supplier = await db.supplier.findFirst({ where: { name: { contains: "Alfa Medical", mode: "insensitive" } }, select: { vatNumber: true } });
@@ -80,6 +81,7 @@ try {
   await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 90_000 });
   const jobId = new URL(page.url()).pathname.split("/").filter(Boolean).at(-1);
   assert.ok(jobId, "new ImportJob URL");
+  createdJobId = jobId;
 
   checkpoint = "database-proof";
   const job = await db.importJob.findUnique({
@@ -127,8 +129,20 @@ try {
   const runtimeStatus = await page.locator(".provider-runtime-status").innerText().catch(() => "status unavailable");
   const safeStatus = runtimeStatus.replace(/\s+/g, " ").replace(/sk-[A-Za-z0-9_-]+/g, "[redacted]").slice(0, 300);
   const safeMessage = (error instanceof Error ? error.message : String(error)).replace(/https?:\/\/\S+/g, "[url]").slice(0, 400);
+  const jobDiagnostic = createdJobId ? await db.importJob.findUnique({
+    where: { id: createdJobId },
+    select: {
+      status: true,
+      interpretationProvider: true,
+      providerModel: true,
+      externalProcessing: true,
+      totalRecords: true,
+      reviewRequiredRecords: true,
+      procurementAICalls: { select: { provider: true, model: true, operation: true, resultState: true, errorCode: true } },
+    },
+  }).catch(() => null) : null;
   if (process.env.GITHUB_ACTIONS === "true") {
-    console.error(`::error title=Procurement AI remote ${checkpoint}::${safeMessage} | UI: ${safeStatus}`);
+    console.error(`::error title=Procurement AI remote ${checkpoint}::${safeMessage} | UI: ${safeStatus} | DB: ${JSON.stringify(jobDiagnostic)}`);
   }
   throw error;
 } finally {
