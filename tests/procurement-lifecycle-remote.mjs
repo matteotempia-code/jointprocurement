@@ -230,8 +230,11 @@ try {
   await open(`/products/${product.id}`);
   await page.getByLabel(`Altre azioni per ${product.name}`, { exact: true }).click();
   await page.getByRole("button", { name: `${marker} riordino`, exact: true }).click();
-  await page.waitForLoadState("networkidle");
-  assert.equal(await db.shoppingListItem.count({ where: { shoppingListId: listId, canonicalProductId: product.id } }), 1);
+  await waitForDb(
+    () => db.shoppingListItem.count({ where: { shoppingListId: listId, canonicalProductId: product.id } }),
+    (count) => count === 1,
+    "shopping-list item",
+  );
 
   const unitGross = Number(selectedProduct.offer.unitPrice) * (1 + Number(selectedProduct.offer.taxRate) / 100);
   const autoQuantity = Math.max(2, Number(selectedProduct.offer.moq));
