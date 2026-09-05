@@ -11,6 +11,7 @@ import { createPurchaseOrders } from "@/lib/procurement/orders";
 import { resolveApprover } from "@/lib/policy/approver";
 import { evaluateCommercialConditions } from "@/lib/procurement/commercial-conditions";
 import { evaluateFacilityProcurementLimits } from "@/lib/procurement/limits";
+import { receiptNumberFromId } from "@/lib/procurement/receipt-number";
 import { cleanupOperationalAttachments, uploadOperationalAttachments } from "@/lib/storage/operational-attachments";
 
 export async function addToCart(formData:FormData){
@@ -265,10 +266,9 @@ export async function receiveOrder(formData:FormData){
  const issueUploads=new Map<string,Awaited<ReturnType<typeof uploadOperationalAttachments>>>();
  try{
   for(const plan of issuePlans)issueUploads.set(plan.issueId,await uploadOperationalAttachments({files:plan.files,organizationId:context.organization.id,ownerType:"quality-issue",ownerId:plan.issueId}));
-  const receiptCount=await prisma.receipt.count();
   await prisma.$transaction(async (tx) => {
    let hasIssue=false,allComplete=true;
-   const receipt=await tx.receipt.create({ data: { id:receiptId, receiptNumber:`GR-${new Date().getFullYear()}-${String(receiptCount+1).padStart(6,"0")}`, purchaseOrderId:po.id, facilityId:po.facilityId, receivedById:context.user.id, status:"PARTIAL", notes:String(formData.get("notes")??"")||null, attachments:{create:receiptUploads.map((file)=>({...file,kind:"RECEIPT" as const,organizationId:context.organization.id,facilityId:po.facilityId,uploadedByUserId:context.user.id,immutableAt:new Date()}))} } });
+   const receipt=await tx.receipt.create({ data: { id:receiptId, receiptNumber:receiptNumberFromId(receiptId), purchaseOrderId:po.id, facilityId:po.facilityId, receivedById:context.user.id, status:"PARTIAL", notes:String(formData.get("notes")??"")||null, attachments:{create:receiptUploads.map((file)=>({...file,kind:"RECEIPT" as const,organizationId:context.organization.id,facilityId:po.facilityId,uploadedByUserId:context.user.id,immutableAt:new Date()}))} } });
    for(const line of po.lines){
     const already=line.receiptLines.reduce((s,r)=>s+Number(r.quantityReceived),0),remaining=Number(line.quantity)-already,rawReceived=Number(formData.get(`received-${line.id}`)??0);
     if(!Number.isFinite(rawReceived)||rawReceived<0||rawReceived>remaining)throw new Error(`Quantità ricevuta non valida per ${line.descriptionSnapshot}.`);
