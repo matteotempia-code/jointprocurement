@@ -31,10 +31,18 @@ test("OpenAI failure diagnostics use bounded safe fallbacks for malformed respon
 });
 
 test("OpenAI requests have a bounded timeout that can trigger local fallback", async () => {
+  // AbortSignal.timeout() deliberately uses an unref'ed timer in Node. Keep the
+  // test process alive so this assertion remains deterministic when the file is
+  // run inside the full sequential suite with no other active handles.
+  const keepAlive = setTimeout(() => undefined, 100);
   const signal = openAIRequestSignal(5);
-  await new Promise((resolve) => signal.addEventListener("abort", resolve, { once: true }));
-  assert.equal(signal.aborted, true);
-  assert.equal(isOpenAIRequestTimeout(signal.reason), true);
-  assert.equal(openAIRequestTimeoutMs("DOCUMENT_CONTEXT"), 30_000);
-  assert.equal(openAIRequestTimeoutMs("ROW_INTERPRETATION"), 15_000);
+  try {
+    await new Promise((resolve) => signal.addEventListener("abort", resolve, { once: true }));
+    assert.equal(signal.aborted, true);
+    assert.equal(isOpenAIRequestTimeout(signal.reason), true);
+    assert.equal(openAIRequestTimeoutMs("DOCUMENT_CONTEXT"), 30_000);
+    assert.equal(openAIRequestTimeoutMs("ROW_INTERPRETATION"), 15_000);
+  } finally {
+    clearTimeout(keepAlive);
+  }
 });

@@ -86,6 +86,7 @@ jobs:
     timeout-minutes: 25
     env:
       DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+      DEMO_MODE: "true"
       VERCEL_TOKEN: ${{ secrets.DEV_VERCEL_TOKEN }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.DEV_VERCEL_AUTOMATION_BYPASS_SECRET }}
       VERCEL_PROJECT_ID: ${{ vars.DEV_VERCEL_PROJECT_ID }}
@@ -139,6 +140,11 @@ jobs:
         env:
           QA_BASE_URL: ${{ steps.deployment.outputs.url }}
         run: npm run qa:develop:remote
+
+      - name: Certify remote procurement lifecycle and personas
+        env:
+          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
+        run: npm run qa:demo:remote
 
       - name: Upload remote certification evidence
         if: ${{ failure() }}
