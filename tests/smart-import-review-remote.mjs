@@ -174,18 +174,25 @@ try {
   checkpoint = "xlsx-new-product";
   const newJobPath = process.env.QA_NEW_JOB_PATH ?? jobPath;
   const newHref = (await recordLinks(newJobPath, "new"))[0];
-  assert.ok(newHref, "new-product record");
-  await open(newHref);
-  const createButton = page.getByRole("button", { name: "Conferma nuovo prodotto" });
-  if (await createButton.count()) {
-    await page.getByRole("combobox", { name: /Categoria/i }).selectOption({ label: "DPI" });
-    await createButton.click();
-    await page.waitForURL((url) => url.pathname === newJobPath);
+  // The shared certification database intentionally retains published product
+  // memory. Once this fixture has been published, its former new-product row
+  // can resolve to that canonical product on subsequent idempotent runs.
+  if (newHref) {
     await open(newHref);
+    const createButton = page.getByRole("button", { name: "Conferma nuovo prodotto" });
+    if (await createButton.count()) {
+      await page.getByRole("combobox", { name: /Categoria/i }).selectOption({ label: "DPI" });
+      await createButton.click();
+      await page.waitForURL((url) => url.pathname === newJobPath);
+      await open(newHref);
+    }
+    assert.match(await page.locator("main").innerText(), /Nuovo prodotto confermato/i);
+    await page.reload({ waitUntil: "networkidle" });
+    assert.match(await page.locator("main").innerText(), /Nuovo prodotto confermato/i);
+  } else {
+    const current = await counts();
+    assert.equal(current.attention, 0, "no unresolved review record when product memory resolves the fixture");
   }
-  assert.match(await page.locator("main").innerText(), /Nuovo prodotto confermato/i);
-  await page.reload({ waitUntil: "networkidle" });
-  assert.match(await page.locator("main").innerText(), /Nuovo prodotto confermato/i);
 
   // Single-row ignore through the bulk form.
   checkpoint = "xlsx-single-ignore";
