@@ -56,10 +56,13 @@ async function fixture(vatNumber) {
   return { name: "certificazione-procurement-ai.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(bytes) };
 }
 
+let checkpoint = "startup";
 try {
+  checkpoint = "supplier-fixture";
   const supplier = await db.supplier.findFirst({ where: { name: { contains: "Alfa Medical", mode: "insensitive" } }, select: { vatNumber: true } });
   assert.ok(supplier, "synthetic certification supplier exists");
 
+  checkpoint = "runtime-status";
   await switchTo("Giulia Bianchi");
   await open("/imports/new");
   const runtimeStatus = page.locator(".provider-runtime-status");
@@ -72,11 +75,13 @@ try {
   await page.getByTestId("import-file").setInputFiles(await fixture(supplier.vatNumber));
   // Leave supplier unselected so the normal document-context call must also
   // produce the source-backed supplier proposal used by the review UI.
+  checkpoint = "new-import";
   await page.getByRole("button", { name: "Carica e interpreta" }).click();
   await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 90_000 });
   const jobId = new URL(page.url()).pathname.split("/").filter(Boolean).at(-1);
   assert.ok(jobId, "new ImportJob URL");
 
+  checkpoint = "database-proof";
   const job = await db.importJob.findUnique({
     where: { id: jobId },
     select: {
@@ -118,6 +123,14 @@ try {
     commercialConditionCount: summary.aiCommercialConditions.length,
     records: job._count.records,
   }));
+} catch (error) {
+  const runtimeStatus = await page.locator(".provider-runtime-status").innerText().catch(() => "status unavailable");
+  const safeStatus = runtimeStatus.replace(/\s+/g, " ").replace(/sk-[A-Za-z0-9_-]+/g, "[redacted]").slice(0, 300);
+  const safeMessage = (error instanceof Error ? error.message : String(error)).replace(/https?:\/\/\S+/g, "[url]").slice(0, 400);
+  if (process.env.GITHUB_ACTIONS === "true") {
+    console.error(`::error title=Procurement AI remote ${checkpoint}::${safeMessage} | UI: ${safeStatus}`);
+  }
+  throw error;
 } finally {
   await browser.close();
   await db.$disconnect();
