@@ -2,7 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import type { AIContext, AIMatchJudgement, DocumentIntelligence, ProcurementAIProvider, ProductInterpretation } from "./types";
 import type { MatchableProduct, NormalizedImport } from "@/lib/imports/types";
-import { isOpenAIRequestTimeout, openAIRequestSignal, safeOpenAIErrorDiagnostic } from "./openai-error";
+import { isOpenAIRequestTimeout, openAIRequestSignal, openAIRequestTimeoutMs, safeOpenAIErrorDiagnostic } from "./openai-error";
 
 const evidenceSchema = z.object({ value: z.string().nullable(), confidence: z.number().min(0).max(1), sourceEvidence: z.string(), reasoningSummary: z.string() });
 const documentSchema = z.object({ supplierCandidate: evidenceSchema, supplierVatNumber: evidenceSchema, priceListTitle: evidenceSchema, currency: evidenceSchema, issueDate: evidenceSchema, validFrom: evidenceSchema, validUntil: evidenceSchema, commercialConditions: z.array(z.object({ type: z.string(), value: z.union([z.string(), z.number()]).nullable(), confidence: z.number().min(0).max(1), sourceEvidence: z.string(), reasoningSummary: z.string() })) });
@@ -19,7 +19,7 @@ export class OpenAIProcurementProvider implements ProcurementAIProvider {
   private async call<T>(instructions: string, input: unknown, name: string, schema: object, validator: z.ZodType<T>, context: AIContext): Promise<T | null> {
     const started = Date.now(); let state = "FAILED"; let usage: { input_tokens?: number; output_tokens?: number; total_tokens?: number } = {}; let errorCode: string | undefined;
     try {
-      const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: this.model, instructions, input: JSON.stringify(input), text: { format: { type: "json_schema", name, strict: true, schema } } }), signal: openAIRequestSignal() });
+      const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: this.model, instructions, input: JSON.stringify(input), text: { format: { type: "json_schema", name, strict: true, schema } } }), signal: openAIRequestSignal(openAIRequestTimeoutMs(context.operation)) });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         const diagnostic = safeOpenAIErrorDiagnostic({

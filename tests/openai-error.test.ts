@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isOpenAIRequestTimeout, openAIRequestSignal, safeOpenAIErrorDiagnostic } from "../src/lib/procurement-ai/openai-error";
+import { isOpenAIRequestTimeout, openAIRequestSignal, openAIRequestTimeoutMs, safeOpenAIErrorDiagnostic } from "../src/lib/procurement-ai/openai-error";
 
 test("OpenAI failure diagnostics preserve quota category without leaking credentials", () => {
   const diagnostic = safeOpenAIErrorDiagnostic({
@@ -35,4 +35,6 @@ test("OpenAI requests have a bounded timeout that can trigger local fallback", a
   await new Promise((resolve) => signal.addEventListener("abort", resolve, { once: true }));
   assert.equal(signal.aborted, true);
   assert.equal(isOpenAIRequestTimeout(signal.reason), true);
+  assert.equal(openAIRequestTimeoutMs("DOCUMENT_CONTEXT"), 30_000);
+  assert.equal(openAIRequestTimeoutMs("ROW_INTERPRETATION"), 15_000);
 });

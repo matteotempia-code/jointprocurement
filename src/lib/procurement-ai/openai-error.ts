@@ -6,8 +6,12 @@ type OpenAIErrorPayload = {
   };
 };
 
-export function openAIRequestSignal(timeoutMs = 20_000) {
+export function openAIRequestSignal(timeoutMs: number) {
   return AbortSignal.timeout(timeoutMs);
+}
+
+export function openAIRequestTimeoutMs(operation: string) {
+  return ["DOCUMENT_CONTEXT", "COMMERCIAL_CONDITIONS"].includes(operation) ? 30_000 : 15_000;
 }
 
 export function isOpenAIRequestTimeout(error: unknown) {
