@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import type { AIContext, AIMatchJudgement, DocumentIntelligence, ProcurementAIProvider, ProductInterpretation } from "./types";
 import type { MatchableProduct, NormalizedImport } from "@/lib/imports/types";
+import { safeOpenAIErrorDiagnostic } from "./openai-error";
 
 const evidenceSchema = z.object({ value: z.string().nullable(), confidence: z.number().min(0).max(1), sourceEvidence: z.string(), reasoningSummary: z.string() });
 const documentSchema = z.object({ supplierCandidate: evidenceSchema, supplierVatNumber: evidenceSchema, priceListTitle: evidenceSchema, currency: evidenceSchema, issueDate: evidenceSchema, validFrom: evidenceSchema, validUntil: evidenceSchema, commercialConditions: z.array(z.object({ type: z.string(), value: z.union([z.string(), z.number()]).nullable(), confidence: z.number().min(0).max(1), sourceEvidence: z.string(), reasoningSummary: z.string() })) });
@@ -19,7 +20,19 @@ export class OpenAIProcurementProvider implements ProcurementAIProvider {
     const started = Date.now(); let state = "FAILED"; let usage: { input_tokens?: number; output_tokens?: number; total_tokens?: number } = {}; let errorCode: string | undefined;
     try {
       const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: this.model, instructions, input: JSON.stringify(input), text: { format: { type: "json_schema", name, strict: true, schema } } }) });
-      if (!response.ok) { errorCode = `HTTP_${response.status}`; throw new Error(`OpenAI request failed (${response.status})`); }
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        const diagnostic = safeOpenAIErrorDiagnostic({
+          status: response.status,
+          payload,
+          requestId: response.headers.get("x-request-id") ?? response.headers.get("request-id"),
+          operation: context.operation,
+          model: this.model,
+        });
+        errorCode = diagnostic.code;
+        console.error("PROCUREMENT_AI_PROVIDER_ERROR", diagnostic);
+        throw new Error(`OpenAI request failed (${response.status})`);
+      }
       const payload = await response.json() as { output_text?: string; output?: Array<{ content?: Array<{ type?: string; text?: string }> }>; usage?: typeof usage };
       usage = payload.usage ?? {}; const text = payload.output_text ?? payload.output?.flatMap((item) => item.content ?? []).find((item) => item.type === "output_text")?.text;
       if (!text) throw new Error("OpenAI structured output missing"); const parsed = validator.parse(JSON.parse(text)); state = "SUCCEEDED"; return parsed;
