@@ -19,6 +19,7 @@
     "qa:smart-import:remote": "node tests/smart-import-review-remote.mjs",
     "qa:procurement-ai:remote": "node tests/procurement-ai-remote.mjs",
     "qa:demo:remote": "node tests/procurement-lifecycle-remote.mjs",
+    "qa:demo:external": "node tests/external-demo-remote.mjs",
     "qa:dev:state": "tsx scripts/qa/dev-state.ts",
     "demo:video:prepare": "node scripts/video-demo/prepare.mjs",
     "demo:video:check": "node scripts/video-demo/check.mjs",

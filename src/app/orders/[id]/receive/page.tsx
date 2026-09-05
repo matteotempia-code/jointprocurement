@@ -19,6 +19,7 @@ export default async function ReceivePage({ params }: { params: Promise<{ id: st
   if (!order) notFound();
 
   const totalRemaining = order.lines.reduce((sum, line) => sum + Math.max(0, Number(line.quantity) - line.receiptLines.reduce((received, receipt) => received + Number(receipt.quantityReceived), 0)), 0);
+  if (totalRemaining <= 0) notFound();
   return <main className="phase2-page phase2-receiving">
     <PageHeader eyebrow="Ricezione merce" title="Registra consegna" description={`${order.poNumber} · ${order.supplier.name}`} />
     <section className="phase2-summary-strip"><div><span>Ordine</span><strong>{order.poNumber}</strong><small>{order.supplier.name}</small></div><div><span>Righe</span><strong>{order.lines.length}</strong><small>Da verificare</small></div><div><span>Quantità residua</span><strong>{totalRemaining}</strong><small>Prima della ricezione</small></div><div><span>Stato</span><StatusChip variant="warn">Da ricevere</StatusChip><small>Conferma o segnala differenze</small></div></section>
