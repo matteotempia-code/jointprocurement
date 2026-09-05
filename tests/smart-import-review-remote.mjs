@@ -223,7 +223,7 @@ try {
   const confirmAll = page.getByRole("button", { name: "Conferma tutte le proposte affidabili" });
   if (await confirmAll.count()) {
     await confirmAll.click();
-    await page.waitForURL((url) => url.pathname === jobPath);
+    await page.waitForURL((url) => url.pathname === jobPath && url.searchParams.get("alta") === "approvata", { timeout: 60_000 });
   }
   await open(`${jobPath}/summary`);
   await page.getByRole("button", { name: "Pubblica importazione" }).click();
