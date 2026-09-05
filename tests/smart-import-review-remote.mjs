@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdir } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import AdmZip from "adm-zip";
 import { chromium } from "playwright";
@@ -31,35 +32,54 @@ async function counts() {
   return { attention: read("Da verificare"), ready: read("Pronte"), newProducts: read("Nuovi prodotti"), nonComparable: read("Non confrontabili"), ignored: read("Ignorate"), total: read("Tutte") };
 }
 async function databaseDiagnostic() {
-  if (!process.env.DATABASE_URL || !jobPath) return { available: false };
-  const jobId = jobPath.split("/").filter(Boolean).at(-1);
+  if (!process.env.DATABASE_URL || (!jobPath && !uploadedFixture)) return { available: false };
+  const jobId = jobPath?.split("/").filter(Boolean).at(-1);
   try {
     const [{ PrismaPg }, clientModule] = await Promise.all([import("@prisma/adapter-pg"), import("@prisma/client")]);
     const PrismaClient = clientModule.PrismaClient ?? clientModule.default?.PrismaClient;
     if (!PrismaClient) return { available: false, reason: "PrismaClient unavailable" };
     const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
     try {
-      const job = await db.importJob.findUnique({
+      const job = jobId ? await db.importJob.findUnique({
         where: { id: jobId },
         select: {
-          status: true, errorMessage: true, totalRecords: true, reviewRequiredRecords: true,
-          publishableRecords: true, interpretationProvider: true, externalProcessing: true,
-          sourceDocument: { select: { storageProvider: true, storageBucket: true, storageObjectKey: true } },
+          id: true, status: true, errorMessage: true, totalRecords: true, reviewRequiredRecords: true,
+          publishableRecords: true, interpretationProvider: true, externalProcessing: true, completedAt: true,
+          sourceDocument: { select: { status: true, storageProvider: true, storageBucket: true, storageObjectKey: true, fileSize: true, checksum: true } },
           _count: { select: { records: true } },
+          procurementAICalls: { select: { operation: true, resultState: true, errorCode: true, latencyMs: true }, orderBy: { createdAt: "asc" } },
+        },
+      }) : await db.importJob.findFirst({
+        where: {
+          createdAt: { gte: certificationStartedAt },
+          sourceDocument: { originalFilename: uploadedFixture.name, checksum: uploadedFixture.checksum },
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true, status: true, errorMessage: true, totalRecords: true, reviewRequiredRecords: true,
+          publishableRecords: true, interpretationProvider: true, externalProcessing: true, completedAt: true,
+          sourceDocument: { select: { status: true, storageProvider: true, storageBucket: true, storageObjectKey: true, fileSize: true, checksum: true } },
+          _count: { select: { records: true } },
+          procurementAICalls: { select: { operation: true, resultState: true, errorCode: true, latencyMs: true }, orderBy: { createdAt: "asc" } },
         },
       });
       if (!job) return { available: true, jobFound: false };
-      const groups = await db.importedRecord.groupBy({ by: ["status"], where: { importJobId: jobId }, _count: { _all: true } });
+      const groups = await db.importedRecord.groupBy({ by: ["status"], where: { importJobId: job.id }, _count: { _all: true } });
       return {
-        available: true, jobFound: true, status: job.status,
+        available: true, jobFound: true, jobIdPresent: Boolean(job.id), status: job.status,
         error: job.errorMessage?.slice(0, 300) ?? null,
         totalRecords: job.totalRecords, reviewRequiredRecords: job.reviewRequiredRecords,
         publishableRecords: job.publishableRecords, persistedRecords: job._count.records,
         interpretationProvider: job.interpretationProvider, externalProcessing: job.externalProcessing,
+        completed: Boolean(job.completedAt),
+        aiCalls: job.procurementAICalls,
         storage: {
+          sourceStatus: job.sourceDocument.status,
           provider: job.sourceDocument.storageProvider,
           bucketPresent: Boolean(job.sourceDocument.storageBucket),
           objectKeyPresent: Boolean(job.sourceDocument.storageObjectKey),
+          byteLengthMatches: uploadedFixture ? job.sourceDocument.fileSize === uploadedFixture.byteLength : null,
+          checksumMatches: uploadedFixture ? job.sourceDocument.checksum === uploadedFixture.checksum : null,
         },
         groups: Object.fromEntries(groups.map((group) => [group.status, group._count._all])),
       };
@@ -116,6 +136,8 @@ function docxFixture() {
   return { name: "remote-certification.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: zip.toBuffer() };
 }
 let jobPath;
+let uploadedFixture;
+const certificationStartedAt = new Date();
 let checkpoint = "startup";
 try {
   checkpoint = "unauthorized-role";
@@ -125,7 +147,14 @@ try {
   await switchTo("Giulia Bianchi");
   checkpoint = "xlsx-upload";
   await open("/imports/new");
-  await page.getByTestId("import-file").setInputFiles("demo-imports/listino-alfa-medical-2028.xlsx");
+  const xlsxBuffer = await readFile("demo-imports/listino-alfa-medical-2028.xlsx");
+  const xlsxName = `remote-cert-${randomUUID()}.xlsx`;
+  uploadedFixture = { name: xlsxName, byteLength: xlsxBuffer.length, checksum: createHash("sha256").update(xlsxBuffer).digest("hex") };
+  await page.getByTestId("import-file").setInputFiles({
+    name: xlsxName,
+    mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: xlsxBuffer,
+  });
   await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: "Alfa Medical" });
   await page.getByRole("button", { name: "Carica e interpreta" }).click();
   await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 60_000 });
