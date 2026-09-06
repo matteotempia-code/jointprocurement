@@ -53,6 +53,20 @@ jobs:
             exit 1
           fi
 
+      - name: Prepare Supabase DEV migration connection
+        shell: bash
+        run: |
+          # Supabase transaction pooling uses :6543 and is appropriate for runtime
+          # traffic, but Prisma migrations need a session-capable connection.
+          # The Supabase session pooler uses the same host/credentials on :5432.
+          if [[ "$DATABASE_URL" == *":6543"* ]]; then
+            direct_url="${DATABASE_URL/:6543/:5432}"
+          else
+            direct_url="$DATABASE_URL"
+          fi
+          echo "::add-mask::$direct_url"
+          echo "DIRECT_URL=$direct_url" >> "$GITHUB_ENV"
+
       - name: Install dependencies
         run: npm ci
 
@@ -63,7 +77,7 @@ jobs:
         run: npx prisma generate
 
       - name: Apply pending Supabase DEV migrations
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.apply_dev_migrations }}
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.apply_dev_migrations) }}
         run: npx prisma migrate deploy
 
       - name: Verify Supabase DEV migration status
