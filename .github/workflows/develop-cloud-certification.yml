@@ -90,6 +90,7 @@ jobs:
     timeout-minutes: 25
     env:
       DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+      NODE_ENV: test
       DEMO_MODE: "true"
       VERCEL_TOKEN: ${{ secrets.DEV_VERCEL_TOKEN }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.DEV_VERCEL_AUTOMATION_BYPASS_SECRET }}
