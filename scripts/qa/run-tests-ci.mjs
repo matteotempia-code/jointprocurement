@@ -29,7 +29,10 @@ const exitCode = await new Promise((resolve) => child.on("close", (code) => reso
 if (exitCode !== 0 && process.env.GITHUB_ACTIONS === "true") {
   const failedNames = [...tap.matchAll(/^not ok \d+ - (.+)$/gm)]
     .map((match) => match[1].replace(/[^\p{L}\p{N} .,:()/_-]/gu, "").slice(0, 180));
-  const summary = failedNames.length ? failedNames.join(" | ") : "test process exited without a TAP failure name";
+  const safeErrors = [...tap.matchAll(/^\s*error: ['"](.+?)['"]\s*$/gm)]
+    .map((match) => match[1].replace(/[^\p{L}\p{N} .,:()/_-]/gu, "").slice(0, 180))
+    .slice(0, 3);
+  const summary = [...failedNames, ...safeErrors].join(" | ") || "test process exited without a TAP failure name";
   console.error(`::error title=Sanitized test failures::${summary}`);
 }
 
