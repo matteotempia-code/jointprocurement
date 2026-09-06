@@ -56,6 +56,15 @@ async function fixture(vatNumber) {
   return { name: "certificazione-procurement-ai.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(bytes) };
 }
 
+const jobProof = (id) => db.importJob.findUnique({
+  where: { id },
+  select: {
+    interpretationProvider: true, providerModel: true, externalProcessing: true, status: true, summary: true,
+    _count: { select: { records: true, procurementAICalls: true } },
+    procurementAICalls: { select: { resultState: true, provider: true, model: true, operation: true, errorCode: true }, orderBy: { createdAt: "asc" } },
+  },
+});
+
 let checkpoint = "startup";
 let createdJobId;
 try {
@@ -79,23 +88,24 @@ try {
   checkpoint = "new-import";
   await page.getByRole("button", { name: "Carica e interpreta" }).click();
   await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 90_000 });
-  const jobId = new URL(page.url()).pathname.split("/").filter(Boolean).at(-1);
+  let jobId = new URL(page.url()).pathname.split("/").filter(Boolean).at(-1);
   assert.ok(jobId, "new ImportJob URL");
   createdJobId = jobId;
 
   checkpoint = "database-proof";
-  const job = await db.importJob.findUnique({
-    where: { id: jobId },
-    select: {
-      interpretationProvider: true,
-      providerModel: true,
-      externalProcessing: true,
-      status: true,
-      summary: true,
-      _count: { select: { records: true, procurementAICalls: true } },
-      procurementAICalls: { select: { resultState: true, provider: true, model: true, operation: true }, orderBy: { createdAt: "asc" } },
-    },
-  });
+  let job = await jobProof(jobId);
+  const transientTimeout = job?.interpretationProvider !== "OPENAI" && job?.procurementAICalls.some((call) => call.errorCode === "PROVIDER_TIMEOUT");
+  if (transientTimeout) {
+    checkpoint = "bounded-timeout-retry";
+    await open("/imports/new");
+    await page.getByTestId("import-file").setInputFiles(await fixture(supplier.vatNumber));
+    await page.getByRole("button", { name: "Carica e interpreta" }).click();
+    await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 90_000 });
+    jobId = new URL(page.url()).pathname.split("/").filter(Boolean).at(-1);
+    assert.ok(jobId, "retry ImportJob URL");
+    createdJobId = jobId;
+    job = await jobProof(jobId);
+  }
   assert.ok(job, "new ImportJob persisted");
   assert.equal(job.interpretationProvider, "OPENAI");
   assert.equal(job.externalProcessing, true);
