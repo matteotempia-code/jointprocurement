@@ -105,7 +105,7 @@ export async function answerClarification(formData: FormData) {
  const subtotal = updates.reduce((sum, item) => sum + item.quantity * Number(item.line.unitPrice), 0); const taxTotal = updates.reduce((sum, item) => sum + item.quantity * Number(item.line.unitPrice) * Number(item.line.taxRate) / 100, 0); const total = subtotal + taxTotal;
  await prisma.$transaction(async (tx) => {
   for (const item of updates) await tx.purchaseRequisitionLine.update({ where: { id: item.line.id }, data: { quantity: item.quantity, lineTotal: item.quantity * Number(item.line.unitPrice) } });
-  await tx.purchaseRequisition.update({ where: { id: request.id }, data: { status: "PENDING_APPROVAL", subtotal, taxTotal, total, justification: justification || request.justification, submittedAt: new Date(), budgetAfter: Number(request.budgetBefore) - total } });
+  await tx.purchaseRequisition.update({ where: { id: request.id }, data: { status: "PENDING_APPROVAL", subtotal, taxTotal, total, justification: justification || request.justification, budgetAfter: Number(request.budgetBefore) - total } });
   const next = await tx.approvalRequest.create({ data: { requisitionId: request.id, approverUserId: previous.approverUserId, approverAssignmentId: previous.approverAssignmentId, delegationId: previous.delegationId, status: "PENDING", level: previous.level, reason: `Chiarimento risposto · ${previous.reason}` } });
   await tx.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "PURCHASE_REQUISITION", entityId: request.id, action: "CLARIFICATION_ANSWERED", metadata: { previousApprovalId: previous.id, approvalId: next.id, question: previous.decisionNote, answer, quantitiesUpdated: updates.some((item) => Number(item.line.quantity) !== item.quantity) } } });
  });
