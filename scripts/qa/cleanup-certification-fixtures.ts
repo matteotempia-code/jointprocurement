@@ -30,6 +30,14 @@ try {
     });
   }
   console.log(JSON.stringify({ marker: "CERTIFICATION_FIXTURE_CLEANUP_V1", requisitions: requisitionIds.length, purchaseOrders: purchaseOrderIds.length }));
+} catch (error) {
+  const safe = (error instanceof Error ? error.message : String(error))
+    .replace(/https?:\/\/\S+/g, "[url]")
+    .replace(/postgres(?:ql)?:\/\/\S+/gi, "[connection]")
+    .replace(/[^\p{L}\p{N} .,:()/_-]/gu, "")
+    .slice(0, 300);
+  if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Certification cleanup::${safe}`);
+  throw error;
 } finally {
   await prisma.$disconnect();
 }
