@@ -59,6 +59,11 @@ jobs:
       - name: Inspect Supabase DEV state
         run: npm run qa:dev:state
 
+      - name: Remove orphaned certification fixtures
+        env:
+          ALLOW_CERTIFICATION_CLEANUP: "true"
+        run: npm run qa:certification:cleanup
+
       - name: Run unit and Supabase DEV integration tests
         run: npm run qa:test:ci
 
