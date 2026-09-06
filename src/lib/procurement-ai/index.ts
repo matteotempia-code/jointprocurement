@@ -2,6 +2,7 @@ import { extractCommercialConditions } from "@/lib/imports/document-context";
 import { LocalHeuristicProvider } from "@/lib/imports/provider";
 import { resolveProcurementAIStatus } from "./config";
 import type { ProcurementAIProvider } from "./types";
+import { deterministicTechnicalInterpretation } from "@/lib/technical-intelligence/engine";
 import { OpenAIProcurementProvider } from "./openai";
 
 class LocalProcurementAIProvider implements ProcurementAIProvider {
@@ -9,6 +10,7 @@ class LocalProcurementAIProvider implements ProcurementAIProvider {
   async interpretDocumentContext(text: string) { const terms = extractCommercialConditions(text); return { supplierCandidate: empty(), supplierVatNumber: empty(), priceListTitle: empty(), currency: empty(), issueDate: empty(), validFrom: empty(), validUntil: empty(), commercialConditions: Object.entries(terms).map(([type,value]) => ({ type, value, confidence: .7, sourceEvidence: type, reasoningSummary: "Regola locale" })) }; }
   async interpretCommercialConditions(text: string) { return (await this.interpretDocumentContext(text)).commercialConditions; }
   async interpretProductRow() { return null; } async matchCanonicalProduct() { return null; } async evaluateProductEquivalence() { return null; } async explainMatch() { return null; } async judgeAmbiguousMatch() { return null; }
+  async interpretTechnicalDocument(filename: string, text: string) { return deterministicTechnicalInterpretation(filename, text); }
 }
 const empty = () => ({ value: null, confidence: 0, sourceEvidence: "", reasoningSummary: "Non rilevato" });
 

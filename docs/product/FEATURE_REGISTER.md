@@ -25,7 +25,7 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | M11.5 | Remote Procurement Lifecycle & Persona Certification | MIXED; demo readiness 86% |
 | M11.6 | External Demo Hardening & Certification | MIXED; demo readiness 92% |
 | M11.7 | External Demo Closure | implementato; certificazione remota vincolata alla pipeline sullo SHA di release |
-| M12 | Product Intelligence & Technical Evidence | approvata, da sviluppare |
+| M12 | Product Intelligence & Technical Evidence | implementazione e certificazione remota in corso |
 | M13 | Supplier Collaboration Portal | concept approvato, da progettare/sviluppare |
 | M14 | Sourcing & Reverse Auctions | concept approvato, da progettare/sviluppare |
 | M15 | Supplier Performance & Continuous Improvement | concept approvato, da progettare/sviluppare |
@@ -170,28 +170,28 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 
 | ID | Feature | Descrizione | Milestone | % | Perché non è al 100% |
 |---|---|---|---|---:|---|
-| TECH-01 | Upload tecnico massivo | Caricamento di centinaia/migliaia di schede/documenti in un batch. | M12 | 0% | Approvata, non iniziata. |
-| TECH-02 | ZIP ingestion | Caricamento ed elaborazione di archivi con molti documenti. | M12 | 0% | Non iniziata. |
-| TECH-03 | Classificazione AI documenti | Riconosce scheda tecnica, SDS, CE/DoC, certificazione, manuale, altro. | M12 | 0% | Non iniziata. |
-| TECH-04 | Associazione documento-prodotto | Associa automaticamente una scheda al prodotto corretto. | M12 | 0% | Non iniziata. |
-| TECH-05 | Relazione many-to-many | Una scheda può coprire più SKU e un prodotto può avere più documenti. | M12 | 0% | Modello dati da creare. |
-| TECH-06 | Confidence associazione | Punteggio di affidabilità dell'associazione AI. | M12 | 0% | Da implementare. |
-| TECH-07 | Review by exception | Porta all'utente solo associazioni dubbie. | M12 | 0% | Da implementare. |
-| TECH-08 | Unmatched documents queue | Coda documenti che la AI non sa associare con sufficiente evidenza. | M12 | 0% | Da implementare. |
-| TECH-09 | Profilo tecnico canonico | Specifiche strutturate del prodotto ricavate dalle evidenze. | M12 | 0% | Da implementare. |
-| TECH-10 | Provenance degli attributi | Ogni specifica indica il documento/evidenza da cui deriva. | M12 | 0% | Da implementare. |
-| TECH-11 | Completezza documentale | Stati complete/incomplete/missing/expired/pending review. | M12 | 0% | Da implementare. |
-| TECH-12 | Requisiti per categoria | Documentazione minima diversa per categoria. | M12 | 0% | Da implementare. |
-| TECH-13 | Procurement Approved gating | Un prodotto non diventa approvato senza evidenza minima richiesta. | M12 | 0% | Da implementare. |
-| TECH-14 | Versioning tecnico | Revisioni correnti/storiche, superseded e validità. | M12 | 0% | Da implementare. |
-| TECH-15 | Exact Product Matching | Determina se due offerte fanno riferimento allo stesso identico prodotto. | M12 | 10% | Esistono candidate/mapping, manca intelligence completa. |
-| TECH-16 | Functional Equivalence | Determina equivalenza funzionale tra prodotti diversi. | M12 | 0% | Da implementare. |
-| TECH-17 | Insufficient Evidence | Riconosce quando non esistono prove sufficienti per decidere. | M12 | 0% | Da implementare. |
-| TECH-18 | Missing Evidence Request | Indica precisamente cosa manca per poter decidere. | M12 | 0% | Da implementare. |
-| TECH-19 | Reassessment automatico | Nuova evidenza tecnica provoca rivalutazione di matching/equivalenza. | M12 | 0% | Da implementare. |
-| TECH-20 | Matrice confronto tecnico | Confronto side-by-side delle specifiche di prodotti/offerte. | M12 | 0% | Da implementare. |
-| TECH-21 | Technical Evidence in Product 360 | Tab dedicata alle evidenze tecniche del prodotto. | M12 | 0% | Da implementare. |
-| TECH-22 | Saving su equivalenti | Collega equivalenza tecnica a Price Intelligence e saving. | M12 | 0% | Dipende dall'Equivalence Engine. |
+| TECH-01 | Caricamento tecnico massivo | Acquisizione a chunk e analisi durevole di documenti in un lotto persistito. | M12 | 85% | Implementato; manca la prova remota del lotto da 100 documenti. |
+| TECH-02 | Ingestione ZIP | Estrazione controllata di documenti supportati da un archivio ZIP. | M12 | 80% | Implementata; carichi ZIP grandi da certificare su Vercel. |
+| TECH-03 | Classificazione AI documenti | Riconosce scheda tecnica, SDS, dichiarazioni, certificati e altri documenti. | M12 | 85% | Output strutturato e fallback presenti; prova OpenAI M12 remota pendente. |
+| TECH-04 | Associazione documento-prodotto | Associa automaticamente una scheda usando identificatori, memoria e candidati bounded. | M12 | 85% | Implementata; calibrazione e certificazione remota pendenti. |
+| TECH-05 | Relazione molti-a-molti | Una scheda può coprire più SKU e un prodotto più documenti. | M12 | 90% | Modello e UX presenti; prova remota pendente. |
+| TECH-06 | Confidenza associazione | Soglie centralizzate e spiegazione dell'evidenza usata. | M12 | 85% | Test locale presente; calibrazione fixture remota pendente. |
+| TECH-07 | Revisione per eccezione | Conferma, rifiuto e scelta alternativa con protezione da decisioni stale. | M12 | 85% | Flusso presente; negative matrix remota pendente. |
+| TECH-08 | Coda documenti non associati | Separa documenti da verificare, senza match, falliti e bisognosi di OCR. | M12 | 80% | Code presenti; distinzione unmatched da rifinire in UX. |
+| TECH-09 | Profilo tecnico canonico | Attributi estensibili derivati da evidenze approvate e correnti. | M12 | 90% | Implementato e integrato in Product 360; prova remota pendente. |
+| TECH-10 | Provenienza attributi | Ogni attributo mantiene documento, versione, fonte e confidenza. | M12 | 90% | Persistenza completa; apertura remota delle fonti da certificare. |
+| TECH-11 | Completezza documentale | Calcola completezza, lacune, scadenze, conflitti e revisioni pendenti. | M12 | 85% | Motore presente; fixture remote pendenti. |
+| TECH-12 | Requisiti per categoria | Regole organizzative data-driven per documenti e attributi critici. | M12 | 85% | Creazione e disattivazione presenti; aggiornamento avanzato escluso. |
+| TECH-13 | Gate Procurement Approved | Blocca nuovi acquisti quando esiste uno stato tecnico esplicitamente incompleto. | M12 | 85% | Compatibilità M11 preservata; boundary remoto da certificare. |
+| TECH-14 | Versionamento tecnico | Mantiene revisioni immutabili, corrente, superseded e validità. | M12 | 85% | Implementato; prova nuova revisione remota pendente. |
+| TECH-15 | Identità esatta prodotto | Usa GTIN, SKU produttore e mapping verificati prima della semantica. | M12 | 80% | Motore deterministico presente; fixture multi-fornitore remota pendente. |
+| TECH-16 | Equivalenza funzionale | Confronta attributi critici di categoria senza affidarsi alla sola similarità testuale. | M12 | 80% | Motore e governance umana presenti; certificazione remota pendente. |
+| TECH-17 | Evidenza insufficiente | Rifiuta l'equivalenza quando mancano dati tecnici critici. | M12 | 90% | Implementato e testato localmente; prova remota pendente. |
+| TECH-18 | Evidenza mancante | Registra campo/documento mancante, motivazione e fonte suggerita. | M12 | 85% | Persistenza e UX presenti; richiesta esterna al fornitore esclusa. |
+| TECH-19 | Rivalutazione automatica | Nuove evidenze aggiornano completezza, equivalenze e decisioni stale. | M12 | 85% | Fan-out implementato; prova durevole remota pendente. |
+| TECH-20 | Matrice confronto tecnico | Mostra attributi comuni, differenze, blocchi, lacune e decisione. | M12 | 85% | UX e persistenza presenti; browser remoto pendente. |
+| TECH-21 | Evidenze in Product 360 | Espone profilo, documenti, versioni, lacune ed equivalenze. | M12 | 85% | Implementato; verifica responsive remota pendente. |
+| TECH-22 | Saving su identici/equivalenti | Persiste opportunità solo con prezzo normalizzato ed evidenza sufficiente. | M12 | 80% | Dominio implementato; fixture economiche remote pendenti. |
 
 ### Regola di prodotto M12
 

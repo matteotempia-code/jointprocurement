@@ -1,0 +1,10 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { canonicalPair, classifyTechnicalDocument, compareTechnicalProfiles, deterministicTechnicalInterpretation, TECHNICAL_MATCH_THRESHOLDS } from "../src/lib/technical-intelligence/engine";
+
+test("classifica SDS e scheda tecnica senza inventare OCR",()=>{assert.equal(classifyTechnicalDocument("sicurezza.pdf","Scheda dati di sicurezza regolamento 1907/2006"),"SDS");assert.equal(classifyTechnicalDocument("prodotto.pdf","Scheda tecnica"),"TECHNICAL_SHEET");});
+test("estrae attributi tecnici con evidenza sorgente",()=>{const parsed=deterministicTechnicalInterpretation("guanto.pdf","Scheda tecnica\nProdotto: Guanto nitrile\nMateriale: nitrile\nAQL: 1,5\nStandard EN 374");assert.equal(parsed.technicalAttributes.find(item=>item.key==="aql")?.value,"1,5");assert.ok(parsed.standards.includes("EN 374"));assert.ok(parsed.technicalAttributes.every(item=>item.evidence.length>0));});
+test("equivalenza rifiuta conclusioni quando manca un attributo critico",()=>{const result=compareTechnicalProfiles({material:"nitrile"},{material:"nitrile"},["material","aql"]);assert.equal(result.result,"INSUFFICIENT_EVIDENCE");assert.deepEqual(result.missing,["aql"]);});
+test("differenza critica produce non equivalenza",()=>{const result=compareTechnicalProfiles({material:"nitrile",aql:"1.5"},{material:"lattice",aql:"1.5"},["material","aql"]);assert.equal(result.result,"NOT_EQUIVALENT");assert.deepEqual(result.blocking,["material"]);});
+test("profili completi compatibili producono equivalenza funzionale",()=>{const result=compareTechnicalProfiles({material:"nitrile",aql:"1.5"},{material:"nitrile",aql:"1.5"},["material","aql"]);assert.equal(result.result,"FUNCTIONALLY_EQUIVALENT");assert.ok(result.confidence<1);});
+test("soglie di associazione sono centralizzate e ordinate",()=>{assert.ok(TECHNICAL_MATCH_THRESHOLDS.deterministicAutoConfirm>TECHNICAL_MATCH_THRESHOLDS.reviewRequired);assert.ok(TECHNICAL_MATCH_THRESHOLDS.reviewRequired>0);assert.deepEqual(canonicalPair("z","a"),["a","z"]);});

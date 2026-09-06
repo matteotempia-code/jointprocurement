@@ -146,6 +146,11 @@ jobs:
           QA_BASE_URL: ${{ steps.deployment.outputs.url }}
         run: npm run qa:procurement-ai:remote
 
+      - name: Certify M12 Product Intelligence
+        env:
+          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
+        run: npm run qa:m12:remote
+
       - name: Run remote Smart Import certification
         env:
           QA_BASE_URL: ${{ steps.deployment.outputs.url }}

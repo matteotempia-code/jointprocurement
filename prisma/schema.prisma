@@ -159,21 +159,114 @@ enum MatchHumanDecision {
   NOT_COMPARABLE
 }
 
+enum TechnicalDocumentType {
+  TECHNICAL_SHEET
+  SDS
+  DECLARATION_OF_CONFORMITY
+  CE_DOCUMENT
+  CERTIFICATE
+  MANUAL
+  TEST_REPORT
+  REGULATORY_DOCUMENT
+  OTHER_TECHNICAL
+}
+
+enum TechnicalDocumentStatus {
+  UPLOADED
+  PROCESSING
+  READY
+  REVIEW_REQUIRED
+  NEEDS_OCR
+  FAILED
+  SUPERSEDED
+}
+
+enum TechnicalAssociationStatus {
+  AUTO_CONFIRMED
+  REVIEW_REQUIRED
+  UNMATCHED
+  REJECTED
+  MANUALLY_CONFIRMED
+}
+
+enum ProductTechnicalStatus {
+  COMPLETE
+  INCOMPLETE
+  MISSING_EVIDENCE
+  EXPIRED_EVIDENCE
+  CONFLICTED
+  PENDING_REVIEW
+}
+
+enum EquivalenceResult {
+  IDENTICAL
+  FUNCTIONALLY_EQUIVALENT
+  NOT_EQUIVALENT
+  INSUFFICIENT_EVIDENCE
+}
+
+enum TechnicalReviewState {
+  EXTRACTED
+  CONFIRMED
+  REJECTED
+  CONFLICTED
+}
+
+enum TechnicalBatchItemStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  REVIEW_REQUIRED
+  NEEDS_OCR
+  FAILED
+}
+
+enum EquivalenceReviewStatus {
+  AI_PROPOSED
+  REVIEW_REQUIRED
+  HUMAN_APPROVED
+  HUMAN_REJECTED
+  STALE
+}
+
+enum SavingOpportunityType {
+  EXACT_PRODUCT_SAVING
+  EQUIVALENT_PRODUCT_SAVING
+  PRICE_VARIANCE
+  INSUFFICIENT_TECHNICAL_EVIDENCE
+}
+
+enum SavingOpportunityStatus {
+  OPEN
+  REVIEW_REQUIRED
+  ACCEPTED
+  DISMISSED
+  STALE
+}
+
 model Organization {
-  id              String                @id @default(cuid())
-  name            String
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  legalEntities   LegalEntity[]
-  users           UserAssignment[]
-  budgets         Budget[]
-  requisitions    PurchaseRequisition[]
-  purchaseOrders  PurchaseOrder[]
-  sourceDocuments SourceDocument[]
-  operationalAttachments OperationalAttachment[]
-  procurementLimits ProcurementLimit[]
-  procurementMemories ProcurementMemory[]
-  procurementAICalls ProcurementAICall[]
+  id                            String                         @id @default(cuid())
+  name                          String
+  createdAt                     DateTime                       @default(now())
+  updatedAt                     DateTime                       @updatedAt
+  legalEntities                 LegalEntity[]
+  users                         UserAssignment[]
+  budgets                       Budget[]
+  requisitions                  PurchaseRequisition[]
+  purchaseOrders                PurchaseOrder[]
+  sourceDocuments               SourceDocument[]
+  operationalAttachments        OperationalAttachment[]
+  procurementLimits             ProcurementLimit[]
+  procurementMemories           ProcurementMemory[]
+  procurementAICalls            ProcurementAICall[]
+  technicalDocumentBatches      TechnicalDocumentBatch[]
+  technicalDocuments            TechnicalDocument[]
+  technicalProductAttributes    TechnicalProductAttribute[]
+  technicalEvidenceRequirements TechnicalEvidenceRequirement[]
+  productTechnicalStates        ProductTechnicalState[]
+  productEquivalenceAssessments ProductEquivalenceAssessment[]
+  missingEvidenceItems          MissingEvidenceItem[]
+  savingOpportunities           TechnicalSavingOpportunity[]
 }
 
 model LegalEntity {
@@ -199,63 +292,68 @@ model Area {
 }
 
 model Facility {
-  id             String                @id @default(cuid())
-  name           String
-  address        String?
-  areaId         String
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  area           Area                  @relation(fields: [areaId], references: [id], onDelete: Cascade)
-  costCenters    CostCenter[]
-  budgets        Budget[]
-  carts          Cart[]
-  requisitions   PurchaseRequisition[]
-  purchaseOrders PurchaseOrder[]
-  receipts       Receipt[]
-  procurementLimits ProcurementLimit[]
+  id                     String                  @id @default(cuid())
+  name                   String
+  address                String?
+  areaId                 String
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  area                   Area                    @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  costCenters            CostCenter[]
+  budgets                Budget[]
+  carts                  Cart[]
+  requisitions           PurchaseRequisition[]
+  purchaseOrders         PurchaseOrder[]
+  receipts               Receipt[]
+  procurementLimits      ProcurementLimit[]
   operationalAttachments OperationalAttachment[]
 }
 
 model CostCenter {
-  id           String                @id @default(cuid())
-  code         String
-  name         String
-  facilityId   String
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
-  facility     Facility              @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  budgets      Budget[]
-  requisitions PurchaseRequisition[]
+  id                String                @id @default(cuid())
+  code              String
+  name              String
+  facilityId        String
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  facility          Facility              @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  budgets           Budget[]
+  requisitions      PurchaseRequisition[]
   procurementLimits ProcurementLimit[]
 
   @@unique([facilityId, code])
 }
 
 model User {
-  id                    String                  @id @default(cuid())
-  email                 String                  @unique
-  name                  String
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
-  assignments           UserAssignment[]
-  carts                 Cart[]
-  requisitions          PurchaseRequisition[]
-  approvals             ApprovalRequest[]
-  receipts              Receipt[]
-  auditEvents           AuditEvent[]
-  favorites             Favorite[]
-  shoppingLists         ShoppingList[]
-  outOfCatalogRequests  OutOfCatalogRequest[]
-  delegationsGiven      ApprovalDelegation[]    @relation("Delegator")
-  delegationsReceived   ApprovalDelegation[]    @relation("Delegate")
-  uploadedDocuments     SourceDocument[]        @relation("DocumentUploader")
-  importJobsCreated     ImportJob[]             @relation("ImportJobCreator")
-  importCorrections     ImportFieldCorrection[]
-  confirmedImportFields ImportedFieldValue[]    @relation("ImportFieldConfirmer")
-  publishedPriceLists   PriceList[]             @relation("PriceListPublisher")
-  operationalAttachments OperationalAttachment[] @relation("OperationalAttachmentUploader")
-  confirmedPriceListConditions PriceListCommercialCondition[] @relation("PriceListConditionConfirmer")
-  confirmedProcurementMemories ProcurementMemory[] @relation("ProcurementMemoryConfirmer")
+  id                             String                                @id @default(cuid())
+  email                          String                                @unique
+  name                           String
+  createdAt                      DateTime                              @default(now())
+  updatedAt                      DateTime                              @updatedAt
+  assignments                    UserAssignment[]
+  carts                          Cart[]
+  requisitions                   PurchaseRequisition[]
+  approvals                      ApprovalRequest[]
+  receipts                       Receipt[]
+  auditEvents                    AuditEvent[]
+  favorites                      Favorite[]
+  shoppingLists                  ShoppingList[]
+  outOfCatalogRequests           OutOfCatalogRequest[]
+  delegationsGiven               ApprovalDelegation[]                  @relation("Delegator")
+  delegationsReceived            ApprovalDelegation[]                  @relation("Delegate")
+  uploadedDocuments              SourceDocument[]                      @relation("DocumentUploader")
+  importJobsCreated              ImportJob[]                           @relation("ImportJobCreator")
+  importCorrections              ImportFieldCorrection[]
+  confirmedImportFields          ImportedFieldValue[]                  @relation("ImportFieldConfirmer")
+  publishedPriceLists            PriceList[]                           @relation("PriceListPublisher")
+  operationalAttachments         OperationalAttachment[]               @relation("OperationalAttachmentUploader")
+  confirmedPriceListConditions   PriceListCommercialCondition[]        @relation("PriceListConditionConfirmer")
+  confirmedProcurementMemories   ProcurementMemory[]                   @relation("ProcurementMemoryConfirmer")
+  technicalDocumentBatches       TechnicalDocumentBatch[]              @relation("TechnicalBatchCreator")
+  confirmedTechnicalAssociations TechnicalDocumentProductAssociation[] @relation("TechnicalAssociationConfirmer")
+  reviewedTechnicalAttributes    TechnicalProductAttribute[]           @relation("TechnicalAttributeReviewer")
+  reviewedEquivalenceAssessments ProductEquivalenceAssessment[]        @relation("EquivalenceReviewer")
+  reviewedTechnicalSavings       TechnicalSavingOpportunity[]          @relation("TechnicalSavingReviewer")
 }
 
 model Role {
@@ -289,111 +387,122 @@ model UserAssignment {
 }
 
 model Supplier {
-  id                     String           @id @default(cuid())
-  name                   String
-  vatNumber              String?          @unique
-  contactEmail           String?
-  contactPhone           String?
-  address                String?
-  paymentTerms           String?
-  deliveryTerms          String?
-  minimumOrderValue      Decimal?         @db.Decimal(14, 2)
-  freeShippingThreshold  Decimal?         @db.Decimal(14, 2)
-  shippingFeeBelowThreshold Decimal?      @db.Decimal(14, 2)
-  surchargeBelowMinimum Decimal?          @db.Decimal(14, 2)
-  currency               String           @default("EUR")
-  commercialContact      Json?
-  orderContact           Json?
-  qualityContact         Json?
-  certificationPath      String?
-  commercialDocumentPath String?
-  qualityDocumentPath    String?
-  active                 Boolean          @default(true)
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @updatedAt
-  priceLists             PriceList[]
-  offers                 SupplierOffer[]
-  purchaseOrders         PurchaseOrder[]
-  sourceDocuments        SourceDocument[]
-  procurementMemories    ProcurementMemory[]
+  id                        String              @id @default(cuid())
+  name                      String
+  vatNumber                 String?             @unique
+  contactEmail              String?
+  contactPhone              String?
+  address                   String?
+  paymentTerms              String?
+  deliveryTerms             String?
+  minimumOrderValue         Decimal?            @db.Decimal(14, 2)
+  freeShippingThreshold     Decimal?            @db.Decimal(14, 2)
+  shippingFeeBelowThreshold Decimal?            @db.Decimal(14, 2)
+  surchargeBelowMinimum     Decimal?            @db.Decimal(14, 2)
+  currency                  String              @default("EUR")
+  commercialContact         Json?
+  orderContact              Json?
+  qualityContact            Json?
+  certificationPath         String?
+  commercialDocumentPath    String?
+  qualityDocumentPath       String?
+  active                    Boolean             @default(true)
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  priceLists                PriceList[]
+  offers                    SupplierOffer[]
+  purchaseOrders            PurchaseOrder[]
+  sourceDocuments           SourceDocument[]
+  procurementMemories       ProcurementMemory[]
+  technicalDocuments        TechnicalDocument[]
 }
 
 model Category {
-  id        String             @id @default(cuid())
-  name      String
-  code      String             @unique
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  products  CanonicalProduct[]
-  budgets   Budget[]
-  procurementLimits ProcurementLimit[]
+  id                            String                         @id @default(cuid())
+  name                          String
+  code                          String                         @unique
+  createdAt                     DateTime                       @default(now())
+  updatedAt                     DateTime                       @updatedAt
+  products                      CanonicalProduct[]
+  budgets                       Budget[]
+  procurementLimits             ProcurementLimit[]
+  technicalEvidenceRequirements TechnicalEvidenceRequirement[]
 }
 
 model CanonicalProduct {
-  id                    String                    @id @default(cuid())
-  name                  String
-  description           String?
-  shortDescription      String?
-  longDescription       String?
-  brand                 String?
-  manufacturer          String?
-  manufacturerSku       String?
-  ean                   String?
-  uom                   String
-  purchaseUom           String                    @default("PACK")
-  unitsPerPackage       Decimal?                  @db.Decimal(14, 4)
-  consumptionUom        String?
-  consumptionUomLabel   String?
-  categoryId            String
-  subcategory           String?
-  packageDescription    String?
-  technicalAttributes   Json?
-  imagePath             String?
-  datasheetPath         String?
-  safetySheetPath       String?
-  certificationPath     String?
-  declarationPath       String?
-  active                Boolean                   @default(true)
-  createdAt             DateTime                  @default(now())
-  updatedAt             DateTime                  @updatedAt
-  category              Category                  @relation(fields: [categoryId], references: [id])
-  offers                SupplierOffer[]
-  cartLines             CartLine[]
-  requisitionLines      PurchaseRequisitionLine[]
-  orderLines            PurchaseOrderLine[]
-  favorites             Favorite[]
-  shoppingListItems     ShoppingListItem[]
-  importMatchCandidates ProductMatchCandidate[]
-  importedRecords       ImportedRecord[]
-  procurementLimits     ProcurementLimit[]
+  id                            String                                @id @default(cuid())
+  name                          String
+  description                   String?
+  shortDescription              String?
+  longDescription               String?
+  brand                         String?
+  manufacturer                  String?
+  manufacturerSku               String?
+  ean                           String?
+  uom                           String
+  purchaseUom                   String                                @default("PACK")
+  unitsPerPackage               Decimal?                              @db.Decimal(14, 4)
+  consumptionUom                String?
+  consumptionUomLabel           String?
+  categoryId                    String
+  subcategory                   String?
+  packageDescription            String?
+  technicalAttributes           Json?
+  imagePath                     String?
+  datasheetPath                 String?
+  safetySheetPath               String?
+  certificationPath             String?
+  declarationPath               String?
+  active                        Boolean                               @default(true)
+  createdAt                     DateTime                              @default(now())
+  updatedAt                     DateTime                              @updatedAt
+  category                      Category                              @relation(fields: [categoryId], references: [id])
+  offers                        SupplierOffer[]
+  cartLines                     CartLine[]
+  requisitionLines              PurchaseRequisitionLine[]
+  orderLines                    PurchaseOrderLine[]
+  favorites                     Favorite[]
+  shoppingListItems             ShoppingListItem[]
+  importMatchCandidates         ProductMatchCandidate[]
+  importedRecords               ImportedRecord[]
+  procurementLimits             ProcurementLimit[]
+  technicalDocumentAssociations TechnicalDocumentProductAssociation[]
+  technicalAttributesNormalized TechnicalProductAttribute[]
+  technicalStates               ProductTechnicalState[]
+  equivalenceAssessmentsA       ProductEquivalenceAssessment[]        @relation("EquivalenceProductA")
+  equivalenceAssessmentsB       ProductEquivalenceAssessment[]        @relation("EquivalenceProductB")
+  missingEvidenceItems          MissingEvidenceItem[]                 @relation("MissingEvidenceProduct")
+  comparedMissingEvidenceItems  MissingEvidenceItem[]                 @relation("MissingEvidenceComparedProduct")
+  savingOpportunitiesCurrent    TechnicalSavingOpportunity[]          @relation("TechnicalSavingCurrentProduct")
+  savingOpportunitiesCandidate  TechnicalSavingOpportunity[]          @relation("TechnicalSavingCandidateProduct")
 
   @@index([ean])
   @@index([categoryId, subcategory])
 }
 
 model PriceList {
-  id                String          @id @default(cuid())
-  name              String
-  supplierId        String
-  validFrom         DateTime?
-  validUntil        DateTime?
-  active            Boolean         @default(false)
-  sourceFile        String?
-  version           Int             @default(1)
-  previousVersionId String?
-  sourceDocumentId  String?
-  importJobId       String?         @unique
-  publishedByUserId String?
-  publishedAt       DateTime?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  supplier          Supplier        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  offers            SupplierOffer[]
-  previousVersion   PriceList?      @relation("PriceListVersions", fields: [previousVersionId], references: [id])
-  nextVersions      PriceList[]     @relation("PriceListVersions")
-  sourceDocument    SourceDocument? @relation(fields: [sourceDocumentId], references: [id])
-  importJob         ImportJob?      @relation(fields: [importJobId], references: [id])
-  publishedBy       User?           @relation("PriceListPublisher", fields: [publishedByUserId], references: [id])
+  id                   String                         @id @default(cuid())
+  name                 String
+  supplierId           String
+  validFrom            DateTime?
+  validUntil           DateTime?
+  active               Boolean                        @default(false)
+  sourceFile           String?
+  version              Int                            @default(1)
+  previousVersionId    String?
+  sourceDocumentId     String?
+  importJobId          String?                        @unique
+  publishedByUserId    String?
+  publishedAt          DateTime?
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+  supplier             Supplier                       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  offers               SupplierOffer[]
+  previousVersion      PriceList?                     @relation("PriceListVersions", fields: [previousVersionId], references: [id])
+  nextVersions         PriceList[]                    @relation("PriceListVersions")
+  sourceDocument       SourceDocument?                @relation(fields: [sourceDocumentId], references: [id])
+  importJob            ImportJob?                     @relation(fields: [importJobId], references: [id])
+  publishedBy          User?                          @relation("PriceListPublisher", fields: [publishedByUserId], references: [id])
   commercialConditions PriceListCommercialCondition[]
 
   @@index([supplierId, version])
@@ -401,102 +510,104 @@ model PriceList {
 }
 
 model PriceListCommercialCondition {
-  id String @id @default(cuid())
-  priceListId String
-  conditionType String
-  numericValue Decimal? @db.Decimal(14, 4)
-  textValue String?
-  currency String?
-  sourceEvidence String
-  reasoningSummary String?
-  confidence Decimal @db.Decimal(5, 4)
+  id                     String    @id @default(cuid())
+  priceListId            String
+  conditionType          String
+  numericValue           Decimal?  @db.Decimal(14, 4)
+  textValue              String?
+  currency               String?
+  sourceEvidence         String
+  reasoningSummary       String?
+  confidence             Decimal   @db.Decimal(5, 4)
   interpretationProvider String
-  providerModel String?
-  humanConfirmationState String @default("PENDING")
-  confirmedByUserId String?
-  confirmedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  priceList PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
-  confirmedBy User? @relation("PriceListConditionConfirmer", fields: [confirmedByUserId], references: [id])
+  providerModel          String?
+  humanConfirmationState String    @default("PENDING")
+  confirmedByUserId      String?
+  confirmedAt            DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  priceList              PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  confirmedBy            User?     @relation("PriceListConditionConfirmer", fields: [confirmedByUserId], references: [id])
 
   @@unique([priceListId, conditionType, sourceEvidence])
   @@index([priceListId, humanConfirmationState])
 }
 
 model ProcurementMemory {
-  id String @id @default(cuid())
-  organizationId String
-  supplierId String?
-  memoryType String
-  lookupKey String
-  canonicalValue Json
-  sourceEntityId String?
+  id                String       @id @default(cuid())
+  organizationId    String
+  supplierId        String?
+  memoryType        String
+  lookupKey         String
+  canonicalValue    Json
+  sourceEntityId    String?
   confirmedByUserId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  confirmedBy User @relation("ProcurementMemoryConfirmer", fields: [confirmedByUserId], references: [id])
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier          Supplier?    @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  confirmedBy       User         @relation("ProcurementMemoryConfirmer", fields: [confirmedByUserId], references: [id])
 
   @@unique([organizationId, supplierId, memoryType, lookupKey])
   @@index([organizationId, memoryType])
 }
 
 model ProcurementAICall {
-  id String @id @default(cuid())
-  organizationId String
-  importJobId String?
-  provider String
-  model String
-  operation String
-  latencyMs Int
-  inputTokens Int?
-  outputTokens Int?
-  totalTokens Int?
-  estimatedCostUsd Decimal? @db.Decimal(12, 6)
-  resultState String
-  errorCode String?
-  createdAt DateTime @default(now())
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  importJob ImportJob? @relation(fields: [importJobId], references: [id], onDelete: SetNull)
+  id               String       @id @default(cuid())
+  organizationId   String
+  importJobId      String?
+  provider         String
+  model            String
+  operation        String
+  latencyMs        Int
+  inputTokens      Int?
+  outputTokens     Int?
+  totalTokens      Int?
+  estimatedCostUsd Decimal?     @db.Decimal(12, 6)
+  resultState      String
+  errorCode        String?
+  createdAt        DateTime     @default(now())
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  importJob        ImportJob?   @relation(fields: [importJobId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, createdAt])
   @@index([importJobId, operation])
 }
 
 model SupplierOffer {
-  id                  String                    @id @default(cuid())
+  id                  String                       @id @default(cuid())
   supplierId          String
   canonicalProductId  String
   priceListId         String
   supplierSku         String?
-  packageSize         Decimal?                  @db.Decimal(14, 4)
+  packageSize         Decimal?                     @db.Decimal(14, 4)
   packageUnit         String?
-  unitPrice           Decimal                   @db.Decimal(14, 4)
-  normalizedUnitPrice Decimal?                  @db.Decimal(14, 6)
-  currency            String                    @default("EUR")
-  moq                 Decimal                   @default(1) @db.Decimal(14, 4)
-  leadTimeDays        Int                       @default(3)
-  taxRate             Decimal                   @default(22) @db.Decimal(5, 2)
+  unitPrice           Decimal                      @db.Decimal(14, 4)
+  normalizedUnitPrice Decimal?                     @db.Decimal(14, 6)
+  currency            String                       @default("EUR")
+  moq                 Decimal                      @default(1) @db.Decimal(14, 4)
+  leadTimeDays        Int                          @default(3)
+  taxRate             Decimal                      @default(22) @db.Decimal(5, 2)
   validFrom           DateTime?
   validUntil          DateTime?
-  preferred           Boolean                   @default(false)
-  active              Boolean                   @default(true)
-  availabilityStatus  AvailabilityStatus        @default(IN_STOCK)
+  preferred           Boolean                      @default(false)
+  active              Boolean                      @default(true)
+  availabilityStatus  AvailabilityStatus           @default(IN_STOCK)
   contractReference   String?
   sourceDocumentId    String?
-  importedRecordId    String?                   @unique
-  createdAt           DateTime                  @default(now())
-  updatedAt           DateTime                  @updatedAt
-  supplier            Supplier                  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  canonicalProduct    CanonicalProduct          @relation(fields: [canonicalProductId], references: [id], onDelete: Cascade)
-  priceList           PriceList                 @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  importedRecordId    String?                      @unique
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  supplier            Supplier                     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  canonicalProduct    CanonicalProduct             @relation(fields: [canonicalProductId], references: [id], onDelete: Cascade)
+  priceList           PriceList                    @relation(fields: [priceListId], references: [id], onDelete: Cascade)
   cartLines           CartLine[]
   requisitionLines    PurchaseRequisitionLine[]
   priceHistory        OfferPriceHistory[]
-  sourceDocument      SourceDocument?           @relation(fields: [sourceDocumentId], references: [id])
-  importedRecord      ImportedRecord?           @relation(fields: [importedRecordId], references: [id])
+  sourceDocument      SourceDocument?              @relation(fields: [sourceDocumentId], references: [id])
+  importedRecord      ImportedRecord?              @relation(fields: [importedRecordId], references: [id])
+  savingBaselines     TechnicalSavingOpportunity[] @relation("TechnicalSavingCurrentOffer")
+  savingCandidates    TechnicalSavingOpportunity[] @relation("TechnicalSavingCandidateOffer")
 
   @@index([canonicalProductId])
   @@index([supplierId])
@@ -559,9 +670,9 @@ model ProcurementLimit {
   updatedAt          DateTime             @updatedAt
   organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   facility           Facility             @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  canonicalProduct   CanonicalProduct?     @relation(fields: [canonicalProductId], references: [id], onDelete: Restrict)
-  category           Category?             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  costCenter         CostCenter?           @relation(fields: [costCenterId], references: [id])
+  canonicalProduct   CanonicalProduct?    @relation(fields: [canonicalProductId], references: [id], onDelete: Restrict)
+  category           Category?            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  costCenter         CostCenter?          @relation(fields: [costCenterId], references: [id])
 
   @@index([facilityId, periodStart, periodEnd])
   @@index([canonicalProductId, active])
@@ -671,31 +782,31 @@ model ApprovalRequest {
 }
 
 model PurchaseOrder {
-  id                     String              @id @default(cuid())
-  poNumber               String              @unique
-  requisitionId          String
-  supplierId             String
-  organizationId         String
-  facilityId             String
-  deliveryLocation       String
-  status                 PurchaseOrderStatus @default(ISSUED)
-  subtotal               Decimal             @db.Decimal(14, 2)
-  taxTotal               Decimal             @db.Decimal(14, 2)
-  total                  Decimal             @db.Decimal(14, 2)
-  shippingFee            Decimal             @default(0) @db.Decimal(14, 2)
-  commercialPolicy       Json?
+  id                       String              @id @default(cuid())
+  poNumber                 String              @unique
+  requisitionId            String
+  supplierId               String
+  organizationId           String
+  facilityId               String
+  deliveryLocation         String
+  status                   PurchaseOrderStatus @default(ISSUED)
+  subtotal                 Decimal             @db.Decimal(14, 2)
+  taxTotal                 Decimal             @db.Decimal(14, 2)
+  total                    Decimal             @db.Decimal(14, 2)
+  shippingFee              Decimal             @default(0) @db.Decimal(14, 2)
+  commercialPolicy         Json?
   commercialOverrideReason String?
-  issuedAt               DateTime
-  expectedDeliveryDate   DateTime
-  supplierAcknowledgedAt DateTime?
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
-  requisition            PurchaseRequisition @relation(fields: [requisitionId], references: [id])
-  supplier               Supplier            @relation(fields: [supplierId], references: [id])
-  organization           Organization        @relation(fields: [organizationId], references: [id])
-  facility               Facility            @relation(fields: [facilityId], references: [id])
-  lines                  PurchaseOrderLine[]
-  receipts               Receipt[]
+  issuedAt                 DateTime
+  expectedDeliveryDate     DateTime
+  supplierAcknowledgedAt   DateTime?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+  requisition              PurchaseRequisition @relation(fields: [requisitionId], references: [id])
+  supplier                 Supplier            @relation(fields: [supplierId], references: [id])
+  organization             Organization        @relation(fields: [organizationId], references: [id])
+  facility                 Facility            @relation(fields: [facilityId], references: [id])
+  lines                    PurchaseOrderLine[]
+  receipts                 Receipt[]
 
   @@index([facilityId, status])
   @@index([supplierId, issuedAt])
@@ -718,17 +829,17 @@ model PurchaseOrderLine {
 }
 
 model Receipt {
-  id              String        @id @default(cuid())
-  receiptNumber   String        @unique
+  id              String                  @id @default(cuid())
+  receiptNumber   String                  @unique
   purchaseOrderId String
   facilityId      String
   receivedById    String
-  receivedAt      DateTime      @default(now())
+  receivedAt      DateTime                @default(now())
   status          ReceiptStatus
   notes           String?
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  facility        Facility      @relation(fields: [facilityId], references: [id])
-  receivedBy      User          @relation(fields: [receivedById], references: [id])
+  purchaseOrder   PurchaseOrder           @relation(fields: [purchaseOrderId], references: [id])
+  facility        Facility                @relation(fields: [facilityId], references: [id])
+  receivedBy      User                    @relation(fields: [receivedById], references: [id])
   lines           ReceiptLine[]
   attachments     OperationalAttachment[]
 }
@@ -747,21 +858,21 @@ model ReceiptLine {
 }
 
 model QualityIssue {
-  id                  String            @id @default(cuid())
+  id                  String                  @id @default(cuid())
   receiptLineId       String?
   purchaseOrderLineId String
   issueType           IssueType
-  severity            IssueSeverity     @default(MEDIUM)
-  affectedQuantity    Decimal           @db.Decimal(14, 4)
+  severity            IssueSeverity           @default(MEDIUM)
+  affectedQuantity    Decimal                 @db.Decimal(14, 4)
   description         String
   attachmentPath      String?
-  status              IssueStatus       @default(OPEN)
-  openedAt            DateTime          @default(now())
+  status              IssueStatus             @default(OPEN)
+  openedAt            DateTime                @default(now())
   resolvedAt          DateTime?
   resolutionType      String?
   resolutionNote      String?
-  receiptLine         ReceiptLine?      @relation(fields: [receiptLineId], references: [id])
-  purchaseOrderLine   PurchaseOrderLine @relation(fields: [purchaseOrderLineId], references: [id])
+  receiptLine         ReceiptLine?            @relation(fields: [receiptLineId], references: [id])
+  purchaseOrderLine   PurchaseOrderLine       @relation(fields: [purchaseOrderLineId], references: [id])
   attachments         OperationalAttachment[]
 
   @@index([status, openedAt])
@@ -827,22 +938,22 @@ model ApprovalDelegation {
 }
 
 model OutOfCatalogRequest {
-  id                String             @id @default(cuid())
-  requestNumber     String             @unique
+  id                String                  @id @default(cuid())
+  requestNumber     String                  @unique
   requesterId       String
   organizationId    String
   facilityId        String
   categoryId        String?
   needDescription   String
-  quantity          Decimal            @db.Decimal(14, 4)
-  estimatedAmount   Decimal?           @db.Decimal(14, 2)
+  quantity          Decimal                 @db.Decimal(14, 4)
+  estimatedAmount   Decimal?                @db.Decimal(14, 2)
   suggestedSupplier String?
   justification     String
   attachmentPath    String?
-  status            OutOfCatalogStatus @default(SUBMITTED)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  requester         User               @relation(fields: [requesterId], references: [id])
+  status            OutOfCatalogStatus      @default(SUBMITTED)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  requester         User                    @relation(fields: [requesterId], references: [id])
   attachments       OperationalAttachment[]
 
   @@index([organizationId, status])
@@ -881,67 +992,359 @@ model OperationalAttachment {
 }
 
 model SourceDocument {
-  id               String               @id @default(cuid())
-  organizationId   String
-  supplierId       String?
-  uploadedByUserId String
-  originalFilename String
-  mimeType         String
-  fileSize         Int
-  checksum         String
-  sourceType       String
-  documentKind     ImportDocumentKind
-  storagePath      String
-  storageProvider  String               @default("local")
-  storageBucket    String?
-  storageObjectKey String?
-  visibility       String               @default("ORGANIZATION_PRIVATE")
-  status           SourceDocumentStatus @default(UPLOADED)
-  metadata         Json?
-  version          Int                  @default(1)
-  uploadedAt       DateTime             @default(now())
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  organization     Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  supplier         Supplier?            @relation(fields: [supplierId], references: [id])
-  uploadedBy       User                 @relation("DocumentUploader", fields: [uploadedByUserId], references: [id])
-  importJobs       ImportJob[]
-  priceLists       PriceList[]
-  offers           SupplierOffer[]
+  id                 String                      @id @default(cuid())
+  organizationId     String
+  supplierId         String?
+  uploadedByUserId   String
+  originalFilename   String
+  mimeType           String
+  fileSize           Int
+  checksum           String
+  sourceType         String
+  documentKind       ImportDocumentKind
+  storagePath        String
+  storageProvider    String                      @default("local")
+  storageBucket      String?
+  storageObjectKey   String?
+  visibility         String                      @default("ORGANIZATION_PRIVATE")
+  status             SourceDocumentStatus        @default(UPLOADED)
+  metadata           Json?
+  version            Int                         @default(1)
+  uploadedAt         DateTime                    @default(now())
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+  organization       Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier           Supplier?                   @relation(fields: [supplierId], references: [id])
+  uploadedBy         User                        @relation("DocumentUploader", fields: [uploadedByUserId], references: [id])
+  importJobs         ImportJob[]
+  priceLists         PriceList[]
+  offers             SupplierOffer[]
+  technicalVersion   TechnicalDocumentVersion?
+  technicalBatchItem TechnicalDocumentBatchItem?
 
   @@index([organizationId, uploadedAt])
   @@index([organizationId, storageProvider])
   @@index([checksum])
 }
 
+model TechnicalDocumentBatch {
+  id                  String                       @id @default(cuid())
+  organizationId      String
+  createdByUserId     String
+  status              String                       @default("UPLOADED")
+  totalFiles          Int                          @default(0)
+  completedFiles      Int                          @default(0)
+  failedFiles         Int                          @default(0)
+  reviewRequiredFiles Int                          @default(0)
+  aiEnabled           Boolean                      @default(true)
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  organization        Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy           User                         @relation("TechnicalBatchCreator", fields: [createdByUserId], references: [id])
+  documents           TechnicalDocument[]
+  items               TechnicalDocumentBatchItem[]
+
+  @@index([organizationId, createdAt])
+}
+
+model TechnicalDocumentBatchItem {
+  id                  String                   @id @default(cuid())
+  batchId             String
+  sourceDocumentId    String                   @unique
+  technicalDocumentId String?
+  status              TechnicalBatchItemStatus @default(QUEUED)
+  attempts            Int                      @default(0)
+  maxAttempts         Int                      @default(3)
+  leaseToken          String?
+  leaseExpiresAt      DateTime?
+  lastError           String?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  batch               TechnicalDocumentBatch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  sourceDocument      SourceDocument           @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  technicalDocument   TechnicalDocument?       @relation(fields: [technicalDocumentId], references: [id], onDelete: SetNull)
+
+  @@index([batchId, status, createdAt])
+  @@index([status, leaseExpiresAt])
+}
+
+model TechnicalDocument {
+  id                   String                                @id @default(cuid())
+  organizationId       String
+  batchId              String?
+  supplierId           String?
+  familyKey            String
+  documentType         TechnicalDocumentType
+  title                String
+  manufacturer         String?
+  brand                String?
+  language             String?
+  referenceIdentifiers Json?
+  status               TechnicalDocumentStatus               @default(UPLOADED)
+  currentVersionId     String?                               @unique
+  createdAt            DateTime                              @default(now())
+  updatedAt            DateTime                              @updatedAt
+  organization         Organization                          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  batch                TechnicalDocumentBatch?               @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  supplier             Supplier?                             @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  currentVersion       TechnicalDocumentVersion?             @relation("CurrentTechnicalVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  versions             TechnicalDocumentVersion[]            @relation("TechnicalVersions")
+  associations         TechnicalDocumentProductAssociation[]
+  batchItems           TechnicalDocumentBatchItem[]
+
+  @@unique([organizationId, familyKey])
+  @@index([organizationId, status, documentType])
+  @@index([batchId, status])
+}
+
+model TechnicalDocumentVersion {
+  id                     String                      @id @default(cuid())
+  technicalDocumentId    String
+  sourceDocumentId       String                      @unique
+  versionNumber          Int
+  revision               String?
+  revisionDate           DateTime?
+  validFrom              DateTime?
+  validUntil             DateTime?
+  checksum               String
+  extractedMetadata      Json?
+  extractedTextHash      String?
+  interpretationProvider String                      @default("LOCAL_HEURISTIC")
+  providerModel          String?
+  confidence             Decimal?                    @db.Decimal(5, 4)
+  status                 TechnicalDocumentStatus     @default(PROCESSING)
+  supersededAt           DateTime?
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
+  technicalDocument      TechnicalDocument           @relation("TechnicalVersions", fields: [technicalDocumentId], references: [id], onDelete: Cascade)
+  currentFor             TechnicalDocument?          @relation("CurrentTechnicalVersion")
+  sourceDocument         SourceDocument              @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  attributes             TechnicalProductAttribute[]
+
+  @@unique([technicalDocumentId, versionNumber])
+  @@unique([technicalDocumentId, checksum])
+  @@index([technicalDocumentId, createdAt])
+}
+
+model TechnicalDocumentProductAssociation {
+  id                  String                     @id @default(cuid())
+  technicalDocumentId String
+  canonicalProductId  String
+  associationType     String
+  confidence          Decimal                    @db.Decimal(5, 4)
+  status              TechnicalAssociationStatus
+  evidence            Json
+  explanation         String
+  decisionSource      String
+  confirmedByUserId   String?
+  confirmedAt         DateTime?
+  rejectedAt          DateTime?
+  version             Int                        @default(1)
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+  technicalDocument   TechnicalDocument          @relation(fields: [technicalDocumentId], references: [id], onDelete: Cascade)
+  canonicalProduct    CanonicalProduct           @relation(fields: [canonicalProductId], references: [id], onDelete: Restrict)
+  confirmedBy         User?                      @relation("TechnicalAssociationConfirmer", fields: [confirmedByUserId], references: [id])
+
+  @@unique([technicalDocumentId, canonicalProductId])
+  @@index([status, updatedAt])
+  @@index([canonicalProductId, status])
+}
+
+model TechnicalEvidenceRequirement {
+  id                  String                 @id @default(cuid())
+  organizationId      String
+  categoryId          String
+  requirementType     String
+  documentType        TechnicalDocumentType?
+  attributeKey        String?
+  label               String
+  required            Boolean                @default(true)
+  validityRequired    Boolean                @default(false)
+  maxAgeDays          Int?
+  equivalenceCritical Boolean                @default(false)
+  active              Boolean                @default(true)
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  organization        Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category            Category               @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  missingItems        MissingEvidenceItem[]
+
+  @@unique([organizationId, categoryId, requirementType, label])
+  @@index([organizationId, categoryId, active])
+}
+
+model TechnicalProductAttribute {
+  id                         String                   @id @default(cuid())
+  organizationId             String
+  canonicalProductId         String
+  technicalDocumentVersionId String
+  attributeKey               String
+  label                      String
+  valueText                  String
+  normalizedValue            Decimal?                 @db.Decimal(18, 6)
+  unit                       String?
+  confidence                 Decimal                  @db.Decimal(5, 4)
+  extractionSource           String
+  reviewState                TechnicalReviewState     @default(EXTRACTED)
+  reviewedByUserId           String?
+  reviewedAt                 DateTime?
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  organization               Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  canonicalProduct           CanonicalProduct         @relation(fields: [canonicalProductId], references: [id], onDelete: Cascade)
+  technicalDocumentVersion   TechnicalDocumentVersion @relation(fields: [technicalDocumentVersionId], references: [id], onDelete: Cascade)
+  reviewedBy                 User?                    @relation("TechnicalAttributeReviewer", fields: [reviewedByUserId], references: [id])
+
+  @@unique([canonicalProductId, technicalDocumentVersionId, attributeKey])
+  @@index([organizationId, canonicalProductId, attributeKey])
+  @@index([canonicalProductId, reviewState])
+}
+
+model ProductTechnicalState {
+  id                  String                 @id @default(cuid())
+  organizationId      String
+  canonicalProductId  String
+  status              ProductTechnicalStatus
+  completenessPercent Int
+  missingCount        Int                    @default(0)
+  conflictCount       Int                    @default(0)
+  expiredCount        Int                    @default(0)
+  evaluatedAt         DateTime               @default(now())
+  evidenceFingerprint String
+  organization        Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  canonicalProduct    CanonicalProduct       @relation(fields: [canonicalProductId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, canonicalProductId])
+  @@index([organizationId, status])
+}
+
+model ProductEquivalenceAssessment {
+  id                  String                       @id @default(cuid())
+  organizationId      String
+  productAId          String
+  productBId          String
+  result              EquivalenceResult
+  confidence          Decimal                      @db.Decimal(5, 4)
+  matchedCriteria     Json
+  differingCriteria   Json
+  blockingDifferences Json
+  evidenceSources     Json
+  explanation         String
+  decisionSource      String
+  evidenceFingerprint String
+  reviewStatus        EquivalenceReviewStatus      @default(AI_PROPOSED)
+  decisionReason      String?
+  decisionFingerprint String?
+  reviewedByUserId    String?
+  reviewedAt          DateTime?
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  organization        Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  productA            CanonicalProduct             @relation("EquivalenceProductA", fields: [productAId], references: [id], onDelete: Cascade)
+  productB            CanonicalProduct             @relation("EquivalenceProductB", fields: [productBId], references: [id], onDelete: Cascade)
+  reviewedBy          User?                        @relation("EquivalenceReviewer", fields: [reviewedByUserId], references: [id])
+  missingEvidence     MissingEvidenceItem[]
+  savingOpportunities TechnicalSavingOpportunity[]
+
+  @@unique([organizationId, productAId, productBId])
+  @@index([organizationId, result, reviewStatus])
+}
+
+model TechnicalSavingOpportunity {
+  id                    String                        @id @default(cuid())
+  organizationId        String
+  type                  SavingOpportunityType
+  currentProductId      String
+  candidateProductId    String?
+  currentOfferId        String?
+  candidateOfferId      String?
+  assessmentId          String?
+  baselinePrice         Decimal?                      @db.Decimal(18, 6)
+  candidatePrice        Decimal?                      @db.Decimal(18, 6)
+  savingAmount          Decimal?                      @db.Decimal(18, 6)
+  savingPercent         Decimal?                      @db.Decimal(9, 4)
+  annualVolume          Decimal?                      @db.Decimal(18, 4)
+  estimatedAnnualSaving Decimal?                      @db.Decimal(18, 2)
+  evidenceComplete      Boolean                       @default(false)
+  confidence            Decimal                       @db.Decimal(5, 4)
+  status                SavingOpportunityStatus       @default(OPEN)
+  reason                String
+  provenance            Json
+  fingerprint           String
+  reviewedByUserId      String?
+  reviewedAt            DateTime?
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+  organization          Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  currentProduct        CanonicalProduct              @relation("TechnicalSavingCurrentProduct", fields: [currentProductId], references: [id], onDelete: Cascade)
+  candidateProduct      CanonicalProduct?             @relation("TechnicalSavingCandidateProduct", fields: [candidateProductId], references: [id], onDelete: Cascade)
+  currentOffer          SupplierOffer?                @relation("TechnicalSavingCurrentOffer", fields: [currentOfferId], references: [id], onDelete: SetNull)
+  candidateOffer        SupplierOffer?                @relation("TechnicalSavingCandidateOffer", fields: [candidateOfferId], references: [id], onDelete: SetNull)
+  assessment            ProductEquivalenceAssessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  reviewedBy            User?                         @relation("TechnicalSavingReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, fingerprint])
+  @@index([organizationId, status, type])
+  @@index([assessmentId])
+}
+
+model MissingEvidenceItem {
+  id                   String                        @id @default(cuid())
+  organizationId       String
+  canonicalProductId   String
+  comparedProductId    String?
+  assessmentId         String?
+  requirementId        String?
+  requiredField        String?
+  requiredDocumentType TechnicalDocumentType?
+  reason               String
+  suggestedEvidence    String
+  status               String                        @default("OPEN")
+  resolvedAt           DateTime?
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
+  organization         Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product              CanonicalProduct              @relation("MissingEvidenceProduct", fields: [canonicalProductId], references: [id], onDelete: Cascade)
+  comparedProduct      CanonicalProduct?             @relation("MissingEvidenceComparedProduct", fields: [comparedProductId], references: [id], onDelete: Cascade)
+  assessment           ProductEquivalenceAssessment? @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  requirement          TechnicalEvidenceRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+
+  @@unique([canonicalProductId, comparedProductId, assessmentId, requirementId, requiredField, requiredDocumentType])
+  @@index([organizationId, status])
+  @@index([canonicalProductId, status])
+}
+
 model ImportJob {
-  id                     String           @id @default(cuid())
+  id                     String              @id @default(cuid())
   sourceDocumentId       String
-  status                 ImportJobStatus  @default(UPLOADED)
+  status                 ImportJobStatus     @default(UPLOADED)
   parserType             String?
-  interpretationProvider String           @default("LOCAL_HEURISTIC")
+  interpretationProvider String              @default("LOCAL_HEURISTIC")
   providerModel          String?
   providerCapabilities   Json?
-  interpretationSchema   String           @default("smart-import-v1")
-  externalProcessing     Boolean          @default(false)
+  interpretationSchema   String              @default("smart-import-v1")
+  externalProcessing     Boolean             @default(false)
   startedAt              DateTime?
   completedAt            DateTime?
   failedAt               DateTime?
   errorMessage           String?
-  totalRecords           Int              @default(0)
-  interpretedRecords     Int              @default(0)
-  reviewRequiredRecords  Int              @default(0)
-  publishableRecords     Int              @default(0)
-  publishedRecords       Int              @default(0)
+  totalRecords           Int                 @default(0)
+  interpretedRecords     Int                 @default(0)
+  reviewRequiredRecords  Int                 @default(0)
+  publishableRecords     Int                 @default(0)
+  publishedRecords       Int                 @default(0)
   columnMapping          Json?
   detectedSheets         Json?
   summary                Json?
   createdByUserId        String
-  version                Int              @default(1)
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @updatedAt
-  sourceDocument         SourceDocument   @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
-  createdBy              User             @relation("ImportJobCreator", fields: [createdByUserId], references: [id])
+  version                Int                 @default(1)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  sourceDocument         SourceDocument      @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+  createdBy              User                @relation("ImportJobCreator", fields: [createdByUserId], references: [id])
   records                ImportedRecord[]
   publishedPriceList     PriceList?
   procurementAICalls     ProcurementAICall[]

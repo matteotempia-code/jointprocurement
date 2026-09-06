@@ -22,6 +22,7 @@
     "qa:procurement-ai:remote": "node tests/procurement-ai-remote.mjs",
     "qa:demo:remote": "node tests/procurement-lifecycle-remote.mjs",
     "qa:demo:external": "node tests/external-demo-remote.mjs",
+    "qa:m12:remote": "node tests/m12-remote.mjs",
     "qa:dev:state": "tsx scripts/qa/dev-state.ts",
     "demo:video:prepare": "node scripts/video-demo/prepare.mjs",
     "demo:video:check": "node scripts/video-demo/check.mjs",
@@ -49,8 +50,8 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@supabase/supabase-js": "^2.112.4",
+    "adm-zip": "^0.6.0",
     "dotenv": "^17.4.2",
-    "exceljs": "^4.4.0",
     "mammoth": "^1.12.2",
     "next": "16.3.3",
     "pdf-parse": "^2.4.5",
@@ -59,15 +60,17 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "read-excel-file": "^9.3.10",
+    "workflow": "4.8.5",
     "zod": "^4.5.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/adm-zip": "^0.5.7",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "adm-zip": "^0.6.0",
+    "exceljs": "^4.4.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
     "ffmpeg-static": "^5.3.0",
@@ -76,5 +79,9 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.12",
     "typescript": "^5"
+  },
+  "overrides": {
+    "nanoid": "5.1.16",
+    "undici": "7.29.0"
   }
 }

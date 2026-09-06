@@ -31,6 +31,13 @@ export function buildOperationalAttachmentKey(input: { organizationId: string; o
   return `organizations/${organizationId}/procurement/${ownerType}/${ownerId}/${attachmentId}/${input.checksum}-${filename}`;
 }
 
+export function buildTechnicalDocumentKey(input: { organizationId: string; sourceDocumentId: string; checksum: string; filename: string }) {
+  const organizationId = safeSegment(input.organizationId, "Organizzazione");
+  const sourceDocumentId = safeSegment(input.sourceDocumentId, "Documento");
+  if (!/^[a-f0-9]{64}$/.test(input.checksum)) throw new Error("Checksum non valido per lo storage.");
+  return `organizations/${organizationId}/technical-documents/${sourceDocumentId}/${input.checksum}-${sanitizeDocumentFilename(input.filename)}`;
+}
+
 export function assertSafeObjectKey(objectKey: string) {
   if (objectKey.startsWith("/") || objectKey.includes("\\") || objectKey.split("/").some((part) => !part || part === "." || part === "..")) {
     throw new Error("Chiave oggetto non valida.");

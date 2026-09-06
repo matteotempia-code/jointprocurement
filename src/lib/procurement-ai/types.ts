@@ -1,4 +1,5 @@
 import type { InterpretedFields, MatchableProduct, NormalizedImport } from "@/lib/imports/types";
+import type { TechnicalInterpretation } from "@/lib/technical-intelligence/engine";
 
 export type EvidenceValue<T> = { value: T | null; confidence: number; sourceEvidence: string; reasoningSummary: string };
 export type DocumentIntelligence = {
@@ -21,4 +22,5 @@ export interface ProcurementAIProvider {
   evaluateProductEquivalence(record: NormalizedImport, candidate: MatchableProduct, context: AIContext): Promise<AIMatchJudgement | null>;
   explainMatch(record: NormalizedImport, candidate: MatchableProduct, context: AIContext): Promise<AIMatchJudgement | null>;
   judgeAmbiguousMatch(record: NormalizedImport, candidates: MatchableProduct[], context: AIContext): Promise<AIMatchJudgement | null>;
+  interpretTechnicalDocument(filename: string, text: string, context: AIContext): Promise<TechnicalInterpretation | null>;
 }
