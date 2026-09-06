@@ -8,7 +8,7 @@ import { resolveScope } from "@/lib/scope";
 
 const issueTypes = ["", "MISSING", "DAMAGED", "WRONG_ITEM", "QUALITY", "EXPIRY", "PACKAGING", "OTHER"] as const;
 
-export default async function ReceivePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ReceivePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const context = await requireRoles(["RSA_DIRECTOR"]);
   const scope = await resolveScope(context.assignment);
   const { id } = await params;
@@ -20,7 +20,10 @@ export default async function ReceivePage({ params }: { params: Promise<{ id: st
 
   const totalRemaining = order.lines.reduce((sum, line) => sum + Math.max(0, Number(line.quantity) - line.receiptLines.reduce((received, receipt) => received + Number(receipt.quantityReceived), 0)), 0);
   if (totalRemaining <= 0) notFound();
+  const error = (await searchParams).error;
   return <main className="phase2-page phase2-receiving">
+    {error === "invalid-attachment" && <div className="warning" role="alert">Allegato non valido. Usa PDF, PNG o JPEG entro 8 MB; nessun dato è stato registrato.</div>}
+    {error === "empty-receipt" && <div className="warning" role="alert">Indica almeno una quantità ricevuta.</div>}
     <PageHeader eyebrow="Ricezione merce" title="Registra consegna" description={`${order.poNumber} · ${order.supplier.name}`} />
     <section className="phase2-summary-strip"><div><span>Ordine</span><strong>{order.poNumber}</strong><small>{order.supplier.name}</small></div><div><span>Righe</span><strong>{order.lines.length}</strong><small>Da verificare</small></div><div><span>Quantità residua</span><strong>{totalRemaining}</strong><small>Prima della ricezione</small></div><div><span>Stato</span><StatusChip variant="warn">Da ricevere</StatusChip><small>Conferma o segnala differenze</small></div></section>
     <form action={receiveOrder} className="receive-form">

@@ -80,7 +80,8 @@ try {
   const beforeReceipts = await db.receipt.count({ where: { purchaseOrderId: poId } });
   await page.locator('input[name="receiptAttachments"]').setInputFiles({ name: "allegato-non-valido.exe", mimeType: "application/octet-stream", buffer: Buffer.from("not executable") });
   await page.getByRole("button", { name: "Conferma tutto come ordinato" }).click();
-  await page.waitForTimeout(1500);
+  await page.waitForURL(new RegExp(`/orders/${poId}/receive\\?error=invalid-attachment`), { timeout: 60_000 });
+  await page.getByRole("alert").getByText(/Allegato non valido/).waitFor();
   assert.equal(await db.receipt.count({ where: { purchaseOrderId: poId } }), beforeReceipts, "invalid upload creates no receipt");
   assert.equal(await db.operationalAttachment.count({ where: { receipt: { purchaseOrderId: poId } } }), 0, "invalid upload creates no attachment locator");
 

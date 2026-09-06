@@ -262,8 +262,10 @@ export async function receiveOrder(formData:FormData){
  const context=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(context.assignment),poId=String(formData.get("poId"));
  const po=await prisma.purchaseOrder.findFirstOrThrow({where:{id:poId,organizationId:context.organization.id,facilityId:scope.id,status:{in:["ISSUED","ACKNOWLEDGED","PARTIALLY_RECEIVED","ISSUE"]}},include:{lines:{include:{receiptLines:true}}}});
  const receivedNow=po.lines.map(line=>Number(formData.get(`received-${line.id}`)??0));
- if(!receivedNow.some(quantity=>Number.isFinite(quantity)&&quantity>0))throw new Error("Indica almeno una quantità ricevuta.");
- const receiptId=randomUUID(),receiptFiles=formData.getAll("receiptAttachments").filter((value):value is File=>value instanceof File&&value.size>0),receiptUploads=await uploadOperationalAttachments({files:receiptFiles,organizationId:context.organization.id,ownerType:"receipt",ownerId:receiptId});
+ if(!receivedNow.some(quantity=>Number.isFinite(quantity)&&quantity>0))redirect(`/orders/${poId}/receive?error=empty-receipt`);
+ const receiptId=randomUUID(),receiptFiles=formData.getAll("receiptAttachments").filter((value):value is File=>value instanceof File&&value.size>0);
+ let receiptUploads:Awaited<ReturnType<typeof uploadOperationalAttachments>>;
+ try{receiptUploads=await uploadOperationalAttachments({files:receiptFiles,organizationId:context.organization.id,ownerType:"receipt",ownerId:receiptId});}catch{redirect(`/orders/${poId}/receive?error=invalid-attachment`);}
  const issuePlans=po.lines.flatMap(line=>{const issueType=String(formData.get(`issue-${line.id}`)??"");return issueType?[{line,issueType,issueId:randomUUID(),files:formData.getAll(`issueAttachments-${line.id}`).filter((value):value is File=>value instanceof File&&value.size>0)}]:[];});
  const issueUploads=new Map<string,Awaited<ReturnType<typeof uploadOperationalAttachments>>>();
  try{
