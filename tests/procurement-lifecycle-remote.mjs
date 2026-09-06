@@ -194,8 +194,9 @@ try {
   const limits = await db.procurementLimit.findMany({ where: { facilityId, active: true }, select: { canonicalProductId: true, categoryId: true } });
   const excludedProducts = limits.flatMap((limit) => limit.canonicalProductId ? [limit.canonicalProductId] : []);
   const excludedCategories = limits.flatMap((limit) => limit.categoryId ? [limit.categoryId] : []);
+  const technicallyPurchasable = { none: { organizationId: lucia.assignments[0].organizationId, status: { not: "COMPLETE" } } };
   const product = await db.canonicalProduct.findFirstOrThrow({
-    where: { active: true, id: { notIn: excludedProducts }, categoryId: { notIn: excludedCategories }, offers: { some: { active: true, preferred: true } } },
+    where: { active: true, id: { notIn: excludedProducts }, categoryId: { notIn: excludedCategories }, technicalStates: technicallyPurchasable, offers: { some: { active: true, preferred: true } } },
     include: { offers: { where: { active: true, preferred: true }, orderBy: { unitPrice: "asc" }, take: 1 } },
     orderBy: { name: "asc" },
   });
@@ -207,6 +208,7 @@ try {
   const limited = await db.canonicalProduct.findFirstOrThrow({
     where: {
       active: true,
+      technicalStates: technicallyPurchasable,
       ...(activeLimit.canonicalProductId ? { id: activeLimit.canonicalProductId } : { categoryId: activeLimit.categoryId ?? undefined }),
       offers: { some: { active: true, preferred: true } },
     },
