@@ -19,7 +19,7 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
   const overdue = actionable.filter(({ requestedAt }) => approvalSla(requestedAt).state === "overdue");
   const oldest = actionable[0] ? approvalSla(actionable[0].requestedAt).ageDays : 0;
   return <main className="phase1-page phase1-approvals">
-    {filters.decision && <div className="success">Decisione registrata: {statusLabel(filters.decision)}.</div>}
+    {filters.decision && <div className={filters.decision === "already-decided" ? "admin-feedback is-error" : "success"}>{filters.decision === "already-decided" ? "La decisione era gia stata registrata. Nessuna operazione duplicata." : `Decisione registrata: ${statusLabel(filters.decision)}.`}</div>}
     <PageHeader eyebrow={context.roleCode === "AREA_MANAGER" ? "Governance di area" : "Eccezioni procurement"} title="Decisioni da prendere" description="Priorità ordinate per anzianità, SLA e materialità." />
     {overdue.length > 0 && <div className="phase1-sla-alert"><strong>{overdue.length} decisioni oltre SLA</strong><span>La più anziana attende da {oldest} giorni. Le richieste critiche sono mostrate per prime.</span><Link href="/approvals?age=overdue">Mostra solo overdue</Link></div>}
     <div className="phase1-summary-strip"><Link href="/approvals"><span>Da decidere</span><strong>{actionable.length}</strong></Link><Link href="/approvals?age=overdue"><span>Oltre SLA</span><strong>{overdue.length}</strong></Link><div><span>Importo in coda</span><strong>{formatMoney(actionable.reduce((sum, item) => sum + Number(item.requisition.total), 0))}</strong></div><div><span>Più anziana</span><strong>{oldest} gg</strong></div></div>

@@ -13,10 +13,13 @@ import { evaluateCommercialConditions } from "@/lib/procurement/commercial-condi
 import { evaluateFacilityProcurementLimits } from "@/lib/procurement/limits";
 import { receiptNumberFromId } from "@/lib/procurement/receipt-number";
 import { cleanupOperationalAttachments, uploadOperationalAttachments } from "@/lib/storage/operational-attachments";
+import { offerAvailability, validReceiptQuantity } from "@/lib/procurement/offer-eligibility";
 
 export async function addToCart(formData:FormData){
- const context=await requireRoles(["RSA_DIRECTOR"]); const scope=await resolveScope(context.assignment); const offerId=String(formData.get("offerId")); const quantity=Math.max(1,Number(formData.get("quantity")??1));
+ const context=await requireRoles(["RSA_DIRECTOR"]); const scope=await resolveScope(context.assignment); const offerId=String(formData.get("offerId")); const quantity=Number(formData.get("quantity")??1),now=new Date();
+ if(!Number.isFinite(quantity)||quantity<=0)redirect("/catalog?error=invalid-quantity");
  const offer=await prisma.supplierOffer.findFirst({where:{id:offerId,active:true},include:{canonicalProduct:true}}); if(!offer)throw new Error("L’offerta selezionata non è disponibile.");
+ const supplier=await prisma.supplier.findUnique({where:{id:offer.supplierId},select:{active:true}});if(!supplier||!offerAvailability({...offer,supplier},now).purchasable)redirect("/catalog?error=offer-unavailable");
  const cart=await prisma.cart.upsert({where:{userId_facilityId:{userId:context.user.id,facilityId:scope.id}},create:{userId:context.user.id,facilityId:scope.id},update:{}});
  await prisma.cartLine.upsert({where:{cartId_supplierOfferId:{cartId:cart.id,supplierOfferId:offer.id}},create:{cartId:cart.id,supplierOfferId:offer.id,canonicalProductId:offer.canonicalProductId,quantity},update:{quantity:{increment:quantity}}});
  revalidatePath("/catalog");revalidatePath("/cart");
@@ -70,6 +73,7 @@ export async function resolveQualityIssue(formData:FormData){
 
 export async function submitRequisition(formData:FormData){
  const context=await requireRoles(["RSA_DIRECTOR"]);const scope=await resolveScope(context.assignment);const cart=await prisma.cart.findUnique({where:{userId_facilityId:{userId:context.user.id,facilityId:scope.id}},include:{lines:{include:{canonicalProduct:true,supplierOffer:{include:{supplier:true}}}}}});if(!cart?.lines.length)throw new Error("Il carrello è vuoto.");
+ const now=new Date(),unavailable=cart.lines.some(({supplierOffer:offer})=>!offerAvailability(offer,now).purchasable);if(unavailable)redirect("/cart?error=offer-unavailable");
  const center=await prisma.costCenter.findFirstOrThrow({where:{facilityId:scope.id},orderBy:{code:"asc"}}),budget=await getFacilityBudget(scope.id);
  const subtotal=cart.lines.reduce((s,l)=>s+Number(l.quantity)*Number(l.supplierOffer.unitPrice),0),taxTotal=cart.lines.reduce((s,l)=>s+Number(l.quantity)*Number(l.supplierOffer.unitPrice)*Number(l.supplierOffer.taxRate)/100,0);
  const commercialCosts=Object.values(Object.groupBy(cart.lines,line=>line.supplierOffer.supplierId)).reduce((sum,lines)=>{if(!lines?.length)return sum;const groupSubtotal=lines.reduce((value,line)=>value+Number(line.quantity)*Number(line.supplierOffer.unitPrice),0),commercial=evaluateCommercialConditions(groupSubtotal,lines[0].supplierOffer.supplier);return sum+commercial.shippingFee+commercial.surcharge;},0),total=subtotal+taxTotal+commercialCosts;
@@ -85,10 +89,10 @@ export async function submitRequisition(formData:FormData){
 
 export async function decideApproval(formData:FormData){
  const context=await requireRoles(["AREA_MANAGER","PROCUREMENT_MANAGER"]);const approvalId=String(formData.get("approvalId")),decision=String(formData.get("decision")),note=String(formData.get("note")??"").trim();if(["REJECTED","CLARIFICATION_REQUESTED"].includes(decision)&&!note)throw new Error("La nota è obbligatoria per rifiutare o chiedere chiarimenti");
- const approval=await prisma.approvalRequest.findFirstOrThrow({where:{id:approvalId,approverUserId:context.user.id,status:"PENDING"}});
- await prisma.$transaction(async tx=>{await tx.approvalRequest.update({where:{id:approval.id},data:{status:decision as "APPROVED"|"REJECTED"|"CLARIFICATION_REQUESTED",decisionNote:note||null,decidedAt:new Date()}});
+ const approval=await prisma.approvalRequest.findFirst({where:{id:approvalId,approverUserId:context.user.id}});if(!approval||approval.status!=="PENDING")redirect("/approvals?decision=already-decided");
+ const applied=await prisma.$transaction(async tx=>{const claimed=await tx.approvalRequest.updateMany({where:{id:approval.id,status:"PENDING"},data:{status:decision as "APPROVED"|"REJECTED"|"CLARIFICATION_REQUESTED",decisionNote:note||null,decidedAt:new Date()}});if(!claimed.count)return false;
   if(decision==="APPROVED"){await tx.purchaseRequisition.update({where:{id:approval.requisitionId},data:{status:"APPROVED",approvedAt:new Date()}});await createPurchaseOrders(tx,approval.requisitionId,context.user.id);}else await tx.purchaseRequisition.update({where:{id:approval.requisitionId},data:{status:decision==="REJECTED"?"REJECTED":"CLARIFICATION_REQUESTED",rejectedAt:decision==="REJECTED"?new Date():null}});
-  await tx.auditEvent.create({data:{actorUserId:context.user.id,entityType:"PURCHASE_REQUISITION",entityId:approval.requisitionId,action:decision==="APPROVED"?"APPROVED":decision,metadata:{approvalId:approval.id,note}}});});
+  await tx.auditEvent.create({data:{actorUserId:context.user.id,entityType:"PURCHASE_REQUISITION",entityId:approval.requisitionId,action:decision==="APPROVED"?"APPROVED":decision,metadata:{approvalId:approval.id,note}}});return true;});if(!applied)redirect("/approvals?decision=already-decided");
  redirect("/approvals?decision="+decision.toLowerCase());
 }
 
@@ -262,6 +266,8 @@ export async function receiveOrder(formData:FormData){
  const context=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(context.assignment),poId=String(formData.get("poId"));
  const po=await prisma.purchaseOrder.findFirstOrThrow({where:{id:poId,organizationId:context.organization.id,facilityId:scope.id,status:{in:["ISSUED","ACKNOWLEDGED","PARTIALLY_RECEIVED","ISSUE"]}},include:{lines:{include:{receiptLines:true}}}});
  const receivedNow=po.lines.map(line=>Number(formData.get(`received-${line.id}`)??0));
+ const invalidQuantity=po.lines.some((line,index)=>{const already=line.receiptLines.reduce((sum,item)=>sum+Number(item.quantityReceived),0),remaining=Number(line.quantity)-already;return !validReceiptQuantity(receivedNow[index],remaining);});
+ if(invalidQuantity)redirect(`/orders/${poId}/receive?error=invalid-quantity`);
  if(!receivedNow.some(quantity=>Number.isFinite(quantity)&&quantity>0))redirect(`/orders/${poId}/receive?error=empty-receipt`);
  const receiptId=randomUUID(),receiptFiles=formData.getAll("receiptAttachments").filter((value):value is File=>value instanceof File&&value.size>0);
  let receiptUploads:Awaited<ReturnType<typeof uploadOperationalAttachments>>;

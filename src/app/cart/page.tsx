@@ -11,7 +11,8 @@ import { evaluateCommercialConditions } from "@/lib/procurement/commercial-condi
 import { evaluateFacilityProcurementLimits } from "@/lib/procurement/limits";
 import { resolveScope } from "@/lib/scope";
 
-export default async function CartPage() {
+export default async function CartPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const query = await searchParams;
   const context = await requireRoles(["RSA_DIRECTOR"]);
   const scope = await resolveScope(context.assignment);
   const [cart, budget, favorites, recurring] = await Promise.all([
@@ -32,6 +33,7 @@ export default async function CartPage() {
   const problematic = commercialGroups.filter(({ commercial }) => commercial.signals.some(({ severity }) => severity !== "info"));
   const autoApproved = total <= Number(context.assignment.approvalLimit) && total <= budget.available && !limits.some((limit) => limit.exceeded);
   return <main className="phase1-page phase1-cart">
+    {query.error === "offer-unavailable" && <p role="alert" className="admin-feedback is-error">Un&apos;offerta nel carrello e scaduta o il fornitore non e attivo. Rimuovila e scegli un&apos;offerta valida.</p>}
     <PageHeader eyebrow="Acquisto guidato" title="Carrello" description={`${cart.lines.length} articoli · ${commercialGroups.length} fornitori · ${scope.label}`} />
     {problematic.length > 0 && <div className="phase1-commercial-alert"><div><strong>{problematic.length} {problematic.length === 1 ? "fornitore richiede" : "fornitori richiedono"} attenzione</strong><span>Valuta consolidamento, soglie d’ordine e costi prima dell’invio.</span></div><StatusChip variant={problematic.some(({ commercial }) => commercial.signals.some(({ severity }) => severity === "blocking")) ? "danger" : "warn"}>{commercialCosts ? `Extra ${formatMoney(commercialCosts)}` : "Soglie non raggiunte"}</StatusChip></div>}
     <div className="phase1-cart-layout"><div className="phase1-supplier-list">{commercialGroups.map(({ supplierId, supplier, lines, commercial }, groupIndex) => {

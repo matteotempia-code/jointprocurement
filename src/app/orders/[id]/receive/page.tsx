@@ -22,6 +22,7 @@ export default async function ReceivePage({ params, searchParams }: { params: Pr
   if (totalRemaining <= 0) notFound();
   const error = (await searchParams).error;
   return <main className="phase2-page phase2-receiving">
+    {error === "invalid-quantity" && <div className="warning" role="alert">La quantita deve essere positiva e non puo superare il residuo. Nessun dato e stato registrato.</div>}
     {error === "invalid-attachment" && <div className="warning" role="alert">Allegato non valido. Usa PDF, PNG o JPEG entro 8 MB; nessun dato è stato registrato.</div>}
     {error === "empty-receipt" && <div className="warning" role="alert">Indica almeno una quantità ricevuta.</div>}
     <PageHeader eyebrow="Ricezione merce" title="Registra consegna" description={`${order.poNumber} · ${order.supplier.name}`} />

@@ -23,7 +23,8 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | M11.3 | Cloud / Smart Import recovery | sostanzialmente completata |
 | M11.4 | Cloud-first architecture | ~90–95% |
 | M11.5 | Remote Procurement Lifecycle & Persona Certification | MIXED; demo readiness 86% |
-| M11.6 | External Demo Hardening & Certification | in corso |
+| M11.6 | External Demo Hardening & Certification | MIXED; demo readiness 92% |
+| M11.7 | External Demo Closure | in corso; Admin CRUD ed edge matrix in certificazione |
 | M12 | Product Intelligence & Technical Evidence | approvata, da sviluppare |
 | M13 | Supplier Collaboration Portal | concept approvato, da progettare/sviluppare |
 | M14 | Sourcing & Reverse Auctions | concept approvato, da progettare/sviluppare |
@@ -399,3 +400,7 @@ Ogni milestone deve:
 3. aggiornare percentuale e motivazione quando `<100%`;
 4. non promuovere una feature al 100% senza prova di implementazione, persistenza, test e certificazione remota nel perimetro definito;
 5. includere l'aggiornamento del registro nello stesso commit/PR della milestone o in un commit immediatamente collegato.
+
+## Aggiornamento M11.7
+
+Le percentuali restano conservative fino alla certificazione remota 3/3. Sono entrati in certificazione: CRUD tenant-scoped per organizzazione ed entita legali, utenti applicativi, deleghe, fornitori, prodotti e categorie; approvazione idempotente; blocco di offerte scadute e fornitori inattivi; ricezioni negative o superiori al residuo. Allegati di ricevimento e NC e budget warning erano gia certificati remotamente in M11.6. Organization Builder, identity enterprise e provisioning tenant restano esclusi.
