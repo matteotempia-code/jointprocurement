@@ -13,7 +13,7 @@ async function main() {
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   try {
     const requisitions = await prisma.purchaseRequisition.findMany({
-      where: { requisitionNumber: { startsWith: "PR-EDGE-" } },
+      where: { OR: [{ requisitionNumber: { startsWith: "PR-EDGE-" } }, { requisitionNumber: { startsWith: "PR-TEST-SPLIT" } }] },
       select: { id: true, purchaseOrders: { select: { id: true } } },
     });
     const requisitionIds = requisitions.map((item) => item.id);
