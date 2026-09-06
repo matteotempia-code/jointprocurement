@@ -29,11 +29,15 @@ let favoriteBefore = null;
 let favoriteProductId = null;
 let checkpoint = "startup";
 let lastActionStatus = 0;
+let lastActionFailure = "none";
 
 page.on("console", (message) => { if (message.type() === "error" && !message.text().includes("tree hydrated")) browserErrors.push(message.text().slice(0, 300)); });
 page.on("pageerror", (error) => browserErrors.push(error.message.slice(0, 300)));
 page.on("response", (response) => {
   if (response.request().method() === "POST" && new URL(response.url()).origin === new URL(base).origin) lastActionStatus = response.status();
+});
+page.on("requestfailed", (request) => {
+  if (request.method() === "POST" && new URL(request.url()).origin === new URL(base).origin) lastActionFailure = request.failure()?.errorText?.replace(/[^A-Za-z0-9_. -]/g, "").slice(0, 80) || "unknown";
 });
 
 async function open(route, expectedStatus = 200) {
@@ -226,6 +230,8 @@ try {
   checkpoint = "favorites-toggle";
   favoriteBefore = await db.favorite.count({ where: { userId: lucia.id, facilityId, canonicalProductId: product.id } });
   favoriteProductId = product.id;
+  lastActionStatus = 0;
+  lastActionFailure = "none";
   await page.getByRole("button", { name: favoriteBefore ? "Salvato nei preferiti" : "Salva nei preferiti" }).click();
   await waitForDb(
     () => db.favorite.count({ where: { userId: lucia.id, facilityId, canonicalProductId: product.id } }),
@@ -339,7 +345,7 @@ try {
   const favoriteAfterFailure = favoriteBefore === null ? null : await db.favorite.count({ where: { userId: lucia.id, facilityId, canonicalProductId: favoriteProductId } }).catch(() => null);
   const mutationPersisted = favoriteBefore === null || favoriteAfterFailure === null ? "unknown" : favoriteAfterFailure !== favoriteBefore ? "persisted" : "not-persisted";
   const diagnostic = JSON.stringify({ path: new URL(page.url()).pathname, requestFound: Boolean(correlated), approvalCount: correlated?._count.approvals ?? 0, purchaseOrderCount: correlated?._count.purchaseOrders ?? 0, actionStatus: lastActionStatus, mutationPersisted });
-  if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Remote lifecycle ${checkpoint}-${lastActionStatus}-${mutationPersisted}::${safe} | ${diagnostic}`);
+  if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Remote lifecycle ${checkpoint}-${lastActionStatus}-${mutationPersisted}-${lastActionFailure}::${safe} | ${diagnostic}`);
   throw error;
 } finally {
   await cleanup().catch((error) => console.error("REMOTE_LIFECYCLE_CLEANUP_FAILED", error instanceof Error ? error.name : "unknown"));
