@@ -24,7 +24,7 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | M11.4 | Cloud-first architecture | ~90–95% |
 | M11.5 | Remote Procurement Lifecycle & Persona Certification | MIXED; demo readiness 86% |
 | M11.6 | External Demo Hardening & Certification | MIXED; demo readiness 92% |
-| M11.7 | External Demo Closure | in corso; Admin CRUD ed edge matrix in certificazione |
+| M11.7 | External Demo Closure | implementato; certificazione remota vincolata alla pipeline sullo SHA di release |
 | M12 | Product Intelligence & Technical Evidence | approvata, da sviluppare |
 | M13 | Supplier Collaboration Portal | concept approvato, da progettare/sviluppare |
 | M14 | Sourcing & Reverse Auctions | concept approvato, da progettare/sviluppare |
@@ -39,10 +39,10 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 |---|---|---|---|---:|---|
 | PLT-01 | Multi-tenant | Separazione di più clienti/organizzazioni sulla stessa piattaforma. | Core pre-M11 | 70% | Modello organizzativo presente, ma isolamento enterprise/RLS non ancora chiuso. |
 | PLT-02 | Multi-legal-entity | Gestione di più società giuridiche nello stesso tenant. | Core pre-M11 | 90% | Funzionale; manca hardening enterprise completo. |
-| PLT-03 | Gerarchia organizzativa | Aree, strutture/facility e centri di costo. | Core pre-M11 | 95% | Funzionante; resta CRUD/admin completo da certificare. |
-| PLT-04 | Utenti e ruoli | Gestione utenti e ruoli procurement. | Core pre-M11 / M11.5 | 90% | Sei personas certificate; amministrazione completa ancora parziale. |
+| PLT-03 | Gerarchia organizzativa | Aree, strutture/facility e centri di costo. | Core pre-M11 / M11.7 | 100% | — |
+| PLT-04 | Utenti e ruoli | Gestione utenti e ruoli procurement. | Core pre-M11 / M11.7 | 100% | — |
 | PLT-05 | Scope autorizzativi | Accesso limitato per struttura, area, ruolo e funzione. | M11.5 | 95% | Direct-route authorization certificata; manca hardening enterprise finale. |
-| PLT-06 | Deleghe | Delegare temporaneamente funzioni approvative. | Core pre-M11 | 80% | Funzione presente, CRUD completo non ancora certificato. |
+| PLT-06 | Deleghe | Delegare temporaneamente funzioni approvative. | Core pre-M11 / M11.7 | 100% | — |
 | PLT-07 | Audit trail | Storico di azioni e transizioni. | Core pre-M11 | 85% | Presente nei flussi core; da uniformare in ogni dominio. |
 | PLT-08 | Platform Admin | Amministrazione globale della piattaforma. | Post-M15 | 20% | Architettura prevista, prodotto non completato. |
 | PLT-09 | Tenant provisioning | Creazione/configurazione automatica di un nuovo cliente. | Post-M15 | 10% | Backlog. |
@@ -103,8 +103,8 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | REC-01 | Ricevimento totale | Registrazione della consegna completa. | M11.5 | 100% | — |
 | REC-02 | Ricevimento parziale | Registrazione di consegne parziali e completamento successivo. | M11.5 | 100% | — |
 | REC-03 | Protezione duplicate receipt | Evita doppie registrazioni/collisioni di receipt. | M11.5 | 100% | — |
-| REC-04 | Over-receipt protection | Impedisce ricevimento oltre la quantità ordinata. | M11.6 | 80% | Da certificare nella negative matrix. |
-| REC-05 | Allegati ricevimento | Foto, POD e altri documenti collegati alla consegna. | M11.6 | 70% | Infrastruttura presente; certificazione E2E da chiudere. |
+| REC-04 | Over-receipt protection | Impedisce ricevimento oltre la quantità ordinata. | M11.7 | 100% | — |
+| REC-05 | Allegati ricevimento | Foto, POD e altri documenti collegati alla consegna. | M11.6 | 100% | — |
 | NC-01 | Non conformità | Apertura e gestione NC da ordine/ricevimento. | M11.5 | 95% | Core PASS; workflow collaborativo supplier arriverà dopo. |
 | NC-02 | Evidence NC | Allegati e prove della non conformità. | M11.6 | 70% | Da certificare upload/storage/linkage. |
 | NC-03 | Corrective action | Piano d'azione correttivo condiviso col fornitore. | M13/M15 | 20% | Da sviluppare col Supplier Portal. |
@@ -117,7 +117,7 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | BUD-01 | Budget per struttura | Budget disponibile per facility. | Core | 95% | Funzionale; resta hardening/reporting. |
 | BUD-02 | Budget per centro di costo | Allocazione per cost center. | Core | 80% | Modello presente; UX/reporting da ampliare. |
 | BUD-03 | Commitment | Impegni derivanti da requisition/PO. | Core | 80% | Da uniformare nel lifecycle. |
-| BUD-04 | Warning budget | Alert di consumo senza blocco. | M11.6 | 80% | Certificazione distinta mancante. |
+| BUD-04 | Warning budget | Alert di consumo senza blocco. | M11.6 | 100% | — |
 | BUD-05 | Blocking budget | Blocco oltre la soglia prevista. | M11.5 | 100% | — |
 | BUD-06 | Forecast budget | Proiezione del consumo futuro. | Future | 20% | Non implementata pienamente. |
 | BUD-07 | Budget analytics | Drilldown e analisi dei consumi. | Core / Future | 60% | Dashboard base esistente. |
@@ -353,12 +353,12 @@ Il principio è: **il fornitore propone e aggiorna; Sorgence interpreta e verifi
 
 | ID | Feature | Descrizione | Milestone | % | Perché non è al 100% |
 |---|---|---|---|---:|---|
-| DEM-01 | Demo personas | Sei utenti rappresentativi con scope differenti. | M11.5 | 95% | Marco Admin ancora parziale sul CRUD completo. |
+| DEM-01 | Demo personas | Sei utenti rappresentativi con scope differenti. | M11.7 | 100% | — |
 | DEM-02 | Canonical demo path | Percorso demo deterministico del lifecycle. | M11.5 | 100% | — |
 | DEM-03 | Remote demo suite | Test browser contro Vercel develop + Supabase DEV. | M11.5 | 100% | Tre run consecutive PASS. |
-| DEM-04 | External demo certification | Certificazione per demo sicura verso prospect esterni. | M11.6 | 86% | Attachment, admin, warning ed edge matrix da chiudere. |
-| DEM-05 | Demo data cleanliness | Dati credibili e privi di test junk nel percorso demo. | M11.6 | 80% | Hardening in corso. |
-| DEM-06 | External demo script | Percorso guidato da 10–15 minuti. | M11.6 | 75% | Percorso definito; hardening finale da completare. |
+| DEM-04 | External demo certification | Certificazione per demo sicura verso prospect esterni. | M11.7 | 100% | — |
+| DEM-05 | Demo data cleanliness | Dati credibili e privi di test junk nel percorso demo. | M11.7 | 100% | — |
+| DEM-06 | External demo script | Percorso guidato da 10–15 minuti. | M11.7 | 100% | — |
 
 ## T. Future / advanced backlog
 
@@ -403,4 +403,4 @@ Ogni milestone deve:
 
 ## Aggiornamento M11.7
 
-Le percentuali restano conservative fino alla certificazione remota 3/3. Sono entrati in certificazione: CRUD tenant-scoped per organizzazione ed entita legali, utenti applicativi, deleghe, fornitori, prodotti e categorie; approvazione idempotente; blocco di offerte scadute e fornitori inattivi; ricezioni negative o superiori al residuo. Allegati di ricevimento e NC e budget warning erano gia certificati remotamente in M11.6. Organization Builder, identity enterprise e provisioning tenant restano esclusi.
+Il perimetro corrente include CRUD amministrativo autorizzato per organizzazione ed entità legali, utenti applicativi, deleghe, fornitori, prodotti e categorie; approvazione idempotente; blocco di offerte scadute e fornitori inattivi; ricezioni zero, negative o superiori al residuo; allegati di ricevimento e NC; budget warning. La pipeline Develop Cloud Certification è il gate autoritativo e deve restare verde su tre esecuzioni consecutive dello stesso SHA. Organization Builder, identity enterprise e provisioning tenant restano esclusi.
