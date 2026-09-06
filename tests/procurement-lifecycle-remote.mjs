@@ -28,9 +28,13 @@ let limitedProduct;
 let favoriteBefore = null;
 let favoriteProductId = null;
 let checkpoint = "startup";
+let lastActionStatus = 0;
 
 page.on("console", (message) => { if (message.type() === "error" && !message.text().includes("tree hydrated")) browserErrors.push(message.text().slice(0, 300)); });
 page.on("pageerror", (error) => browserErrors.push(error.message.slice(0, 300)));
+page.on("response", (response) => {
+  if (response.request().method() === "POST" && new URL(response.url()).origin === new URL(base).origin) lastActionStatus = response.status();
+});
 
 async function open(route, expectedStatus = 200) {
   const response = await page.goto(new URL(route, base).toString(), { waitUntil: "networkidle", timeout: 60_000 });
@@ -332,8 +336,10 @@ try {
   await page.screenshot({ path: path.join(directory, "procurement-lifecycle-failure.png"), fullPage: true }).catch(() => undefined);
   const safe = (error instanceof Error ? error.message : String(error)).replace(/https?:\/\/\S+/g, "[url]").replace(/\s+/g, " ").slice(0, 600);
   const correlated = await db.purchaseRequisition.findFirst({ where: { justification: { startsWith: marker } }, orderBy: { createdAt: "desc" }, select: { _count: { select: { approvals: true, purchaseOrders: true } } } }).catch(() => null);
-  const diagnostic = JSON.stringify({ path: new URL(page.url()).pathname, requestFound: Boolean(correlated), approvalCount: correlated?._count.approvals ?? 0, purchaseOrderCount: correlated?._count.purchaseOrders ?? 0 });
-  if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Remote lifecycle ${checkpoint}::${safe} | ${diagnostic}`);
+  const favoriteAfterFailure = favoriteBefore === null ? null : await db.favorite.count({ where: { userId: lucia.id, facilityId, canonicalProductId: favoriteProductId } }).catch(() => null);
+  const mutationPersisted = favoriteBefore === null || favoriteAfterFailure === null ? "unknown" : favoriteAfterFailure !== favoriteBefore ? "persisted" : "not-persisted";
+  const diagnostic = JSON.stringify({ path: new URL(page.url()).pathname, requestFound: Boolean(correlated), approvalCount: correlated?._count.approvals ?? 0, purchaseOrderCount: correlated?._count.purchaseOrders ?? 0, actionStatus: lastActionStatus, mutationPersisted });
+  if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Remote lifecycle ${checkpoint}-${lastActionStatus}-${mutationPersisted}::${safe} | ${diagnostic}`);
   throw error;
 } finally {
   await cleanup().catch((error) => console.error("REMOTE_LIFECYCLE_CLEANUP_FAILED", error instanceof Error ? error.name : "unknown"));
