@@ -344,8 +344,9 @@ try {
   const correlated = await db.purchaseRequisition.findFirst({ where: { justification: { startsWith: marker } }, orderBy: { createdAt: "desc" }, select: { _count: { select: { approvals: true, purchaseOrders: true } } } }).catch(() => null);
   const favoriteAfterFailure = favoriteBefore === null ? null : await db.favorite.count({ where: { userId: lucia.id, facilityId, canonicalProductId: favoriteProductId } }).catch(() => null);
   const mutationPersisted = favoriteBefore === null || favoriteAfterFailure === null ? "unknown" : favoriteAfterFailure !== favoriteBefore ? "persisted" : "not-persisted";
+  const browserFailure = browserErrors.at(-1)?.replace(/[^A-Za-z0-9_. -]/g, "").slice(0, 100) || "none";
   const diagnostic = JSON.stringify({ path: new URL(page.url()).pathname, requestFound: Boolean(correlated), approvalCount: correlated?._count.approvals ?? 0, purchaseOrderCount: correlated?._count.purchaseOrders ?? 0, actionStatus: lastActionStatus, mutationPersisted });
-  if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Remote lifecycle ${checkpoint}-${lastActionStatus}-${mutationPersisted}-${lastActionFailure}::${safe} | ${diagnostic}`);
+  if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Remote lifecycle ${checkpoint}-${lastActionStatus}-${mutationPersisted}-${lastActionFailure}-${browserFailure}::${safe} | ${diagnostic}`);
   throw error;
 } finally {
   await cleanup().catch((error) => console.error("REMOTE_LIFECYCLE_CLEANUP_FAILED", error instanceof Error ? error.name : "unknown"));
