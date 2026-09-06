@@ -2,16 +2,15 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-if (process.env.DEMO_MODE !== "true" || process.env.ALLOW_CERTIFICATION_CLEANUP !== "true") {
-  throw new Error("Certification cleanup requires DEMO_MODE=true and ALLOW_CERTIFICATION_CLEANUP=true.");
-}
-if (process.env.NODE_ENV === "production") throw new Error("Certification cleanup is forbidden with NODE_ENV=production.");
-
-const connectionString = process.env.DATABASE_URL?.trim();
-if (!connectionString) throw new Error("DATABASE_URL is required.");
-
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+let prisma: PrismaClient | undefined;
 try {
+  if (process.env.DEMO_MODE !== "true" || process.env.ALLOW_CERTIFICATION_CLEANUP !== "true") {
+    throw new Error("Certification cleanup requires DEMO_MODE=true and ALLOW_CERTIFICATION_CLEANUP=true.");
+  }
+  if (process.env.NODE_ENV === "production") throw new Error("Certification cleanup is forbidden with NODE_ENV=production.");
+  const connectionString = process.env.DATABASE_URL?.trim();
+  if (!connectionString) throw new Error("DATABASE_URL is required.");
+  prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   const requisitions = await prisma.purchaseRequisition.findMany({
     where: { requisitionNumber: { startsWith: "PR-EDGE-" } },
     select: { id: true, purchaseOrders: { select: { id: true } } },
@@ -39,5 +38,5 @@ try {
   if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Certification cleanup::${safe}`);
   throw error;
 } finally {
-  await prisma.$disconnect();
+  await prisma?.$disconnect();
 }
