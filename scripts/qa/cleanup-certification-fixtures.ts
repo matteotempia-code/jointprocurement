@@ -14,14 +14,19 @@ async function main() {
   try {
     const requisitions = await prisma.purchaseRequisition.findMany({
       where: { OR: [{ requisitionNumber: { startsWith: "PR-EDGE-" } }, { requisitionNumber: { startsWith: "PR-TEST-SPLIT" } }] },
-      select: { id: true, purchaseOrders: { select: { id: true } } },
+      select: { id: true, purchaseOrders: { select: { id: true, lines: { select: { id: true } }, receipts: { select: { id: true, lines: { select: { id: true } } } } } } },
     });
     const requisitionIds = requisitions.map((item) => item.id);
     const purchaseOrderIds = requisitions.flatMap((item) => item.purchaseOrders.map((order) => order.id));
+    const purchaseOrderLineIds = requisitions.flatMap((item) => item.purchaseOrders.flatMap((order) => order.lines.map((line) => line.id)));
+    const receiptIds = requisitions.flatMap((item) => item.purchaseOrders.flatMap((order) => order.receipts.map((receipt) => receipt.id)));
+    const receiptLineIds = requisitions.flatMap((item) => item.purchaseOrders.flatMap((order) => order.receipts.flatMap((receipt) => receipt.lines.map((line) => line.id))));
 
     if (requisitionIds.length) {
       await prisma.$transaction(async (tx) => {
-        await tx.auditEvent.deleteMany({ where: { entityId: { in: [...requisitionIds, ...purchaseOrderIds] } } });
+        await tx.auditEvent.deleteMany({ where: { entityId: { in: [...requisitionIds, ...purchaseOrderIds, ...purchaseOrderLineIds, ...receiptIds, ...receiptLineIds] } } });
+        await tx.qualityIssue.deleteMany({ where: { OR: [{ purchaseOrderLineId: { in: purchaseOrderLineIds } }, { receiptLineId: { in: receiptLineIds } }] } });
+        await tx.receipt.deleteMany({ where: { id: { in: receiptIds } } });
         await tx.purchaseOrderLine.deleteMany({ where: { purchaseOrderId: { in: purchaseOrderIds } } });
         await tx.purchaseOrder.deleteMany({ where: { id: { in: purchaseOrderIds } } });
         await tx.approvalRequest.deleteMany({ where: { requisitionId: { in: requisitionIds } } });

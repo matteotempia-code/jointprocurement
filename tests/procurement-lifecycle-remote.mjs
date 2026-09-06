@@ -153,7 +153,8 @@ async function receive(poId, mode) {
 
 async function cleanup() {
   if (!lucia || !facilityId) return;
-  const requests = await db.purchaseRequisition.findMany({ where: { id: { in: createdRequisitionIds } }, include: { purchaseOrders: { include: { lines: true, receipts: { include: { lines: true } } } } } });
+  const requests = await db.purchaseRequisition.findMany({ where: { OR: [{ id: { in: createdRequisitionIds } }, { justification: { startsWith: marker } }] }, include: { purchaseOrders: { include: { lines: true, receipts: { include: { lines: true } } } } } });
+  const requestIds = requests.map(({ id }) => id);
   const poIds = requests.flatMap((request) => request.purchaseOrders.map(({ id }) => id));
   const poLineIds = requests.flatMap((request) => request.purchaseOrders.flatMap((order) => order.lines.map(({ id }) => id)));
   const receiptIds = requests.flatMap((request) => request.purchaseOrders.flatMap((order) => order.receipts.map(({ id }) => id)));
@@ -162,9 +163,9 @@ async function cleanup() {
     if (poLineIds.length || receiptLineIds.length) await tx.qualityIssue.deleteMany({ where: { OR: [{ purchaseOrderLineId: { in: poLineIds } }, { receiptLineId: { in: receiptLineIds } }] } });
     if (receiptIds.length) await tx.receipt.deleteMany({ where: { id: { in: receiptIds } } });
     if (poIds.length) await tx.purchaseOrder.deleteMany({ where: { id: { in: poIds } } });
-    if (createdRequisitionIds.length) {
-      await tx.auditEvent.deleteMany({ where: { OR: [{ entityId: { in: createdRequisitionIds } }, { entityId: { in: poIds } }, { entityId: { in: poLineIds } }, { entityId: { in: receiptIds } }, { entityId: { in: receiptLineIds } }] } });
-      await tx.purchaseRequisition.deleteMany({ where: { id: { in: createdRequisitionIds } } });
+    if (requestIds.length) {
+      await tx.auditEvent.deleteMany({ where: { OR: [{ entityId: { in: requestIds } }, { entityId: { in: poIds } }, { entityId: { in: poLineIds } }, { entityId: { in: receiptIds } }, { entityId: { in: receiptLineIds } }] } });
+      await tx.purchaseRequisition.deleteMany({ where: { id: { in: requestIds } } });
     }
     if (favoriteBefore !== null) {
       await tx.favorite.deleteMany({ where: { userId: lucia.id, facilityId, canonicalProductId: favoriteProductId } });
