@@ -188,7 +188,7 @@ async function cleanup() {
 
 try {
   checkpoint = "fixture-selection";
-  lucia = await db.user.findFirstOrThrow({ where: { name: "Lucia Ferri" }, include: { assignments: { where: { active: true }, take: 1 } } });
+  lucia = await db.user.findFirstOrThrow({ where: { name: "Lucia Ferri" }, include: { assignments: { where: { active: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: 1 } } });
   facilityId = lucia.assignments[0].scopeId;
   assert.ok(facilityId && lucia.assignments[0].scopeType === "FACILITY");
   const limits = await db.procurementLimit.findMany({ where: { facilityId, active: true }, select: { canonicalProductId: true, categoryId: true } });
@@ -232,7 +232,9 @@ try {
   favoriteProductId = product.id;
   lastActionStatus = 0;
   lastActionFailure = "none";
-  await page.getByRole("button", { name: favoriteBefore ? "Salvato nei preferiti" : "Salva nei preferiti" }).click();
+  const favoriteForm = page.locator(`form:has(input[name="productId"][value="${product.id}"])`).filter({ has: page.getByRole("button", { name: /preferiti/i }) });
+  assert.equal(await favoriteForm.count(), 1, "Product 360 exposes one favorite action for the active scope");
+  await favoriteForm.getByRole("button", { name: /preferiti/i }).click();
   await waitForDb(
     () => db.favorite.count({ where: { userId: lucia.id, facilityId, canonicalProductId: product.id } }),
     (count) => count !== favoriteBefore,

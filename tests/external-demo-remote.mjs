@@ -45,7 +45,7 @@ async function waitForDb(read, predicate, label, timeoutMs = 20_000) {
 
 try {
   checkpoint = "fixtures";
-  const lucia = await db.user.findFirstOrThrow({ where: { name: "Lucia Ferri" }, include: { assignments: { where: { active: true }, take: 1 } } });
+  const lucia = await db.user.findFirstOrThrow({ where: { name: "Lucia Ferri" }, include: { assignments: { where: { active: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: 1 } } });
   const facilityId = lucia.assignments[0].scopeId;
   assert.ok(facilityId && lucia.assignments[0].scopeType === "FACILITY");
   const limits = await db.procurementLimit.findMany({ where: { facilityId, active: true }, select: { canonicalProductId: true, categoryId: true } });
