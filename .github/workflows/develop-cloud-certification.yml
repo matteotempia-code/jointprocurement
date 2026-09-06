@@ -60,7 +60,7 @@ jobs:
         run: npm run qa:dev:state
 
       - name: Run unit and Supabase DEV integration tests
-        run: npm test
+        run: npm run qa:test:ci
 
       - name: Lint
         run: npm run lint

@@ -14,6 +14,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts",
+    "qa:test:ci": "node scripts/qa/run-tests-ci.mjs",
     "qa:browser": "node tests/browser-qa.mjs",
     "qa:develop:remote": "node tests/develop-cloud-smoke.mjs",
     "qa:smart-import:remote": "node tests/smart-import-review-remote.mjs",
