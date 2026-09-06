@@ -227,6 +227,7 @@ try {
   await switchTo("Lucia Ferri");
   checkpoint = "favorites-product-open";
   await open(`/products/${product.id}`);
+  await page.getByRole("heading", { name: product.name, exact: true }).waitFor();
   checkpoint = "favorites-toggle";
   favoriteBefore = await db.favorite.count({ where: { userId: lucia.id, facilityId, canonicalProductId: product.id } });
   favoriteProductId = product.id;

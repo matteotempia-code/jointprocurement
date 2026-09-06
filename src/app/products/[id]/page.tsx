@@ -27,13 +27,14 @@ export default async function Product360({ params, searchParams }: { params: Pro
     context.roleCode === "RSA_DIRECTOR" ? prisma.favorite.findFirst({ where: { userId: context.user.id, facilityId: scope.id, canonicalProductId: product.id } }) : null,
     context.roleCode === "RSA_DIRECTOR" ? prisma.shoppingList.findMany({ where: { userId: context.user.id, facilityId: scope.id }, orderBy: { updatedAt: "desc" } }) : [],
   ]);
-  const [technicalState, technicalAssociations, technicalAttributes, missingEvidence, equivalence] = await Promise.all([
-    prisma.productTechnicalState.findUnique({ where: { organizationId_canonicalProductId: { organizationId: context.organization.id, canonicalProductId: product.id } } }),
-    prisma.technicalDocumentProductAssociation.findMany({ where: { canonicalProductId: product.id, status: { in: ["AUTO_CONFIRMED", "MANUALLY_CONFIRMED"] }, technicalDocument: { organizationId: context.organization.id } }, include: { technicalDocument: { include: { currentVersion: { include: { sourceDocument: true } }, versions: true } } }, orderBy: { updatedAt: "desc" } }),
-    prisma.technicalProductAttribute.findMany({ where: { organizationId: context.organization.id, canonicalProductId: product.id, reviewState: { in: ["EXTRACTED", "CONFIRMED", "CONFLICTED"] }, technicalDocumentVersion: { status: "READY" } }, include: { technicalDocumentVersion: { include: { technicalDocument: true } } }, orderBy: [{ attributeKey: "asc" }, { confidence: "desc" }] }),
-    prisma.missingEvidenceItem.findMany({ where: { organizationId: context.organization.id, canonicalProductId: product.id, status: "OPEN" }, orderBy: { createdAt: "asc" } }),
-    prisma.productEquivalenceAssessment.findMany({ where: { organizationId: context.organization.id, OR: [{ productAId: product.id }, { productBId: product.id }] }, include: { productA: true, productB: true, missingEvidence: true }, orderBy: { updatedAt: "desc" } }),
-  ]);
+  // Keep optional M12 enrichment bounded on serverless database pools. Legacy M11
+  // products are valid without technical records and should not fan out five
+  // simultaneous connections merely to render Product 360.
+  const technicalState = await prisma.productTechnicalState.findUnique({ where: { organizationId_canonicalProductId: { organizationId: context.organization.id, canonicalProductId: product.id } } });
+  const technicalAssociations = await prisma.technicalDocumentProductAssociation.findMany({ where: { canonicalProductId: product.id, status: { in: ["AUTO_CONFIRMED", "MANUALLY_CONFIRMED"] }, technicalDocument: { organizationId: context.organization.id } }, include: { technicalDocument: { include: { currentVersion: { include: { sourceDocument: true } }, versions: true } } }, orderBy: { updatedAt: "desc" } });
+  const technicalAttributes = await prisma.technicalProductAttribute.findMany({ where: { organizationId: context.organization.id, canonicalProductId: product.id, reviewState: { in: ["EXTRACTED", "CONFIRMED", "CONFLICTED"] }, technicalDocumentVersion: { status: "READY" } }, include: { technicalDocumentVersion: { include: { technicalDocument: true } } }, orderBy: [{ attributeKey: "asc" }, { confidence: "desc" }] });
+  const missingEvidence = await prisma.missingEvidenceItem.findMany({ where: { organizationId: context.organization.id, canonicalProductId: product.id, status: "OPEN" }, orderBy: { createdAt: "asc" } });
+  const equivalence = await prisma.productEquivalenceAssessment.findMany({ where: { organizationId: context.organization.id, OR: [{ productAId: product.id }, { productBId: product.id }] }, include: { productA: true, productB: true, missingEvidence: true }, orderBy: { updatedAt: "desc" } });
   const preferredPrice = selectedOffer ? normalizeOfferPrice(product, selectedOffer) : null;
   const bestPrice = comparison.lowest ? normalizeOfferPrice(product, comparison.lowest) : null;
   const attributes = presentTechnicalAttributes(product.category.code, product.technicalAttributes);
