@@ -5,6 +5,12 @@ on:
     branches:
       - develop
   workflow_dispatch:
+    inputs:
+      apply_dev_migrations:
+        description: Apply pending Prisma migrations to Supabase DEV before certification
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: develop-cloud-certification
@@ -55,6 +61,13 @@ jobs:
 
       - name: Generate Prisma client
         run: npx prisma generate
+
+      - name: Apply pending Supabase DEV migrations
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.apply_dev_migrations }}
+        run: npx prisma migrate deploy
+
+      - name: Verify Supabase DEV migration status
+        run: npx prisma migrate status
 
       - name: Inspect Supabase DEV state
         run: npm run qa:dev:state
