@@ -232,9 +232,9 @@ try {
   favoriteProductId = product.id;
   lastActionStatus = 0;
   lastActionFailure = "none";
-  const favoriteForm = page.locator(`form:has(input[name="productId"][value="${product.id}"])`).filter({ has: page.getByRole("button", { name: /preferiti/i }) });
-  assert.equal(await favoriteForm.count(), 1, "Product 360 exposes one favorite action for the active scope");
-  await favoriteForm.getByRole("button", { name: /preferiti/i }).click();
+  const favoriteAction = page.getByRole("button", { name: /preferiti/i });
+  assert.equal(await favoriteAction.count(), 1, "Product 360 exposes one favorite action for the active scope");
+  await favoriteAction.click();
   await waitForDb(
     () => db.favorite.count({ where: { userId: lucia.id, facilityId, canonicalProductId: product.id } }),
     (count) => count !== favoriteBefore,
