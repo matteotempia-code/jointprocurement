@@ -217,7 +217,9 @@ try {
 
   checkpoint = "favorites-and-lists";
   await switchTo("Lucia Ferri");
+  checkpoint = "favorites-product-open";
   await open(`/products/${product.id}`);
+  checkpoint = "favorites-toggle";
   favoriteBefore = await db.favorite.count({ where: { userId: lucia.id, facilityId, canonicalProductId: product.id } });
   favoriteProductId = product.id;
   await page.getByRole("button", { name: favoriteBefore ? "Salvato nei preferiti" : "Salva nei preferiti" }).click();
@@ -226,15 +228,21 @@ try {
     (count) => count !== favoriteBefore,
     "favorite toggle",
   );
+  checkpoint = "lists-index-open";
   await open("/liste");
+  checkpoint = "lists-create-open";
   await page.getByText("Nuova lista", { exact: true }).click();
   await page.locator('.phase2-create-popover input[name="name"]').fill(`${marker} riordino`);
+  checkpoint = "lists-create-submit";
   await page.locator(".phase2-create-popover form").getByRole("button", { name: "Crea lista" }).click();
   await page.waitForURL(/\/liste\/[^/?]+\?creata=1/, { timeout: 60_000 });
   const listId = new URL(page.url()).pathname.split("/").at(-1);
   assert.ok(await db.shoppingList.findUnique({ where: { id: listId } }));
+  checkpoint = "lists-product-reopen";
   await open(`/products/${product.id}`);
+  checkpoint = "lists-product-menu";
   await page.getByLabel(`Altre azioni per ${product.name}`, { exact: true }).click();
+  checkpoint = "lists-add-product";
   await page.getByRole("button", { name: `${marker} riordino`, exact: true }).click();
   await waitForDb(
     () => db.shoppingListItem.count({ where: { shoppingListId: listId, canonicalProductId: product.id } }),
