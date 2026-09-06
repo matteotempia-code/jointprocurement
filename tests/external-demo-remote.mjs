@@ -123,12 +123,14 @@ try {
   await switchTo("Lucia Ferri");
   await open("/cart");
   assert.equal(await page.getByRole("button", { name: "Invia richiesta" }).count(), 0, "empty cart cannot be submitted");
-  await open(`/orders/${poId}/receive`).then(() => assert.fail("completed/issue order must not expose receiving again")).catch((error) => { if (String(error).includes("must not expose")) throw error; });
+  await open(`/orders/${poId}/receive`);
+  await page.getByRole("heading", { name: "This view is outside your current role or scope." }).waitFor();
   const missing = await page.goto(new URL(`/orders/${randomUUID()}`, base).toString(), { waitUntil: "networkidle" });
   assert.ok([200, 404].includes(missing?.status() ?? 0));
   await page.getByRole("heading", { name: "This view is outside your current role or scope." }).waitFor();
   await switchTo("Davide Romano");
-  await open("/cart").then(() => assert.fail("unauthorized cart must not render")).catch((error) => { if (String(error).includes("must not render")) throw error; });
+  await open("/cart");
+  await page.getByRole("heading", { name: "This view is outside your current role or scope." }).waitFor();
 
   const criticalErrors = browserErrors.filter((message) => !/Unsupported file type|not valid|server components/i.test(message));
   assert.deepEqual(criticalErrors, [], criticalErrors.join(" | "));
