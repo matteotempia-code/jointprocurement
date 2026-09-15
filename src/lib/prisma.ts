@@ -9,7 +9,7 @@ function createPrismaClient() {
     const direct = new URL(process.env.DIRECT_URL);
     const match = /^db\.([a-z0-9]+)\.supabase\.co$/.exec(direct.hostname);
     if (match) {
-      direct.hostname = "aws-0-eu-west-1.pooler.supabase.com";
+      direct.hostname = "aws-1-eu-west-1.pooler.supabase.com";
       direct.port = "6543";
       direct.username = `postgres.${match[1]}`;
       direct.searchParams.set("pgbouncer", "true");
