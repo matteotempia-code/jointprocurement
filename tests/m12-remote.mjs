@@ -28,7 +28,10 @@ const text = (product, suffix, overrides = "") => Buffer.from(`Scheda tecnica\nT
 
 try {
   checkpoint = "fixture-selection";
-  const product = await db.canonicalProduct.findFirstOrThrow({ where: { active: true, manufacturerSku: { not: null }, offers: { some: { active: true, normalizedUnitPrice: { not: null }, supplier: { active: true } } } }, include: { category: true } });
+  const limits = await db.procurementLimit.findMany({ where: { active: true }, select: { canonicalProductId: true, categoryId: true } });
+  const excludedProducts = limits.flatMap((limit) => limit.canonicalProductId ? [limit.canonicalProductId] : []);
+  const excludedCategories = limits.flatMap((limit) => limit.categoryId ? [limit.categoryId] : []);
+  const product = await db.canonicalProduct.findFirstOrThrow({ where: { active: true, id: { notIn: excludedProducts }, categoryId: { notIn: excludedCategories }, manufacturerSku: { not: null }, offers: { some: { active: true, normalizedUnitPrice: { not: null }, supplier: { active: true } } } }, include: { category: true } });
   await switchTo("Giulia Bianchi");
 
   checkpoint = "large-batch";
