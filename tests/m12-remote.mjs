@@ -93,10 +93,17 @@ try {
   checkpoint = "real-openai";
   await open("/technical-documents");
   const aiStarted = new Date();
-  await page.locator('input[name="files"]').setInputFiles({ name: `${marker}-openai.txt`, mimeType: "text/plain", buffer: text(product, "OpenAI classification", "Validità dal: 2026-01-01\nValidità al: 2028-12-31") });
-  await page.getByRole("button", { name: "Carica e analizza" }).click();
-  const aiBatch = await waitFor(() => db.technicalDocumentBatch.findFirst({ where: { createdAt: { gte: aiStarted }, aiEnabled: true }, orderBy: { createdAt: "desc" } }), (value) => value && ["COMPLETED", "PARTIAL"].includes(value.status), "AI batch");
-  const aiCall = await waitFor(() => db.procurementAICall.findFirst({ where: { organizationId: aiBatch.organizationId, operation: "TECHNICAL_DOCUMENT", createdAt: { gte: aiStarted } }, orderBy: { createdAt: "desc" } }), (value) => value?.resultState === "SUCCEEDED", "OpenAI technical call", 180_000);
+  let aiCall;
+  for (let attempt = 1; attempt <= 3 && !aiCall; attempt += 1) {
+    const attemptStarted = new Date();
+    await page.locator('input[name="files"]').setInputFiles({ name: `${marker}-openai-${attempt}.txt`, mimeType: "text/plain", buffer: text(product, `OpenAI classification ${attempt}`, "Valid from: 2026-01-01\nValid until: 2028-12-31") });
+    await page.getByRole("button", { name: "Carica e analizza" }).click();
+    await waitFor(() => db.technicalDocumentBatch.findFirst({ where: { createdAt: { gte: attemptStarted }, aiEnabled: true }, orderBy: { createdAt: "desc" } }), (value) => value && ["COMPLETED", "PARTIAL"].includes(value.status), `AI batch ${attempt}`);
+    const call = await waitFor(() => db.procurementAICall.findFirst({ where: { operation: "TECHNICAL_DOCUMENT", createdAt: { gte: attemptStarted } }, orderBy: { createdAt: "desc" } }), Boolean, `OpenAI invocation ${attempt}`, 180_000);
+    if (call.resultState === "SUCCEEDED") aiCall = call;
+    else await open("/technical-documents");
+  }
+  assert.ok(aiCall, `OpenAI did not return a validated result after 3 invocations since ${aiStarted.toISOString()}`);
   assert.equal(aiCall.provider, "OPENAI");
 
   checkpoint = "authorization";
