@@ -8,7 +8,7 @@ L'AI interpreta; il codice deterministico calcola; l'operatore governa l'incerte
 
 `SourceDocument` resta il record immutabile del file e del locator Supabase Storage. Il dominio M12 separa lotto, famiglia documentale, versione, associazione prodotto, attributi normalizzati, requisiti per categoria, stato di completezza, valutazioni di equivalenza e lacune. Tutte le entità decisionali sono organization-scoped; prodotti e categorie continuano a usare il master condiviso M11.
 
-Il caricamento accetta PDF testuali, DOCX, TXT, immagini e ZIP. Immagini e PDF senza testo vengono conservati e classificati `NEEDS_OCR`; M12 non simula OCR. Il browser acquisisce i file in chunk da cinque e avvia un Vercel Workflow senza attendere l'analisi. Ogni file è una `TechnicalDocumentBatchItem` persistita con lease, tentativi, errore e stato terminale. Il workflow elabora passi retryable con concorrenza massima tre: refresh, chiusura del browser o nuovo deployment non cancellano il lotto.
+Il caricamento accetta PDF testuali, DOCX, TXT, immagini e ZIP, fino a 5.000 documenti per lotto. Immagini e PDF senza testo vengono conservati e classificati `NEEDS_OCR`; M12 non simula OCR. Il browser acquisisce i file in chunk da cinque e avvia un Vercel Workflow senza attendere l'analisi. Ogni file è una `TechnicalDocumentBatchItem` persistita con lease, tentativi, errore e stato terminale. Il workflow elabora passi retryable con concorrenza massima tre: refresh, chiusura del browser o nuovo deployment non cancellano il lotto. Dopo l'esaurimento dei tentativi automatici, il Bulk Center mostra l'errore e consente di riprendere i soli elementi falliti con un nuovo budget di tentativi.
 
 ## Classificazione e associazione
 

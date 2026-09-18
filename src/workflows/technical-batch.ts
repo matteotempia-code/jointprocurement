@@ -14,9 +14,9 @@ async function processChunk(batchId: string, organizationId: string) {
 
 export async function technicalBatchWorkflow(batchId: string, organizationId: string) {
   "use workflow";
-  for (let chunk = 0; chunk < 500; chunk += 1) {
+  for (let chunk = 0; chunk < 5000; chunk += 1) {
     const result = await processChunk(batchId, organizationId);
     if (result.pending === 0 && result.retryable === 0) return result;
   }
-  throw new Error("Il lotto non ha raggiunto uno stato terminale entro 500 chunk.");
+  throw new Error("Il lotto non ha raggiunto uno stato terminale entro 5.000 chunk.");
 }

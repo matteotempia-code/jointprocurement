@@ -52,6 +52,36 @@ try {
   assert.equal(new Set(batch.items.map((item) => item.sourceDocumentId)).size, 100, "each file has one source locator");
   assert.ok(batch.items.every((item) => item.attempts === 1), "no duplicate processing");
 
+  checkpoint = "negative-ingestion-matrix";
+  await open("/technical-documents");
+  const negativeStarted = new Date();
+  await page.locator('input[name="files"]').setInputFiles([
+    { name: `${marker}-image-only.png`, mimeType: "image/png", buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]) },
+    { name: `${marker}-malformed.pdf`, mimeType: "application/pdf", buffer: Buffer.from("this is not a PDF") },
+    { name: `${marker}-duplicate.txt`, mimeType: "text/plain", buffer: files[0].buffer },
+  ]);
+  await page.getByLabel(/Usa Procurement AI/).uncheck();
+  await page.getByRole("button", { name: "Carica e analizza" }).click();
+  const negativeBatch = await waitFor(
+    () => db.technicalDocumentBatch.findFirst({ where: { createdAt: { gte: negativeStarted } }, orderBy: { createdAt: "desc" }, include: { items: true } }),
+    (value) => value && ["PARTIAL", "FAILED"].includes(value.status) && value.items.every((item) => ["FAILED", "NEEDS_OCR", "COMPLETED", "REVIEW_REQUIRED"].includes(item.status)),
+    "partial failure batch",
+  );
+  assert.equal(negativeBatch.totalFiles, 3);
+  assert.equal(negativeBatch.items.length, 2, "checksum duplicate does not create another source");
+  assert.equal(negativeBatch.items.filter((item) => item.status === "NEEDS_OCR").length, 1, "image-only content requires OCR");
+  const failedItem = negativeBatch.items.find((item) => item.status === "FAILED");
+  assert.ok(failedItem);
+  assert.equal(failedItem.attempts, failedItem.maxAttempts, "transient retry budget is exhausted before surfacing failure");
+  await open("/technical-documents");
+  await page.getByRole("button", { name: "Riprova elementi falliti" }).first().click();
+  const retried = await waitFor(
+    () => db.technicalDocumentBatchItem.findUnique({ where: { id: failedItem.id } }),
+    (value) => value?.status === "FAILED" && value.attempts === value.maxAttempts,
+    "operator retry",
+  );
+  assert.match(retried.lastError ?? "", /pdf|format|document/i);
+
   checkpoint = "profile-and-many-to-one";
   const associations = await db.technicalDocumentProductAssociation.count({ where: { canonicalProductId: product.id, technicalDocument: { batchId: batch.id } } });
   assert.equal(associations, 100);
@@ -76,7 +106,7 @@ try {
   await switchTo("Giulia Bianchi");
   await open("/technical-documents");
   assert.equal(errors.filter((message) => !/server components/i.test(message)).length, 0, errors.join(" | "));
-  console.log(JSON.stringify({ status: "PASS", marker, batch: { total: batch.totalFiles, completed: batch.completedFiles, failed: batch.failedFiles }, associationCount: associations, productTechnicalStatus: state.status, openAI: { provider: aiCall.provider, model: aiCall.model, resultState: aiCall.resultState }, authorization: true }));
+  console.log(JSON.stringify({ status: "PASS", marker, batch: { total: batch.totalFiles, completed: batch.completedFiles, failed: batch.failedFiles }, negativeBatch: { partialFailure: true, needsOcr: true, duplicate: true, retry: true }, associationCount: associations, productTechnicalStatus: state.status, openAI: { provider: aiCall.provider, model: aiCall.model, resultState: aiCall.resultState }, authorization: true }));
 } catch (error) {
   const directory = path.join(process.cwd(), "artifacts", "remote-certification"); await mkdir(directory, { recursive: true });
   await page.screenshot({ path: path.join(directory, `m12-${checkpoint}.png`), fullPage: true }).catch(() => undefined);

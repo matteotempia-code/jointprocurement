@@ -3,6 +3,7 @@ import { TechnicalUploadForm } from "@/components/technical-upload-form";
 import { DataTable, EmptyRow, PageHeader, Pagination, StatusChip } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { retryTechnicalBatch } from "./actions";
 
 const PAGE = 20;
 const labels: Record<string, string> = {
@@ -31,7 +32,7 @@ export default async function TechnicalDocumentsPage({
     prisma.technicalDocument.findMany({ where, include: { currentVersion: { include: { sourceDocument: true } }, associations: true }, orderBy: { updatedAt: "desc" }, skip: (page - 1) * PAGE, take: PAGE }),
     prisma.technicalDocument.count({ where }),
     prisma.technicalDocument.groupBy({ by: ["status"], where: { organizationId: context.organization.id }, _count: true }),
-    prisma.technicalDocumentBatch.findMany({ where: { organizationId: context.organization.id }, orderBy: { createdAt: "desc" }, take: 4 }),
+    prisma.technicalDocumentBatch.findMany({ where: { organizationId: context.organization.id }, include: { items: { where: { status: "FAILED" }, select: { id: true, lastError: true } } }, orderBy: { createdAt: "desc" }, take: 4 }),
     prisma.productTechnicalState.count({ where: { organizationId: context.organization.id, status: { not: "COMPLETE" } } }),
     prisma.missingEvidenceItem.count({ where: { organizationId: context.organization.id, status: "OPEN" } }),
     prisma.productEquivalenceAssessment.count({ where: { organizationId: context.organization.id, reviewStatus: { in: ["AI_PROPOSED", "REVIEW_REQUIRED", "STALE"] } } }),
@@ -58,7 +59,7 @@ export default async function TechnicalDocumentsPage({
         </DataTable>
         <Pagination page={page} pages={Math.max(1, Math.ceil(total / PAGE))} pathname="/technical-documents" params={{ stato: query.stato }} />
       </section>
-      {batches.length > 0 && <details className="disclosure-section" open={batches.some((batch) => batch.status === "PROCESSING")}><summary><span>Lotti recenti</span><small>{batches.length}</small></summary>{batches.map((batch) => <p key={batch.id}><strong>{batch.status}</strong> · {batch.completedFiles}/{batch.totalFiles} completati · {batch.failedFiles} falliti · {batch.reviewRequiredFiles} da verificare</p>)}</details>}
+      {batches.length > 0 && <details className="disclosure-section" open={batches.some((batch) => batch.status === "PROCESSING" || batch.failedFiles > 0)}><summary><span>Lotti recenti</span><small>{batches.length}</small></summary>{batches.map((batch) => <div key={batch.id}><p><strong>{batch.status}</strong> · {batch.completedFiles}/{batch.totalFiles} completati · {batch.failedFiles} falliti · {batch.reviewRequiredFiles} da verificare</p>{batch.items.length > 0 && <><p className="warning">{batch.items.length} elementi falliti. {batch.items[0]?.lastError}</p><form action={retryTechnicalBatch}><input type="hidden" name="batchId" value={batch.id} /><button className="secondary-cta">Riprova elementi falliti</button></form></>}</div>)}</details>}
     </main>
   );
 }
