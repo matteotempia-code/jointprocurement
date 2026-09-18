@@ -25,7 +25,7 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | M11.5 | Remote Procurement Lifecycle & Persona Certification | MIXED; demo readiness 86% |
 | M11.6 | External Demo Hardening & Certification | MIXED; demo readiness 92% |
 | M11.7 | External Demo Closure | implementato; certificazione remota vincolata alla pipeline sullo SHA di release |
-| M12 | Product Intelligence & Technical Evidence | implementazione e certificazione remota in corso |
+| M12 | Product Intelligence & Technical Evidence | 95% — implementato; certificazione remota ripetibile in corso |
 | M13 | Supplier Collaboration Portal | concept approvato, da progettare/sviluppare |
 | M14 | Sourcing & Reverse Auctions | concept approvato, da progettare/sviluppare |
 | M15 | Supplier Performance & Continuous Improvement | concept approvato, da progettare/sviluppare |
@@ -132,7 +132,7 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | SUP-04 | Listini | Storico dei listini del fornitore. | Core | 90% | Da integrare ulteriormente con M12/M13. |
 | SUP-05 | Condizioni commerciali | Pagamento, MOQ, freight, lead time, sconti e condizioni. | Smart Import / M12 | 65% | AI interpreta, ma non tutti i campi sono pienamente operationalizzati. |
 | CAT-01 | Category 360 | Vista di categoria con prodotti/fornitori e drilldown. | M11.5 | 85% | Strategia/analytics avanzate da aggiungere. |
-| CAT-02 | Regole evidenze per categoria | Definisce quali documenti tecnici sono obbligatori per categoria. | M12 | 0% | Approvata, non implementata. |
+| CAT-02 | Regole evidenze per categoria | Definisce quali documenti tecnici sono obbligatori per categoria. | M12 | 90% | Regole persistenti per documento/attributo, validità, criticità equivalenza e attivazione disponibili in UI. |
 
 ## G. Smart Import e Document Intelligence
 
@@ -162,9 +162,9 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | AI-06 | Commercial conditions | Estrae condizioni commerciali. | Smart Import / M12 | 60% | AI wired, ma alcuni risultati non sono ancora operationalizzati. |
 | AI-07 | Row interpretation | Interpreta righe ambigue dei listini. | M11.5 | 90% | Certificata nello scope corrente; copertura non universale. |
 | AI-08 | Semantic product matching | Matching semantico verso il prodotto canonico. | M12 | 20% | Non ancora collegato al normale workflow. |
-| AI-09 | Functional equivalence | Determina equivalenza funzionale tra prodotti. | M12 | 5% | Da implementare. |
-| AI-10 | Technical reasoning | Usa evidenze tecniche per confrontare prodotti. | M12 | 0% | Da implementare. |
-| AI-11 | Missing evidence | Identifica esattamente i dati/documenti mancanti per decidere. | M12 | 0% | Da implementare. |
+| AI-09 | Functional equivalence | Determina equivalenza funzionale tra prodotti. | M12 | 90% | Motore deterministico category-specific con governance e fingerprint persistenti; certificazione 3/3 pendente. |
+| AI-10 | Technical reasoning | Usa evidenze tecniche per confrontare prodotti. | M12 | 90% | Confronto basato su attributi critici e fonti versionate, senza affidarsi alla sola similarità. |
+| AI-11 | Missing evidence | Identifica esattamente i dati/documenti mancanti per decidere. | M12 | 90% | Registra prodotto, confronto, documento/campo richiesto, motivo ed evidenza suggerita. |
 
 ## I. M12 — Product Intelligence & Technical Evidence
 
@@ -210,8 +210,8 @@ Stati di equivalenza minimi:
 |---|---|---|---|---:|---|
 | MEM-01 | Memoria correzioni | Conserva decisioni e correzioni umane. | Pre-M12 | 50% | Persistenza esiste, riuso limitato. |
 | MEM-02 | Product mapping memory | Riusa mapping di prodotto già confermati. | M12 | 30% | Prime associazioni persistono; motore di riuso incompleto. |
-| MEM-03 | Technical association memory | Ricorda associazioni scheda ↔ prodotto. | M12 | 0% | Da sviluppare. |
-| MEM-04 | Equivalence memory | Ricorda equivalenze approvate o respinte. | M12 | 0% | Da sviluppare. |
+| MEM-03 | Technical association memory | Ricorda associazioni scheda ↔ prodotto. | M12 | 90% | Conferme e rifiuti persistono e alimentano la selezione dei candidati successivi. |
+| MEM-04 | Equivalence memory | Ricorda equivalenze approvate o respinte. | M12 | 90% | Decisione, motivazione e fingerprint persistono e sono invalidati quando l'evidenza cambia. |
 | MEM-05 | Confidence learning | Migliora la confidence usando le conferme storiche. | M12+ | 0% | Da progettare. |
 
 ## K. Price Intelligence
