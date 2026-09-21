@@ -129,7 +129,7 @@ async function uploadAndVerify({ file, supplier, checkpointName }) {
   await open("/imports/new");
   await page.getByTestId("import-file").setInputFiles(await uniqueFixture(file));
   await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: supplier });
-  await page.getByRole("button", { name: "Carica e interpreta" }).click({ noWaitAfter: true });
+  await page.getByRole("button", { name: "Carica e interpreta" }).click({ timeout: 180_000 });
   await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 180_000 });
   const path = new URL(page.url()).pathname;
   const result = await counts();
