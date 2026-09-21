@@ -11,6 +11,7 @@ export function openAIRequestSignal(timeoutMs: number) {
 }
 
 export function openAIRequestTimeoutMs(operation: string) {
+  if (operation === "TECHNICAL_DOCUMENT") return 45_000;
   return ["DOCUMENT_CONTEXT", "COMMERCIAL_CONDITIONS"].includes(operation) ? 30_000 : 15_000;
 }
 

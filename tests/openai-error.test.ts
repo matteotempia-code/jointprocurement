@@ -41,6 +41,7 @@ test("OpenAI requests have a bounded timeout that can trigger local fallback", a
     assert.equal(signal.aborted, true);
     assert.equal(isOpenAIRequestTimeout(signal.reason), true);
     assert.equal(openAIRequestTimeoutMs("DOCUMENT_CONTEXT"), 30_000);
+    assert.equal(openAIRequestTimeoutMs("TECHNICAL_DOCUMENT"), 45_000);
     assert.equal(openAIRequestTimeoutMs("ROW_INTERPRETATION"), 15_000);
   } finally {
     clearTimeout(keepAlive);
