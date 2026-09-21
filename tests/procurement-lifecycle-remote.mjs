@@ -63,8 +63,12 @@ async function switchTo(name) {
   const select = page.getByLabel(/^(Persona demo|Visualizza come)$/);
   const value = await select.locator("option").evaluateAll((options, expected) => options.find((option) => option.textContent?.includes(expected))?.value, name);
   assert.ok(value, `persona ${name}`);
+  const action = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).origin === new URL(base).origin);
   await select.selectOption(value);
-  await page.getByText(name, { exact: true }).last().waitFor();
+  const response = await action;
+  assert.ok(response.ok(), `persona ${name}: switch action`);
+  await page.waitForLoadState("networkidle");
+  await page.locator(".identity b", { hasText: name }).waitFor();
 }
 
 async function assertNoOverflow() {
