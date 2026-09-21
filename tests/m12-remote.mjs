@@ -59,8 +59,8 @@ try {
   await open("/technical-documents");
   const negativeStarted = new Date();
   await page.locator('input[name="files"]').setInputFiles([
-    { name: `${marker}-image-only.png`, mimeType: "image/png", buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]) },
-    { name: `${marker}-malformed.pdf`, mimeType: "application/pdf", buffer: Buffer.from("this is not a PDF") },
+    { name: `${marker}-image-only.png`, mimeType: "image/png", buffer: Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.from(marker)]) },
+    { name: `${marker}-malformed.pdf`, mimeType: "application/pdf", buffer: Buffer.from(`this is not a PDF ${marker}`) },
     { name: `${marker}-duplicate.txt`, mimeType: "text/plain", buffer: files[0].buffer },
   ]);
   await page.getByLabel(/Usa Procurement AI/).uncheck();
