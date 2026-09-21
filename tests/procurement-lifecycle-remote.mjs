@@ -20,6 +20,17 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, extraHTTPHeaders: headers });
 const browserErrors = [];
 const createdRequisitionIds = [];
+const FIXTURE = Object.freeze({
+  prefix: "CERT-M11-LIFECYCLE",
+  categoryId: "cert_m11_lifecycle_category",
+  supplierId: "cert_m11_lifecycle_supplier",
+  priceListId: "cert_m11_lifecycle_price_list",
+  normalProductId: "cert_m11_lifecycle_product_normal",
+  limitedProductId: "cert_m11_lifecycle_product_limited",
+  normalOfferId: "cert_m11_lifecycle_offer_normal",
+  limitedOfferId: "cert_m11_lifecycle_offer_limited",
+  limitId: "cert_m11_lifecycle_limit",
+});
 let originalCartLines = [];
 let lucia;
 let facilityId;
@@ -86,6 +97,77 @@ async function clearCart() {
   const cart = await db.cart.findUnique({ where: { userId_facilityId: { userId: lucia.id, facilityId } }, include: { lines: true } });
   if (!originalCartLines.length && cart) originalCartLines = cart.lines.map(({ canonicalProductId, supplierOfferId, quantity }) => ({ canonicalProductId, supplierOfferId, quantity }));
   if (cart) await db.cartLine.deleteMany({ where: { cartId: cart.id } });
+}
+
+async function ensureLifecycleFixtures(organizationId, userId) {
+  const category = await db.category.upsert({
+    where: { code: FIXTURE.prefix },
+    create: { id: FIXTURE.categoryId, code: FIXTURE.prefix, name: "Certification lifecycle category" },
+    update: { name: "Certification lifecycle category" },
+  });
+  await db.technicalEvidenceRequirement.upsert({
+    where: { organizationId_categoryId_requirementType_label: { organizationId, categoryId: category.id, requirementType: "DOCUMENT", label: "CERT M11 technical sheet" } },
+    create: { organizationId, categoryId: category.id, requirementType: "DOCUMENT", documentType: "TECHNICAL_SHEET", label: "CERT M11 technical sheet", required: true, validityRequired: true, active: true },
+    update: { documentType: "TECHNICAL_SHEET", required: true, validityRequired: true, active: true },
+  });
+  const supplier = await db.supplier.upsert({
+    where: { vatNumber: "ITCERTM110000001" },
+    create: { id: FIXTURE.supplierId, name: "CERT M11 Lifecycle Supplier", vatNumber: "ITCERTM110000001", active: true },
+    update: { name: "CERT M11 Lifecycle Supplier", active: true },
+  });
+  await db.priceList.upsert({
+    where: { id: FIXTURE.priceListId },
+    create: { id: FIXTURE.priceListId, name: "CERT M11 Lifecycle Price List", supplierId: supplier.id, active: true, version: 1, publishedByUserId: userId, publishedAt: new Date() },
+    update: { supplierId: supplier.id, active: true, publishedByUserId: userId },
+  });
+  const products = [
+    { id: FIXTURE.normalProductId, name: "CERT M11 Normal Product", sku: "CERT-M11-NORMAL", ean: "9900000000011", offerId: FIXTURE.normalOfferId, price: 12 },
+    { id: FIXTURE.limitedProductId, name: "CERT M11 Limited Product", sku: "CERT-M11-LIMITED", ean: "9900000000028", offerId: FIXTURE.limitedOfferId, price: 15 },
+  ];
+  for (const fixture of products) {
+    await db.canonicalProduct.upsert({
+      where: { id: fixture.id },
+      create: { id: fixture.id, name: fixture.name, description: `${FIXTURE.prefix} deterministic fixture`, manufacturer: "Certification Industries", manufacturerSku: fixture.sku, ean: fixture.ean, uom: "EA", purchaseUom: "PACK", unitsPerPackage: 1, categoryId: category.id, active: true },
+      update: { name: fixture.name, categoryId: category.id, manufacturer: "Certification Industries", manufacturerSku: fixture.sku, ean: fixture.ean, active: true },
+    });
+    await db.supplierOffer.upsert({
+      where: { id: fixture.offerId },
+      create: { id: fixture.offerId, supplierId: supplier.id, canonicalProductId: fixture.id, priceListId: FIXTURE.priceListId, supplierSku: fixture.sku, unitPrice: fixture.price, normalizedUnitPrice: fixture.price, moq: 1, taxRate: 22, preferred: true, active: true, availabilityStatus: "IN_STOCK" },
+      update: { supplierId: supplier.id, canonicalProductId: fixture.id, priceListId: FIXTURE.priceListId, unitPrice: fixture.price, normalizedUnitPrice: fixture.price, moq: 1, preferred: true, active: true, availabilityStatus: "IN_STOCK" },
+    });
+    const sourceId = `${fixture.id}_source`, documentId = `${fixture.id}_document`, versionId = `${fixture.id}_version`;
+    await db.sourceDocument.upsert({
+      where: { id: sourceId },
+      create: { id: sourceId, organizationId, uploadedByUserId: userId, originalFilename: `${fixture.sku}.txt`, mimeType: "text/plain", fileSize: 128, checksum: `${fixture.id}_sha256`, sourceType: "TXT", documentKind: "OTHER", storagePath: `certification/${fixture.sku}.txt`, storageProvider: "fixture", status: "PROCESSED", metadata: { certificationFixture: FIXTURE.prefix } },
+      update: { organizationId, uploadedByUserId: userId, status: "PROCESSED", metadata: { certificationFixture: FIXTURE.prefix } },
+    });
+    await db.technicalDocument.upsert({
+      where: { id: documentId },
+      create: { id: documentId, organizationId, familyKey: fixture.sku.toLowerCase(), documentType: "TECHNICAL_SHEET", title: `${fixture.name} technical sheet`, manufacturer: "Certification Industries", status: "READY" },
+      update: { organizationId, documentType: "TECHNICAL_SHEET", status: "READY" },
+    });
+    await db.technicalDocumentVersion.upsert({
+      where: { id: versionId },
+      create: { id: versionId, technicalDocumentId: documentId, sourceDocumentId: sourceId, versionNumber: 1, revision: "CERT-1", validFrom: new Date("2020-01-01T00:00:00Z"), validUntil: new Date("2100-01-01T00:00:00Z"), checksum: `${fixture.id}_sha256`, extractedMetadata: { certificationFixture: FIXTURE.prefix, manufacturerSku: fixture.sku }, interpretationProvider: "CERTIFICATION_FIXTURE", confidence: 1, status: "READY" },
+      update: { validUntil: new Date("2100-01-01T00:00:00Z"), status: "READY" },
+    });
+    await db.technicalDocument.update({ where: { id: documentId }, data: { currentVersionId: versionId } });
+    await db.technicalDocumentProductAssociation.upsert({
+      where: { technicalDocumentId_canonicalProductId: { technicalDocumentId: documentId, canonicalProductId: fixture.id } },
+      create: { technicalDocumentId: documentId, canonicalProductId: fixture.id, associationType: "MANUFACTURER_SKU_EXACT", confidence: 1, status: "MANUALLY_CONFIRMED", evidence: [`SKU ${fixture.sku}`, FIXTURE.prefix], explanation: "Dedicated certification evidence", decisionSource: "CERTIFICATION_FIXTURE", confirmedByUserId: userId, confirmedAt: new Date() },
+      update: { confidence: 1, status: "MANUALLY_CONFIRMED", confirmedByUserId: userId, confirmedAt: new Date(), rejectedAt: null },
+    });
+    await db.productTechnicalState.upsert({
+      where: { organizationId_canonicalProductId: { organizationId, canonicalProductId: fixture.id } },
+      create: { organizationId, canonicalProductId: fixture.id, status: "COMPLETE", completenessPercent: 100, evidenceFingerprint: `${FIXTURE.prefix}:${fixture.id}:CERT-1` },
+      update: { status: "COMPLETE", completenessPercent: 100, missingCount: 0, conflictCount: 0, expiredCount: 0, evaluatedAt: new Date(), evidenceFingerprint: `${FIXTURE.prefix}:${fixture.id}:CERT-1` },
+    });
+  }
+  await db.procurementLimit.upsert({
+    where: { id: FIXTURE.limitId },
+    create: { id: FIXTURE.limitId, organizationId, facilityId, canonicalProductId: FIXTURE.limitedProductId, limitType: "QUANTITY", periodStart: new Date("2020-01-01T00:00:00Z"), periodEnd: new Date("2100-01-01T00:00:00Z"), maximumQuantity: 1, quantityUom: "EA", active: true },
+    update: { organizationId, facilityId, canonicalProductId: FIXTURE.limitedProductId, categoryId: null, limitType: "QUANTITY", periodStart: new Date("2020-01-01T00:00:00Z"), periodEnd: new Date("2100-01-01T00:00:00Z"), maximumQuantity: 1, active: true },
+  });
 }
 
 async function addSelectedProduct(quantity) {
@@ -191,26 +273,44 @@ try {
   lucia = await db.user.findFirstOrThrow({ where: { name: "Lucia Ferri" }, include: { assignments: { where: { active: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: 1 } } });
   facilityId = lucia.assignments[0].scopeId;
   assert.ok(facilityId && lucia.assignments[0].scopeType === "FACILITY");
-  const limits = await db.procurementLimit.findMany({ where: { facilityId, active: true }, select: { canonicalProductId: true, categoryId: true } });
-  const excludedProducts = limits.flatMap((limit) => limit.canonicalProductId ? [limit.canonicalProductId] : []);
-  const excludedCategories = limits.flatMap((limit) => limit.categoryId ? [limit.categoryId] : []);
+  const organizationId = lucia.assignments[0].organizationId;
+  await ensureLifecycleFixtures(organizationId, lucia.id);
+  const [normalTechnicalState, limitedTechnicalState, normalLimitCount] = await Promise.all([
+    db.productTechnicalState.findUnique({ where: { organizationId_canonicalProductId: { organizationId, canonicalProductId: FIXTURE.normalProductId } } }),
+    db.productTechnicalState.findUnique({ where: { organizationId_canonicalProductId: { organizationId, canonicalProductId: FIXTURE.limitedProductId } } }),
+    db.procurementLimit.count({
+      where: {
+        organizationId,
+        facilityId,
+        active: true,
+        periodStart: { lte: new Date() },
+        periodEnd: { gte: new Date() },
+        OR: [{ canonicalProductId: FIXTURE.normalProductId }, { categoryId: FIXTURE.categoryId }],
+      },
+    }),
+  ]);
+  assert.equal(normalTechnicalState?.status, "COMPLETE");
+  assert.equal(limitedTechnicalState?.status, "COMPLETE");
+  assert.equal(normalLimitCount, 0);
   const technicallyPurchasable = { none: { organizationId: lucia.assignments[0].organizationId, status: { not: "COMPLETE" } } };
   const product = await db.canonicalProduct.findFirstOrThrow({
-    where: { active: true, id: { notIn: excludedProducts }, categoryId: { notIn: excludedCategories }, technicalStates: technicallyPurchasable, offers: { some: { active: true, preferred: true } } },
+    where: { id: FIXTURE.normalProductId, active: true, technicalStates: technicallyPurchasable, procurementLimits: { none: { facilityId, active: true, periodStart: { lte: new Date() }, periodEnd: { gte: new Date() } } }, offers: { some: { id: FIXTURE.normalOfferId, active: true, preferred: true } } },
     include: { offers: { where: { active: true, preferred: true }, orderBy: { unitPrice: "asc" }, take: 1 } },
     orderBy: { name: "asc" },
   });
   selectedProduct = { id: product.id, offer: product.offers[0] };
   assert.ok(selectedProduct.offer);
   const activeLimit = await db.procurementLimit.findFirstOrThrow({
-    where: { facilityId, active: true, periodStart: { lte: new Date() }, periodEnd: { gte: new Date() } },
+    where: { id: FIXTURE.limitId, organizationId, facilityId, canonicalProductId: FIXTURE.limitedProductId, active: true, periodStart: { lte: new Date() }, periodEnd: { gte: new Date() } },
   });
+  assert.equal(activeLimit.canonicalProductId, FIXTURE.limitedProductId);
   const limited = await db.canonicalProduct.findFirstOrThrow({
     where: {
       active: true,
       technicalStates: technicallyPurchasable,
-      ...(activeLimit.canonicalProductId ? { id: activeLimit.canonicalProductId } : { categoryId: activeLimit.categoryId ?? undefined }),
-      offers: { some: { active: true, preferred: true } },
+      id: FIXTURE.limitedProductId,
+      procurementLimits: { some: { id: activeLimit.id, facilityId, active: true } },
+      offers: { some: { id: FIXTURE.limitedOfferId, active: true, preferred: true } },
     },
     include: { offers: { where: { active: true, preferred: true }, take: 1 } },
   });
