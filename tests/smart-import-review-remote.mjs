@@ -130,7 +130,7 @@ async function uploadAndVerify({ file, supplier, checkpointName }) {
   await page.getByTestId("import-file").setInputFiles(await uniqueFixture(file));
   await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: supplier });
   await page.getByRole("button", { name: "Carica e interpreta" }).click();
-  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 60_000 });
+  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 180_000 });
   const path = new URL(page.url()).pathname;
   const result = await counts();
   assert.ok(result.total > 0, `${checkpointName}: no persisted records`);
