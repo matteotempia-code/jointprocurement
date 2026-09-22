@@ -15,8 +15,9 @@ export function verifiedPostgresConfig(connectionString: string): PoolConfig {
   if (isLocalDatabase(url.hostname)) return { connectionString, max: 1 };
 
   const ca = process.env.DATABASE_CA_CERT?.replace(/\\n/g, "\n").trim();
+  for (const parameter of ["sslmode", "sslcert", "sslkey", "sslrootcert"]) url.searchParams.delete(parameter);
   return {
-    connectionString,
+    connectionString: url.toString(),
     max: 1,
     ssl: {
       rejectUnauthorized: true,

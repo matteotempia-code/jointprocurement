@@ -12,9 +12,10 @@ test("remote PostgreSQL requires full certificate and hostname verification", ()
   );
 
   const config = verifiedPostgresConfig(
-    "postgresql://user:pass@db.example.com:5432/app",
+    "postgresql://user:pass@db.example.com:5432/app?sslmode=require&pgbouncer=true",
   );
   assert.deepEqual(config.ssl, { rejectUnauthorized: true });
+  assert.equal(config.connectionString, "postgresql://user:pass@db.example.com:5432/app?pgbouncer=true");
   assert.equal(config.max, 1);
   } finally {
     if (previousCa === undefined) delete process.env.DATABASE_CA_CERT;
