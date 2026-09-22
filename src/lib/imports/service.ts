@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { activeInterpretationProvider, providerSupportsScannedDocuments } from "./provider";
 import { extractCommercialConditions, suggestSupplierFromDocument } from "./document-context";
 import { normalizeImportedFields } from "./normalization";
+import { mergeAiInterpretedFields } from "./ai-merge";
 import { parseDocument, supportedExtensions, xlsxRuntimeDiagnosticFromError } from "./parser";
 import { suggestMatches } from "./matching";
 import type { ImportField, NormalizedImport } from "./types";
@@ -158,7 +159,7 @@ export async function ingestDocument(input: { buffer: Buffer; filename: string; 
     if (procurementAI.isAi) for (let index = 0, calls = 0; index < interpreted.length && calls < 12; index += 1) {
       const row = interpreted[index]; if (row.description && row.netPrice != null && (row.unitsPerPackage != null || row.packageDescription)) continue;
       const ai = await procurementAI.interpretProductRow(parsed.rows[index].rawSource, parsed.rows[index].values, { organizationId: input.organizationId, importJobId: job.id, operation: "ROW_INTERPRETATION" });
-      if (ai && ai.confidence >= .8) interpreted[index] = { ...row, ...ai.fields }; calls += 1;
+      if (ai && ai.confidence >= .8) interpreted[index] = mergeAiInterpretedFields(row, ai.fields); calls += 1;
     }
     const products = await loadMatchableProducts(input.organizationId);
     let review = 0; let ready = 0;

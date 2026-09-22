@@ -9,6 +9,7 @@ import { suggestColumnMapping } from "../src/lib/imports/mapping";
 import { extractCommercialConditions, suggestSupplierFromDocument } from "../src/lib/imports/document-context";
 import { suggestMatches } from "../src/lib/imports/matching";
 import { normalizeImportDate, normalizeImportedFields, parseItalianNumber } from "../src/lib/imports/normalization";
+import { mergeAiInterpretedFields } from "../src/lib/imports/ai-merge";
 import { parseDocument, xlsxRuntimeDiagnosticFromError } from "../src/lib/imports/parser";
 
 const fixtures = path.join(process.cwd(), "demo-imports");
@@ -134,6 +135,18 @@ test("similarità descrittiva non viene dichiarata equivalenza funzionale", () =
   const products = [{ id: "p1", name: "Guanto nitrile blu M", brand: null, manufacturerSku: null, ean: null, purchaseUom: "BOX", unitsPerPackage: 100, consumptionUom: "PIECE", category: { id: "c1", name: "DPI", code: "DPI" }, offers: [] }];
   const [match] = suggestMatches(normalizeImportedFields({ description: "Guanto nitrile blu taglia M", unitsPerPackage: 100, purchaseUom: "BOX", consumptionUom: "PIECE", netPrice: 4 }), products);
   assert.notEqual(match.matchType, "FUNCTIONAL_EQUIVALENT"); assert.notEqual(match.matchType, "COMMERCIAL_SUBSTITUTE");
+});
+
+test("campi AI nulli, vuoti o invalidi non cancellano valori deterministici", () => {
+  const deterministic = { ean: "8001000000001", manufacturerSku: "SKU-42", description: "Guanto", netPrice: 4.2 };
+  assert.deepEqual(
+    mergeAiInterpretedFields(deterministic, { ean: null, manufacturerSku: " ", description: "", netPrice: "NaN" }),
+    deterministic,
+  );
+  assert.deepEqual(
+    mergeAiInterpretedFields(deterministic, { ean: "not-a-gtin", description: " Guanto nitrile ", netPrice: "4,50" }),
+    { ...deterministic, description: "Guanto nitrile", netPrice: "4,50" },
+  );
 });
 
 test("normalizzazione import: box 100 a 2,50 € vale 0,025 € per pezzo", () => {
