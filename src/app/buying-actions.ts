@@ -12,6 +12,7 @@ import { acknowledgePurchaseOrder } from "@/lib/procurement/acknowledge-order";
 import { resolveApprover } from "@/lib/policy/approver";
 import { evaluateCommercialConditions } from "@/lib/procurement/commercial-conditions";
 import { evaluateFacilityProcurementLimits } from "@/lib/procurement/limits";
+import { isTechnicallyApproved } from "@/lib/technical-intelligence/engine";
 import { receiptNumberFromId } from "@/lib/procurement/receipt-number";
 import { cleanupOperationalAttachments, uploadOperationalAttachments } from "@/lib/storage/operational-attachments";
 import { offerAvailability, validReceiptQuantity } from "@/lib/procurement/offer-eligibility";
@@ -21,7 +22,7 @@ export async function addToCart(formData:FormData){
  if(!Number.isFinite(quantity)||quantity<=0)redirect("/catalog?error=invalid-quantity");
  const offer=await prisma.supplierOffer.findFirst({where:{id:offerId,organizationId:context.organization.id,active:true},include:{canonicalProduct:true}}); if(!offer)throw new Error("L’offerta selezionata non è disponibile.");
  const supplier=await prisma.supplier.findFirst({where:{id:offer.supplierId,organizationId:context.organization.id},select:{active:true}});if(!supplier||!offerAvailability({...offer,supplier},now).purchasable)redirect("/catalog?error=offer-unavailable");
- const technicalState=await prisma.productTechnicalState.findUnique({where:{organizationId_canonicalProductId:{organizationId:context.organization.id,canonicalProductId:offer.canonicalProductId}}});if(technicalState&&technicalState.status!=="COMPLETE")redirect(`/products/${offer.canonicalProductId}?error=technical-evidence`);
+ const technicalState=await prisma.productTechnicalState.findUnique({where:{organizationId_canonicalProductId:{organizationId:context.organization.id,canonicalProductId:offer.canonicalProductId}}});if(!isTechnicallyApproved(technicalState))redirect(`/products/${offer.canonicalProductId}?error=technical-evidence`);
  const cart=await prisma.cart.upsert({where:{userId_facilityId:{userId:context.user.id,facilityId:scope.id}},create:{userId:context.user.id,facilityId:scope.id},update:{}});
  await prisma.cartLine.upsert({where:{cartId_supplierOfferId:{cartId:cart.id,supplierOfferId:offer.id}},create:{cartId:cart.id,supplierOfferId:offer.id,canonicalProductId:offer.canonicalProductId,quantity},update:{quantity:{increment:quantity}}});
  revalidatePath("/catalog");revalidatePath("/cart");
