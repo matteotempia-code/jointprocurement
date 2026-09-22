@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateAuthSession } from "@/lib/supabase/proxy";
 
-const publicPaths = ["/login", "/auth"];
+const publicPaths = ["/login", "/auth", "/api/health/database"];
 
 export async function proxy(request: NextRequest) {
   if (process.env.DEMO_MODE === "true") return NextResponse.next();

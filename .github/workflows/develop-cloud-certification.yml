@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 25
     env:
       DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
-      DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
+      EXPECTED_DEV_DATABASE_REF: kvrvprzojwqhqtqsxkgu
       DEMO_MODE: "true"
       DOCUMENT_STORAGE_PROVIDER: "local"
       PROCUREMENT_AI_ENABLED: "false"
@@ -46,27 +46,11 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Verify DEV database configuration
-        shell: bash
-        run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "DEV_DATABASE_URL is not configured in the GitHub develop environment."
-            exit 1
-          fi
+      - name: Derive Supabase DEV migration connection
+        run: node scripts/qa/derive-dev-direct-url.mjs
 
-      - name: Prepare Supabase DEV migration connection
-        shell: bash
-        run: |
-          # Supabase transaction pooling uses :6543 and is appropriate for runtime
-          # traffic, but Prisma migrations need a session-capable connection.
-          # The Supabase session pooler uses the same host/credentials on :5432.
-          if [[ "$DATABASE_URL" == *":6543"* ]]; then
-            direct_url="${DATABASE_URL/:6543/:5432}"
-          else
-            direct_url="$DATABASE_URL"
-          fi
-          echo "::add-mask::$direct_url"
-          echo "DIRECT_URL=$direct_url" >> "$GITHUB_ENV"
+      - name: Verify DEV database configuration
+        run: node scripts/qa/validate-dev-database-config.mjs
 
       - name: Install dependencies
         run: npm ci
@@ -118,14 +102,16 @@ jobs:
     timeout-minutes: 25
     env:
       DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
-      DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
       NODE_ENV: test
       DEMO_MODE: "true"
       VERCEL_TOKEN: ${{ secrets.DEV_VERCEL_TOKEN }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.DEV_VERCEL_AUTOMATION_BYPASS_SECRET }}
       VERCEL_PROJECT_ID: ${{ vars.DEV_VERCEL_PROJECT_ID }}
+      VERCEL_ORG_ID: ${{ vars.DEV_VERCEL_TEAM_ID }}
       VERCEL_TEAM_ID: ${{ vars.DEV_VERCEL_TEAM_ID }}
       VERCEL_TARGET: develop
+      EXPECTED_DEV_DATABASE_REF: kvrvprzojwqhqtqsxkgu
+      EXPECTED_DEV_LATEST_MIGRATION: 20260922170000_global_document_sequences
     steps:
       - name: Check out develop commit
         uses: actions/checkout@v7
@@ -140,7 +126,7 @@ jobs:
         shell: bash
         run: |
           missing=0
-          for name in VERCEL_TOKEN VERCEL_AUTOMATION_BYPASS_SECRET VERCEL_PROJECT_ID VERCEL_TEAM_ID; do
+          for name in DATABASE_URL VERCEL_TOKEN VERCEL_AUTOMATION_BYPASS_SECRET VERCEL_PROJECT_ID VERCEL_TEAM_ID; do
             if [ -z "${!name}" ]; then
               echo "$name is not configured in the GitHub develop environment."
               missing=1
@@ -151,14 +137,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Derive Supabase DEV migration connection
+        run: node scripts/qa/derive-dev-direct-url.mjs
+
+      - name: Verify canonical DEV database configuration
+        run: node scripts/qa/validate-dev-database-config.mjs
+
+      - name: Synchronize canonical database secrets to Vercel develop
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$DATABASE_URL" | npx --yes vercel@59.1.4 env add DATABASE_URL "$VERCEL_TARGET" --force --sensitive --yes --token="$VERCEL_TOKEN"
+          printf '%s' "$DIRECT_URL" | npx --yes vercel@59.1.4 env add DIRECT_URL "$VERCEL_TARGET" --force --sensitive --yes --token="$VERCEL_TOKEN"
+
+      - name: Deploy synchronized commit to Vercel develop
+        id: deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          deployment_url="$(npx --yes vercel@59.1.4 deploy --target="$VERCEL_TARGET" --yes --token="$VERCEL_TOKEN" --meta githubCommitSha="$GITHUB_SHA")"
+          if [[ ! "$deployment_url" =~ ^https:// ]]; then
+            echo "Vercel deploy did not return a deployment URL."
+            exit 1
+          fi
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify deployed database identity and migrations
+        env:
+          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
+        run: node scripts/qa/assert-remote-database-health.mjs
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-
-      - name: Wait for the matching Vercel develop deployment
-        id: deployment
-        env:
-          EXPECTED_GIT_SHA: ${{ github.sha }}
-        run: node scripts/qa/wait-for-vercel-develop.mjs
 
       - name: Certify remote procurement lifecycle and personas
         env:
