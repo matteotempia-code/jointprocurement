@@ -39,6 +39,7 @@ test("acknowledgement scopes the order to the current organization and writes it
   assert.equal(writes.audits.length, 1);
   assert.deepEqual(writes.audits[0], {
     data: {
+      organizationId: "org-current",
       actorUserId: "user-1",
       entityType: "PURCHASE_ORDER",
       entityId: "po-1",
