@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { addOrderProductsToFavorites, createListFromOrder } from "@/app/buying-actions";
-import { getCurrentDemoUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveScope } from "@/lib/scope";
 
 export default async function OrderDetailLayout({ children, params }: { children: ReactNode; params: Promise<{ id: string }> }) {
-  const context = await getCurrentDemoUser();
+  const context = await getCurrentUser();
   if (context.roleCode !== "RSA_DIRECTOR") return children;
   const scope = await resolveScope(context.assignment);
   const order = await prisma.purchaseOrder.findFirst({ where: { id: (await params).id, facilityId: scope.id }, select: { id: true, poNumber: true } });

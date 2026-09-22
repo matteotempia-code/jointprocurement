@@ -12,7 +12,7 @@ let runtimeDisabled = false, server, browser, serverOutput = "";
 const prisma=new PrismaClient({adapter:new PrismaPg({connectionString:process.env.DATABASE_URL})});
 async function exists(target) { try { await access(target); return true; } catch { return false; } }
 async function ready() { try { const response=await fetch(base, { redirect: "manual" }); return response.status < 500; } catch { return false; } }
-async function switchTo(page, name) { await page.goto(base, { waitUntil: "networkidle" }); const select=page.getByLabel("Persona demo", { exact: true }); const value=await select.locator("option").evaluateAll((options, expected)=>options.find((option)=>option.textContent?.includes(expected))?.value,name); if(!value)throw new Error(`Persona non disponibile: ${name}`); await page.context().addCookies([{name:"jpo-demo-user",value,url:base,sameSite:"Lax"}]); await page.goto(base,{waitUntil:"networkidle"}); }
+async function switchTo(page, name) { await page.goto(base, { waitUntil: "networkidle" }); const select=page.getByLabel("Persona demo", { exact: true }); const value=await select.locator("option").evaluateAll((options, expected)=>options.find((option)=>option.textContent?.includes(expected))?.value,name); if(!value)throw new Error(`Persona non disponibile: ${name}`); await Promise.all([page.waitForURL(/\//),select.selectOption(value)]); await page.waitForLoadState("networkidle"); }
 
 try {
   if (await exists(runtimeDirectory)) { if (await exists(disabledDirectory)) throw new Error("Directory di prova locale già presente."); await rename(runtimeDirectory, disabledDirectory); runtimeDisabled = true; }

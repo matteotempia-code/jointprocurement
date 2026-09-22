@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { EmptyState, PageHeader, PriceBlock, StatusChip } from "@/components/ui";
-import { getCurrentDemoUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeOfferPrice } from "@/lib/pricing/normalization";
 import { statusLabel } from "@/lib/presentation/status";
 import { resolveScope } from "@/lib/scope";
 
 export default async function Cerca({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const context = await getCurrentDemoUser(), scope = await resolveScope(context.assignment), q = (await searchParams).q?.trim() ?? "";
+  const context = await getCurrentUser(), scope = await resolveScope(context.assignment), q = (await searchParams).q?.trim() ?? "";
   const privileged = context.roleCode !== "RSA_DIRECTOR";
   const [products, suppliers, orders, requests, facilities] = q ? await Promise.all([
     prisma.canonicalProduct.findMany({ where: { active: true, OR: [{ name: { contains: q, mode: "insensitive" } }, { brand: { contains: q, mode: "insensitive" } }, { manufacturerSku: { contains: q, mode: "insensitive" } }] }, include: { category: true, offers: { where: { active: true }, include: { supplier: true }, orderBy: { preferred: "desc" }, take: 1 } }, take: 8 }),

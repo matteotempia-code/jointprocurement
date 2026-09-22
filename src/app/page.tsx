@@ -3,7 +3,7 @@ import { addToCart } from "@/app/buying-actions";
 import { ArrowIcon } from "@/components/icons";
 import { ProductImage } from "@/components/product-image";
 import { Metric, PageHeader } from "@/components/ui";
-import { getCurrentDemoUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatMoney } from "@/lib/pricing";
 import { getFacilityBudget } from "@/lib/procurement/budget";
@@ -11,7 +11,7 @@ import { statusLabel } from "@/lib/presentation/status";
 import { resolveScope } from "@/lib/scope";
 
 export default async function Home() {
-  const context = await getCurrentDemoUser();
+  const context = await getCurrentUser();
   const scope = await resolveScope(context.assignment);
   if (context.roleCode === "RSA_DIRECTOR")
     return (
