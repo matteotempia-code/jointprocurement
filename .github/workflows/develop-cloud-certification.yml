@@ -27,6 +27,7 @@ jobs:
     timeout-minutes: 25
     env:
       DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+      DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
       DEMO_MODE: "true"
       DOCUMENT_STORAGE_PROVIDER: "local"
       PROCUREMENT_AI_ENABLED: "false"
@@ -117,6 +118,7 @@ jobs:
     timeout-minutes: 25
     env:
       DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+      DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
       NODE_ENV: test
       DEMO_MODE: "true"
       VERCEL_TOKEN: ${{ secrets.DEV_VERCEL_TOKEN }}
