@@ -267,7 +267,9 @@ export async function addOrderProductsToFavorites(formData: FormData) {
 export async function receiveOrder(formData:FormData){
  const context=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(context.assignment),poId=actionId(formData.get("poId"),"poId");
  const po=await prisma.purchaseOrder.findFirstOrThrow({where:{id:poId,organizationId:context.organization.id,facilityId:scope.id,status:{in:["ISSUED","ACKNOWLEDGED","PARTIALLY_RECEIVED","ISSUE"]}},include:{lines:{include:{receiptLines:true}}}});
- const receivedNow=po.lines.map(line=>actionQuantity(formData.get(`received-${line.id}`)??0,{removable:true}));
+ const receivedResults=po.lines.map(line=>procurementActionSchemas.removableQuantity.safeParse(formData.get(`received-${line.id}`)??0));
+ if(receivedResults.some(result=>!result.success))redirect(`/orders/${poId}/receive?error=invalid-quantity`);
+ const receivedNow=receivedResults.flatMap(result=>result.success?[result.data]:[]);
  const invalidQuantity=po.lines.some((line,index)=>{const already=line.receiptLines.reduce((sum,item)=>sum+Number(item.quantityReceived),0),remaining=Number(line.quantity)-already;return !validReceiptQuantity(receivedNow[index],remaining);});
  if(invalidQuantity)redirect(`/orders/${poId}/receive?error=invalid-quantity`);
  if(!receivedNow.some(quantity=>Number.isFinite(quantity)&&quantity>0))redirect(`/orders/${poId}/receive?error=empty-receipt`);
@@ -281,8 +283,8 @@ export async function receiveOrder(formData:FormData){
   await prisma.$transaction(async (tx) => {
    let hasIssue=false,allComplete=true;
    const receiptNumber=await nextDocumentNumber(tx,"RECEIPT");const receipt=await tx.receipt.create({ data: { id:receiptId, receiptNumber, purchaseOrderId:po.id, facilityId:po.facilityId, receivedById:context.user.id, status:"PARTIAL", notes:String(formData.get("notes")??"")||null, attachments:{create:receiptUploads.map((file)=>({...file,kind:"RECEIPT" as const,organizationId:context.organization.id,facilityId:po.facilityId,uploadedByUserId:context.user.id,immutableAt:new Date()}))} } });
-   for(const line of po.lines){
-    const already=line.receiptLines.reduce((s,r)=>s+Number(r.quantityReceived),0),remaining=Number(line.quantity)-already,rawReceived=actionQuantity(formData.get(`received-${line.id}`)??0,{removable:true});
+   for(const [index,line] of po.lines.entries()){
+    const already=line.receiptLines.reduce((s,r)=>s+Number(r.quantityReceived),0),remaining=Number(line.quantity)-already,rawReceived=receivedNow[index]!;
     if(!Number.isFinite(rawReceived)||rawReceived<0||rawReceived>remaining)throw new Error(`Quantità ricevuta non valida per ${line.descriptionSnapshot}.`);
     const received=rawReceived,plan=issuePlans.find(item=>item.line.id===line.id),affected=plan?Math.min(received,actionQuantity(formData.get(`affected-${line.id}`)??0,{removable:true})):0,accepted=received-affected;
     if(already+received<Number(line.quantity))allComplete=false;if(plan)hasIssue=true;
