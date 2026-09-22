@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { validateProcurementLimit } from "@/lib/procurement/limit-validation";
 
 export type LimitCandidateLine = { canonicalProductId: string; categoryId: string; productName: string; quantity: number; unitPrice: number; unitsPerPackage?: number | null; consumptionUomLabel?: string | null };
 export type ProcurementLimitEvaluation = { limitId: string; productId: string; productName: string; scopeLabel: string; periodLabel: string; kind: "MONETARY" | "QUANTITY"; uom: string; limit: number; used: number; committed: number; reserved: number; requested: number; remainingAfter: number; exceeded: boolean };
@@ -31,6 +32,7 @@ export async function evaluateFacilityProcurementLimits(facilityId: string, line
     });
     return selectedLimits.map((selected) => {
       const kind = selected.limitType;
+      validateProcurementLimit(selected);
       const relatedOrders = orders.filter((item) => item.canonicalProductId === line.canonicalProductId && item.purchaseOrder.issuedAt >= selected.periodStart && item.purchaseOrder.issuedAt <= selected.periodEnd);
       const factor = (item: (typeof relatedOrders)[number]) => kind === "QUANTITY" ? Number(item.canonicalProduct.unitsPerPackage ?? 1) : Number(item.unitPrice);
       const used = relatedOrders.reduce((sum, item) => sum + item.receiptLines.reduce((receiptSum, receipt) => receiptSum + Number(receipt.quantityAccepted), 0) * factor(item), 0);
