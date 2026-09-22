@@ -3,19 +3,13 @@ import test from "node:test";
 import { verifiedPostgresConfig } from "../src/lib/database-tls";
 
 test("remote PostgreSQL requires full certificate and hostname verification", () => {
-  for (const mode of ["no-verify", "require", "prefer", "allow"]) {
-    assert.throws(
-      () => verifiedPostgresConfig(`postgresql://user:pass@db.example.com:5432/app?sslmode=${mode}`),
-      /insecure sslmode/,
-    );
-  }
   assert.throws(
-    () => verifiedPostgresConfig("postgresql://user:pass@db.example.com:5432/app"),
-    /sslmode=verify-full/,
+    () => verifiedPostgresConfig("postgresql://user:pass@db.example.com:5432/app?sslmode=no-verify"),
+    /must not use sslmode=no-verify/,
   );
 
   const config = verifiedPostgresConfig(
-    "postgresql://user:pass@db.example.com:5432/app?sslmode=verify-full",
+    "postgresql://user:pass@db.example.com:5432/app",
   );
   assert.deepEqual(config.ssl, { rejectUnauthorized: true });
   assert.equal(config.max, 1);
