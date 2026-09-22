@@ -272,7 +272,6 @@ model Organization {
   priceLists                    PriceList[]
   supplierOffers                SupplierOffer[]
   auditEvents                   AuditEvent[]
-  documentSequences             DocumentSequence[]
   technicalProductAttributes    TechnicalProductAttribute[]
   technicalEvidenceRequirements TechnicalEvidenceRequirement[]
   productTechnicalStates        ProductTechnicalState[]
@@ -1519,15 +1518,12 @@ model AuditEvent {
 }
 
 model DocumentSequence {
-  id             String       @id @default(cuid())
-  organizationId String
-  documentType   String
-  year           Int
-  value          Int
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  documentType String
+  year         Int
+  value        Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  @@unique([organizationId, documentType, year])
-  @@index([organizationId, year])
+  @@unique([documentType, year])
 }

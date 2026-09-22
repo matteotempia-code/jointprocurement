@@ -18,14 +18,13 @@ export function formatDocumentNumber(type: DocumentNumberType, year: number, val
 
 export async function nextDocumentNumber(
   tx: Prisma.TransactionClient,
-  organizationId: string,
   type: DocumentNumberType,
   at = new Date(),
 ) {
   const year = at.getFullYear();
   const sequence = await tx.documentSequence.upsert({
-    where: { organizationId_documentType_year: { organizationId, documentType: type, year } },
-    create: { organizationId, documentType: type, year, value: 1 },
+    where: { documentType_year: { documentType: type, year } },
+    create: { documentType: type, year, value: 1 },
     update: { value: { increment: 1 } },
     select: { value: true },
   });
