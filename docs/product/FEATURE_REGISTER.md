@@ -270,15 +270,11 @@ Stati di equivalenza minimi:
 
 Il principio è: **il fornitore propone e aggiorna; Sorgence interpreta e verifica; Procurement governa e approva.** Il supplier non modifica direttamente e senza controllo il catalogo canonico.
 
-## M. M14 — Sourcing, gare e Reverse Auctions
+## M. M14 — Sourcing e gare
 
-> **Revisione del 22/09/2026 — aste inverse depriorizzate.** `SRC-06`, `SRC-07` e `SRC-08`
-> restano registrate ma **escono dalla roadmap attiva**. Le aste inverse presuppongono un parco
-> fornitori ampio e intercambiabile; in ambito socio-sanitario, con vincoli di equivalenza
-> tecnica e di continuità di fornitura, sono poco applicabili e culturalmente ostili al
-> committente. Restano a 0% come opzione valutabile, non come impegno.
-> Le RFQ strutturate sotto soglia (`SRC-01`..`SRC-05`) restano invece in roadmap a 6-12 mesi:
-> per questo mercato sono più utili.
+> **Revisione del 22/09/2026.** Le aste inverse sono state **rimosse dalla roadmap** e
+> spostate nella sezione «Fuori perimetro» in fondo al documento, con la motivazione.
+> Restano in roadmap le RFQ strutturate: per questo mercato sono più utili.
 
 | ID | Feature | Descrizione | Milestone | % | Perché non è al 100% |
 |---|---|---|---|---:|---|
@@ -287,12 +283,7 @@ Il principio è: **il fornitore propone e aggiorna; Sorgence interpreta e verifi
 | SRC-03 | Invito fornitori | Selezione e invito di supplier qualificati. | M14 | 0% | Da sviluppare. |
 | SRC-04 | Offerta supplier | Submission economica e tecnica. | M14 | 0% | Da sviluppare. |
 | SRC-05 | Multi-round tender | Più round negoziali. | M14 | 0% | Da sviluppare. |
-| SRC-06 | Reverse auction | Asta competitiva al ribasso. | M14 | 0% | Da sviluppare. |
-| SRC-07 | Auction per SKU | Competizione prodotto per prodotto. | M14 | 0% | Da sviluppare. |
-| SRC-08 | Basket auction | Asta su paniere/categoria. | M14 | 0% | Da sviluppare. |
-| SRC-09 | Ranking anonimo | Il fornitore conosce la posizione senza vedere competitor/offerte. | M14 | 0% | Da sviluppare. |
-| SRC-10 | Minimum decrement | Riduzione minima tra offerte. | M14 | 0% | Da sviluppare. |
-| SRC-11 | Anti-sniping | Estensione automatica a fronte di offerte last-minute. | M14 | 0% | Da sviluppare. |
+| SRC-09 | Ranking anonimo | Il fornitore conosce la posizione senza vedere competitor/offerte. | M14 | 0% | Da sviluppare. Mantenuto in roadmap perché si applica anche alle gare multi-round (`SRC-05`), non solo alle aste. — *decisione 22/09/2026* |
 | SRC-12 | Weighted scoring | Punteggio prezzo + qualità + SLA + logistica + altri fattori. | M14 | 0% | Da sviluppare. |
 | SRC-13 | Adjusted Economic Score | Valore economico aggiustato per qualità, SLA, lead time, MOQ, freight, pagamento, rischio. | M14 | 0% | Da sviluppare. |
 | SRC-14 | Improvement hint | Indica al supplier cosa deve migliorare per salire nel ranking senza svelare i concorrenti. | M14 | 0% | Da sviluppare. |
@@ -470,6 +461,26 @@ Decisi il 22/09/2026 e vincolanti per tutte le voci `COP-*`:
 - **Citazione obbligatoria delle fonti.** Ogni affermazione numerica riporta l'entità di origine (offerta, listino, documento). Una risposta senza fonti viene rifiutata dal validatore, non mostrata.
 - **Scope imposto dal server.** `organizationId` arriva dal contesto server, mai dall'input del modello.
 - **Documenti fornitore come dati non fidati.** I listini e le schede arrivano da terzi: vanno racchiusi in delimitatori espliciti e trattati come contenuto, mai come istruzioni.
+
+---
+
+## Fuori perimetro — decisioni di non fare
+
+Funzionalità **valutate ed escluse**, con la data e il motivo. Non sono backlog: non vanno
+riproposte senza che cambi una delle condizioni indicate.
+
+Questa sezione esiste perché cancellare e basta fa perdere la decisione: senza memoria del
+perché, una funzionalità scartata torna a proporsi da sola dopo qualche mese.
+
+| Funzionalità | Decisione | Perché | Cosa la rimetterebbe in discussione |
+|---|---|---|---|
+| **Aste inverse** (già `SRC-06`, `SRC-07`, `SRC-08`) | Esclusa · 22/09/2026 | Presuppongono un parco fornitori ampio e intercambiabile. In ambito socio-sanitario i vincoli di equivalenza tecnica e di continuità di fornitura lo impediscono, e il meccanismo è culturalmente ostile al committente: un direttore non mette all'asta i guanti di una RSA. | Un cliente con categorie merceologiche realmente commodity e più di cinque fornitori qualificati per categoria. |
+| **Meccaniche d'asta** (già `SRC-10` decremento minimo, `SRC-11` anti-sniping) | Esclusa · 22/09/2026 | Hanno significato solo dentro un'asta a tempo: rimosse le aste inverse, restavano orfane nella roadmap. `SRC-09` ranking anonimo resta invece, perché si applica anche alle gare multi-round. | Le stesse condizioni delle aste inverse. |
+| **Cards** (carte fisiche/virtuali) | Esclusa · 22/09/2026 | È un prodotto finanziario: richiede licenze, compliance e un partner emittente. È un'altra azienda, non un'altra funzionalità. | Nessuna condizione prevedibile nell'orizzonte attuale. |
+| **Payments** (disposizione pagamenti) | Esclusa · 22/09/2026 | Stessa natura di Cards. Disporre pagamenti espone a rischio e regolamentazione sproporzionati rispetto al valore aggiunto per il cliente. Il three-way match (`CMP-04`) porta comunque la spesa fino all'approvazione della fattura, che è il punto dove il valore si crea. | Nessuna condizione prevedibile nell'orizzonte attuale. |
+| **SaaS Management** | Esclusa · 22/09/2026 | Inventario delle sottoscrizioni software: mercato, acquirente e problema diversi da quelli di una RSA. Era nella roadmap «Spending OS» per completezza di catalogo, non per domanda osservata. | Una richiesta esplicita da parte di un cliente esistente. |
+| **CAPA / supplier quality collaboration completa** | **Rinviata**, non esclusa · 22/09/2026 | La gestione collaborativa delle azioni correttive con i fornitori è un modulo maturo, adatto a organizzazioni con una funzione qualità strutturata. Prematuro finché la gestione base delle non conformità non è consolidata. | Chiusura dei P0 e maturità della gestione NC interna. |
+| **Autonomous Spend Control** | Sostituita · 22/09/2026 | Vedi `SPD-01` **Assisted Spend Control**: le regole rilevano, l'IA spiega, l'umano decide. Il valore per il cliente è quasi identico, il rischio è di un ordine di grandezza inferiore. | La rinomina è definitiva: non è una questione di nome ma di responsabilità sulle decisioni di spesa. |
 
 ---
 
