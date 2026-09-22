@@ -9,7 +9,8 @@ export function effectiveCost(netPrice: unknown, taxRate: unknown, vatDeductibil
   if (![net, vat, deductible].every(Number.isFinite) || net < 0 || vat < 0 || deductible < 0 || deductible > 100) {
     throw new Error("Parametri IVA non validi per il calcolo del costo effettivo.");
   }
-  return net * (1 + vat / 100 * (1 - deductible / 100));
+  const value = net * (1 + vat / 100 * (1 - deductible / 100));
+  return Math.round((value + Number.EPSILON) * 100_000_000) / 100_000_000;
 }
 
 export function getComparablePrice(offer: NumericOffer, vatDeductibilityPercent: unknown = 100): number {
