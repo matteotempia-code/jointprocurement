@@ -2,13 +2,22 @@ import { processTechnicalBatch } from "@/lib/technical-intelligence/service";
 
 async function processChunk(batchId: string, organizationId: string) {
   "use step";
-  const batch = await processTechnicalBatch(batchId, organizationId, 5);
-  const pending = batch.items.filter(
+  let batch = await processTechnicalBatch(batchId, organizationId, 5);
+  let pending = batch.items.filter(
     (item) => item.status === "QUEUED" || item.status === "PROCESSING",
   ).length;
-  const retryable = batch.items.filter(
+  let retryable = batch.items.filter(
     (item) => item.status === "FAILED" && item.attempts < item.maxAttempts,
   ).length;
+  if (pending > 0 || retryable > 0) {
+    batch = await processTechnicalBatch(batchId, organizationId, 5);
+    pending = batch.items.filter(
+      (item) => item.status === "QUEUED" || item.status === "PROCESSING",
+    ).length;
+    retryable = batch.items.filter(
+      (item) => item.status === "FAILED" && item.attempts < item.maxAttempts,
+    ).length;
+  }
   return { status: batch.status, pending, retryable };
 }
 
