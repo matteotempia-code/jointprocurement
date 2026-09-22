@@ -8,9 +8,8 @@
   "scripts": {
     "prisma:generate": "prisma generate",
     "postinstall": "npm run prisma:generate",
-    "prebuild": "npm run prisma:generate",
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts",
