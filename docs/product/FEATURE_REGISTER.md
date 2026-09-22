@@ -3,6 +3,16 @@
 > **Fonte di verità prodotto.** Questo documento è il registro canonico delle feature di Sorgence e deve essere aggiornato ad ogni milestone che introduce, modifica, completa o certifica una feature.
 
 Ultimo aggiornamento iniziale: 2026-09-06
+Ultima revisione: **2026-09-22**, a seguito dell'audit tecnico del 21/09/2026.
+
+> **Registro unico.** Questo file è l'unica fonte di verità sullo stato delle feature.
+> `docs/FEATURE_REGISTER.md` rimanda qui e non contiene più stime proprie.
+>
+> **Come leggere le revisioni dell'audit.** Le righe modificate il 22/09/2026 portano la
+> dicitura *audit 21/09/2026* e un riferimento `file:riga`. Ogni percentuale abbassata è
+> verificabile aprendo quel file: se la verifica non regge, la riga va discussa e corretta,
+> non accettata. Le righe **non** marcate mantengono la valutazione precedente e la loro
+> evidenza originale: non sono state rimesse in discussione.
 
 ## Regole di avanzamento
 
@@ -37,20 +47,21 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 
 | ID | Feature | Descrizione | Milestone | % | Perché non è al 100% |
 |---|---|---|---|---:|---|
-| PLT-01 | Multi-tenant | Separazione di più clienti/organizzazioni sulla stessa piattaforma. | Core pre-M11 | 70% | Modello organizzativo presente, ma isolamento enterprise/RLS non ancora chiuso. |
+| PLT-00 | **Autenticazione** | Verifica dell'identità di chi accede: password, sessione firmata, protezione delle route. | Core | **0%** | **Non esiste.** L'identità è il cookie `jpo-demo-user` con l'id utente in chiaro e non firmato (`src/lib/auth.ts:19-27`); nessuna password, sessione o middleware. `DEMO_MODE="false"` nasconde solo il selettore (`layout.tsx:19`), il cookie resta valido. PLT-11/12/13 presuppongono questa voce. — *audit 21/09/2026* |
+| PLT-01 | Multi-tenant | Separazione di più clienti/organizzazioni sulla stessa piattaforma. | Core pre-M11 | **40%** | Gerarchia organizzativa solida, ma l'isolamento **non è realizzabile allo stato attuale**: `Supplier`, `Category`, `CanonicalProduct`, `PriceList`, `SupplierOffer` e `AuditEvent` non hanno `organizationId`. Control Tower legge tutti i tenant senza filtro (`control-tower/page.tsx:9-12`). Con due organizzazioni demo non si vede; alla terza un cliente vede i prezzi negoziati dell'altro. — *audit 21/09/2026* |
 | PLT-02 | Multi-legal-entity | Gestione di più società giuridiche nello stesso tenant. | Core pre-M11 | 90% | Funzionale; manca hardening enterprise completo. |
 | PLT-03 | Gerarchia organizzativa | Aree, strutture/facility e centri di costo. | Core pre-M11 / M11.7 | 100% | — |
 | PLT-04 | Utenti e ruoli | Gestione utenti e ruoli procurement. | Core pre-M11 / M11.7 | 100% | — |
 | PLT-05 | Scope autorizzativi | Accesso limitato per struttura, area, ruolo e funzione. | M11.5 | 95% | Direct-route authorization certificata; manca hardening enterprise finale. |
 | PLT-06 | Deleghe | Delegare temporaneamente funzioni approvative. | Core pre-M11 / M11.7 | 100% | — |
-| PLT-07 | Audit trail | Storico di azioni e transizioni. | Core pre-M11 | 85% | Presente nei flussi core; da uniformare in ogni dominio. |
+| PLT-07 | Audit trail | Storico di azioni e transizioni. | Core pre-M11 | 85% | Presente nei flussi core; da uniformare in ogni dominio. Verificata almeno una lacuna: `acknowledgeOrder` non scriveva alcun evento. — *audit 21/09/2026* |
 | PLT-08 | Platform Admin | Amministrazione globale della piattaforma. | Post-M15 | 20% | Architettura prevista, prodotto non completato. |
 | PLT-09 | Tenant provisioning | Creazione/configurazione automatica di un nuovo cliente. | Post-M15 | 10% | Backlog. |
 | PLT-10 | Organization Builder | Configurazione visuale della struttura organizzativa. | Post-M15 | 10% | Backlog. |
 | PLT-11 | SSO | Accesso enterprise con identity provider aziendale. | Post-M15 | 0% | Non implementato. |
 | PLT-12 | SCIM | Provisioning automatico utenti e gruppi. | Post-M15 | 0% | Non implementato. |
 | PLT-13 | MFA enterprise | Autenticazione forte configurabile. | Post-M15 | 0% | Non implementato. |
-| PLT-14 | RLS / isolamento tenant DB | Sicurezza dei dati anche a livello PostgreSQL. | Post-M15 | 20% | Supabase segnala RLS disabilitato sulle tabelle public; non va attivato senza disegno coerente con Prisma/server side. |
+| PLT-14 | RLS / isolamento tenant DB | Sicurezza dei dati anche a livello PostgreSQL. | Post-M15 | **10%** | RLS non è mai stata abilitata in alcuna migrazione (verificato su tutte). L'istinto di non attivarla alla cieca è corretto, ma il motivo è più radicale: **manca la colonna su cui scrivere la policy** (vedi PLT-01). Ordine obbligatorio: aggiungere `organizationId`, poi filtrare le query, poi RLS. — *audit 21/09/2026* |
 | PLT-15 | Separazione DEV/Preview/PROD | Isolamento completo di ambienti, dati e segreti. | M11.4 + Post-M15 | 65% | DEV funziona bene; Preview/Production isolation non chiusa. |
 | PLT-16 | Cloud-first development | GitHub → Vercel → Supabase/OpenAI senza dipendenza dal PC. | M11.3–M11.5 | 95% | Flusso operativo; manca formalizzazione/hardening finale del bootstrap. |
 
@@ -81,13 +92,13 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | REQ-05 | Auto-approval | Approvazione automatica quando le regole lo consentono. | M11.5 | 100% | — |
 | REQ-06 | Approval required | Instradamento verso un approvatore. | M11.5 | 100% | — |
 | REQ-07 | Clarification | Richiesta di chiarimenti. | M11.5 | 100% | — |
-| REQ-08 | Resubmission | Ripresentazione dopo chiarimento. | M11.5 | 100% | — |
+| REQ-08 | Resubmission | Ripresentazione dopo chiarimento. | M11.5 | **60%** | **La policy non viene rivalutata.** Il richiedente può modificare le quantità e la pratica torna allo *stesso* approvatore (`buying-actions.ts`, `answerClarification`): una richiesta da 4.000 € può diventare da 60.000 € e restare su chi ha un limite di 20.000. Si chiude con il motore di transizioni. — *audit 21/09/2026* |
 | REQ-09 | Rejection | Rifiuto motivato senza generazione PO. | M11.5 | 100% | — |
 | REQ-10 | Approval inbox | Coda delle richieste da approvare. | M11.5 | 100% | — |
 | REQ-11 | SLA approvazioni | Evidenza delle richieste in ritardo. | Core | 80% | Segnali presenti; escalation/notification complete future. |
 | REQ-12 | Approval escalation | Escalation automatica al superamento degli SLA. | Future | 20% | Logica non completa. |
-| POL-01 | Policy Engine | Valutazione automatica delle regole applicabili alla richiesta. | Core | 90% | Funzionale; rule builder/configurabilità avanzata mancanti. |
-| POL-02 | Limiti procurement | Soglie operative per ruolo/importo. | M11.5 | 95% | Blocking PASS; amministrazione completa non finita. |
+| POL-01 | Policy Engine | Valutazione automatica delle regole applicabili alla richiesta. | Core | **60%** | Funzionale e ben testato, ma **le soglie sono codice**: `areaManagerLimit: 20000` è cablato in `buying-actions.ts`, dentro `submitRequisition`. Cambiare una soglia richiede un rilascio, e due clienti con catene di delega diverse richiederebbero di duplicare la logica. Specifica di migrazione a regole-come-dati approvata il 22/09/2026. — *audit 21/09/2026* |
+| POL-02 | Limiti procurement | Soglie operative per ruolo/importo. | M11.5 | **40%** | Il blocco funziona **solo su limiti ben configurati**. `ProcurementLimit` non impone che il campo del proprio `limitType` sia valorizzato: `Number(null)` produce `NaN` e ogni confronto con `NaN` è falso (`limits.ts:40`), quindi **un limite mal configurato non scatta mai e non segnala nulla**. Servono vincolo `CHECK` in database e guardia applicativa. — *audit 21/09/2026* |
 | POL-03 | Budget blocking | Blocco quando il budget non consente l'acquisto. | M11.5 | 100% | — |
 | POL-04 | Budget warning | Avviso di soglia senza bloccare la richiesta. | M11.6 | 80% | Esiste, ma il caso warning distinto deve essere certificato. |
 | POL-05 | Policy explanation | Spiegazione del motivo di blocco/routing. | Core / Future | 70% | Presente parzialmente; explainability evoluta futura. |
@@ -149,6 +160,8 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | IMP-09 | Correction | Correzione umana dei dati importati. | M11.3 | 100% | — |
 | IMP-10 | Publication | Pubblicazione dei dati approvati. | M11.3 | 100% | — |
 | IMP-11 | Price-list versioning | Gestione delle versioni successive dei listini. | Pre-M11 | 85% | Da integrare con intelligence tecnica e Supplier Portal. |
+| IMP-12 | **Tenuta ai volumi reali** | Importare listini da migliaia di righe senza fallire. | M11.3 | **25%** | Il supporto dei formati è completo (IMP-01..04), ma l'architettura no: tutto gira in una server action sincrona, con matching O(righe × prodotti) in memoria e circa 3 query per riga dentro una transazione da 60 s; `publishImport` arriva a 5 query per record in una da 30 s. **Cede intorno alle 800 righe**, oltre va in rollback totale. Il test di scala esistente non esercita questo percorso: inserisce i record con `createMany` diretto. — *audit 21/09/2026* |
+| IMP-13 | **Import asincrono e ripartibile** | Coda, chunk, lease, tentativi, ripresa e avanzamento visibile. | M11.3 | **0%** | Da costruire. **L'architettura corretta è già nel repository e funziona**: `src/workflows/technical-batch.ts` la usa per i documenti tecnici, con chunking, lease a token, `attempts` e ripresa idempotente. Va applicata agli import. — *audit 21/09/2026* |
 
 ## H. Procurement AI V1
 
@@ -172,7 +185,7 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 |---|---|---|---|---:|---|
 | TECH-01 | Caricamento tecnico massivo | Acquisizione a chunk e analisi durevole di documenti in un lotto persistito. | M12 | 85% | Implementato; manca la prova remota del lotto da 100 documenti. |
 | TECH-02 | Ingestione ZIP | Estrazione controllata di documenti supportati da un archivio ZIP. | M12 | 80% | Implementata; carichi ZIP grandi da certificare su Vercel. |
-| TECH-03 | Classificazione AI documenti | Riconosce scheda tecnica, SDS, dichiarazioni, certificati e altri documenti. | M12 | 85% | Output strutturato e fallback presenti; prova OpenAI M12 remota pendente. |
+| TECH-03 | Classificazione AI documenti | Riconosce scheda tecnica, SDS, dichiarazioni, certificati e altri documenti. | M12 | 85% | Output strutturato e fallback presenti; prova OpenAI M12 remota pendente. **Attenzione:** i documenti immagine non vengono mai letti (nessun OCR, `parser.ts:8`) ma contano come lotto completato (`service.ts:34`): un fornitore che invia schede come fotografie risulta documentato senza esserlo. Vanno marcati `PENDING_REVIEW`/`NEEDS_OCR`. — *audit 21/09/2026* |
 | TECH-04 | Associazione documento-prodotto | Associa automaticamente una scheda usando identificatori, memoria e candidati bounded. | M12 | 85% | Implementata; calibrazione e certificazione remota pendenti. |
 | TECH-05 | Relazione molti-a-molti | Una scheda può coprire più SKU e un prodotto più documenti. | M12 | 90% | Modello e UX presenti; prova remota pendente. |
 | TECH-06 | Confidenza associazione | Soglie centralizzate e spiegazione dell'evidenza usata. | M12 | 85% | Test locale presente; calibrazione fixture remota pendente. |
@@ -185,7 +198,7 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | TECH-13 | Gate Procurement Approved | Blocca nuovi acquisti quando esiste uno stato tecnico esplicitamente incompleto. | M12 | 85% | Compatibilità M11 preservata; boundary remoto da certificare. |
 | TECH-14 | Versionamento tecnico | Mantiene revisioni immutabili, corrente, superseded e validità. | M12 | 85% | Implementato; prova nuova revisione remota pendente. |
 | TECH-15 | Identità esatta prodotto | Usa GTIN, SKU produttore e mapping verificati prima della semantica. | M12 | 80% | Motore deterministico presente; fixture multi-fornitore remota pendente. |
-| TECH-16 | Equivalenza funzionale | Confronta attributi critici di categoria senza affidarsi alla sola similarità testuale. | M12 | 80% | Motore e governance umana presenti; certificazione remota pendente. |
+| TECH-16 | Equivalenza funzionale | Confronta attributi critici di categoria senza affidarsi alla sola similarità testuale. | M12 | **55%** | Motore e governance umana presenti, ma **il comportamento predefinito è fail-open**: se per la categoria non esistono `TechnicalEvidenceRequirement` configurati, **un solo attributo in comune** basta a dichiarare due prodotti `FUNCTIONALLY_EQUIVALENT` con confidenza 0,79 e a generare un'opportunità di risparmio (`engine.ts:47-52`). Su dispositivi medici in RSA il default va invertito in `INSUFFICIENT_EVIDENCE`. — *audit 21/09/2026* |
 | TECH-17 | Evidenza insufficiente | Rifiuta l'equivalenza quando mancano dati tecnici critici. | M12 | 90% | Implementato e testato localmente; prova remota pendente. |
 | TECH-18 | Evidenza mancante | Registra campo/documento mancante, motivazione e fonte suggerita. | M12 | 85% | Persistenza e UX presenti; richiesta esterna al fornitore esclusa. |
 | TECH-19 | Rivalutazione automatica | Nuove evidenze aggiornano completezza, equivalenze e decisioni stale. | M12 | 85% | Fan-out implementato; prova durevole remota pendente. |
@@ -373,6 +386,60 @@ Il principio è: **il fornitore propone e aggiorna; Sorgence interpreta e verifi
 | FUT-07 | Predictive price increase | Previsione di aumenti prezzo. | Future | 0% | Da sviluppare. |
 | FUT-08 | Dynamic supplier allocation | Ottimizza quote/volumi tra supplier. | Future | 0% | Richiede performance, capacity e sourcing. |
 | FUT-09 | Autonomous procurement | Azioni procurement autonome entro policy e controlli. | Future | 0% | Richiede governance, sicurezza e affidabilità molto superiori. |
+
+---
+
+## U. Conformità, economia e lacune rilevate dall'audit
+
+Voci che **nessuna delle 63 precedenti nominava**. Ricerca esaustiva su `src/`: zero occorrenze di
+fattura, SDI, DDT, lotto, scadenza, CIG, MDR, HACCP.
+
+| ID | Feature | Descrizione | Milestone | % | Perché non è al 100% |
+|---|---|---|---|---:|---|
+| ECO-01 | **IVA indetraibile e costo effettivo** | Percentuale di detraibilità IVA per organizzazione; confronti e risparmi calcolati sul costo realmente sostenuto. | P0 | **0%** | Esiste un solo `taxRate` con default 22, e **tutti i confronti sono al netto**. Le cooperative sociali hanno IVA largamente indetraibile: per loro è costo pieno. Il sistema può quindi indicare come più conveniente un fornitore che costa di più. **Non è un modulo mancante: è un errore nel motore su cui si vende il prodotto.** — *audit 21/09/2026* |
+| ECO-02 | **Baseline del risparmio** | Riferimento corretto per il calcolo del saving. | P0 | **20%** | Il risparmio usa come riferimento l'**offerta più cara** disponibile (`service.ts:163`): non il prezzo storicamente pagato, non la media. È un risparmio che si gonfia da solo e non regge una verifica del cliente. Servono baseline storica e stati `IDENTIFIED` / `NEGOTIATED` / `CONTRACTED` / `REALIZED`. — *audit 21/09/2026* |
+| ECO-03 | KPI acquisti convenzionati | Quota di **spesa** su fornitori convenzionati. | Core | **30%** | Misura la percentuale di offerte marcate `preferred`, non la quota di spesa: sono grandezze diverse. **La funzione corretta esiste già in `kpis.ts:21-26` e non viene chiamata.** — *audit 21/09/2026* |
+| CMP-01 | **Tracciabilità lotto e scadenza** | Lotto e scadenza registrati in ricezione, con risalita struttura → ricevimento → lotto. | P0 | **0%** | `ReceiptLine` contiene solo le quantità. In caso di richiamo di un lotto **è impossibile sapere in quale struttura è finito**. Obbligo di legge: MDR per i dispositivi medici, Reg. CE 178/2002 per gli alimentari. — *audit 21/09/2026* |
+| CMP-02 | **DDT** | Documento di trasporto nel flusso di ricezione. | P0 | **0%** | Assente. È il documento su cui si basa la verifica fisica della consegna. — *audit 21/09/2026* |
+| CMP-03 | Fatturazione elettronica / SDI | Ciclo passivo e integrazione con il Sistema di Interscambio. | 3-6 mesi | **0%** | Assente. Chiude il cerchio ordine-ricezione-fattura; senza, Spend Analytics e Cash Forecast lavorano su dati incompleti. — *audit 21/09/2026* |
+| CMP-04 | Three-way match | Confronto PO / ricezione / fattura. | 3-6 mesi | **0%** | Da costruire dopo CMP-03. — *audit 21/09/2026* |
+| CMP-05 | Regimi IVA speciali | Split payment e reverse charge. | Da valutare | **0%** | Frequenti per enti accreditati. — *audit 21/09/2026* |
+| CMP-06 | CIG / CUP | Codici di tracciabilità per acquisti in convenzione o con ente pubblico. | Da valutare | **0%** | Obbligatori se anche un solo cliente opera come ente pubblico o accreditato. — *audit 21/09/2026* |
+| CMP-07 | Conservazione sostitutiva | Conservazione a norma dei documenti fiscali. | Da valutare | **0%** | Assente. — *audit 21/09/2026* |
+| UX-01 | **Messaggi d'errore all'utente** | L'utente legge il motivo reale del rifiuto. | P1 | **15%** | `error.tsx` riceve l'errore e **lo scarta**: i dodici messaggi delle azioni d'acquisto non arrivano mai. Il direttore legge un generico problema di connessione, e il pulsante riprova rilancia l'azione perdendo il modulo compilato. **Il pattern corretto esiste già in `imports/actions.ts:16-21`.** — *audit 21/09/2026* |
+| UX-02 | **Accessibilità** | Navigazione da tastiera, contrasti, dimensioni leggibili. | P1 | **20%** | In 1.187 righe di CSS l'unica regola `:focus-visible` fa `outline:none`. Bordo dei campi a 1,36:1, grigio secondario a 3,43:1, testo fino a 7,5px. Rilevante anche per conformità AgID. — *audit 21/09/2026* |
+| UX-03 | Riscontro sulle azioni | Stato di attesa, conferma, contatore carrello. | P1 | **25%** | Sedici azioni su cinquantacinque non comunicano nulla. Aggiungi al carrello impiega fino a 600 ms senza disabilitare il pulsante: **al doppio clic la quantità si somma due volte**. Il carrello non ha contatore in nessun punto dell'applicazione. — *audit 21/09/2026* |
+| UX-04 | Design system «Quadro» | Direzione visiva scelta il 22/09/2026: tema chiaro, accento `#00696E`, Plus Jakarta Sans + Public Sans, pavimento tipografico 12px. | Dopo P0 | **0%** | Da applicare. Stato attuale misurato: 29 dimensioni di testo distinte su 261 occorrenze, 46 colori letterali, 3 vocabolari di token coesistenti. Va imposta con token e lint, non adottata informalmente. — *audit 21/09/2026* |
+| OPS-01 | **Notifiche** | Avvisi per approvazioni, consegne, anomalie e scadenze. | P0 | **0%** | Non esiste alcun sistema di notifica: **chi deve approvare non viene avvisato**. Il workflow autorizzativo dipende dal fatto che qualcuno apra la pagina. — *audit 21/09/2026* |
+| OPS-02 | Onboarding / import anagrafiche | Caricamento iniziale di strutture, utenti e centri di costo. | P0 | **0%** | Assente: per un nuovo cliente è tutto manuale. — *audit 21/09/2026* |
+| AI-Q1 | **Valutazione qualità IA** | Golden set, precision/recall, gate di regressione in CI. | Dopo P0 | **0%** | Nessun test sulla qualità delle risposte: solo verifiche che la chiamata non esploda. Cambiare modello oggi è non misurabile. **Le etichette esistono già nel database e vengono buttate via**: `ImportFieldCorrection` e `ProductMatchCandidate.humanDecision` sono coppie (predizione, verità corretta dall'umano). Serve uno script di export, non annotazione. — *audit 21/09/2026* |
+| AI-Q2 | Procurement Memory ricollegata | La memoria confermata migliora il matching successivo. | Dopo P0 | **40%** | Scritta dagli import (`actions.ts:69`) ma **mai riletta** dagli import: `suggestMatches` non vi ha accesso. Il vantaggio competitivo dichiarato oggi non si materializza nel matching dei listini. — *audit 21/09/2026* |
+| SEC-01 | Cifratura connessione database | TLS verificato verso PostgreSQL. | P0 | **0%** | Verificato sperimentalmente: `pg_stat_ssl` riporta `ssl = false`. La stringa di connessione non specifica `sslmode` e l'adapter non riceve configurazione TLS. Serve il certificato CA di Supabase, **non** `sslmode=no-verify`. — *audit 21/09/2026* |
+
+---
+
+## V. M11.5 — Impegni di architettura enterprise
+
+Trasferita da `docs/FEATURE_REGISTER.md` il 22/09/2026 per eliminare la duplicazione.
+Sono **impegni di architettura, non feature implementate**; le definizioni canoniche stanno in
+`PRODUCT_VISION.md`, `DOMAIN_ARCHITECTURE_2.md` e `ADR/ADR-001-universal-procurement-orchestration.md`.
+
+These are architecture commitments, not implemented features. Their canonical definitions are in `PRODUCT_VISION.md`, `DOMAIN_ARCHITECTURE_2.md`, and `ADR/ADR-001-universal-procurement-orchestration.md`.
+
+| Feature | Fase | Stato | Completezza | Evidenza | Nota |
+| --- | --- | --- | ---: | --- | --- |
+| Canonical enterprise domain schema | M11.5 | PLANNED | 0% | Domain Architecture 2 | Formalize Procedure, Commitment, Payable, Evidence, Resolution, Authority, AccountingProposal and PostingResult before migrations |
+| Purchase archetype framework | M11.5 | PLANNED | 0% | ADR-001 | Catalog, contracts/utilities, kitchen, delegated executive, professional services and recurring/non-PO strategies on one lifecycle |
+| Enterprise identity boundary | M11.5 | PLANNED | 0% | Product Vision | AD/Windows domains, Entra ID, OIDC/SAML and LDAP; demo identity remains development-only |
+| Organization master ingestion | M11.5 | PLANNED | 0% | Domain Architecture 2 | API and CSV/XLSX ingestion for entities, facilities, services, cost centers, people, functions and hierarchies |
+| Authority graph and snapshots | M11.5 | PLANNED | 0% | ADR-001 | Contextual evidence, allocation and approval powers with scope, subject, action, threshold, dates and delegation |
+| Enterprise multidimensional budget and limit model | M11.5 | PLANNED | 15% | Domain Architecture 2; M11 `ProcurementLimit` subset | M11 implements facility × product/category × period monetary/quantity controls; legal-entity, service/project and normalized allocations remain planned |
+| Immutable evidence engine | M11.5 | PLANNED | 0% | Domain Architecture 2 | Original response, identity/authority snapshot, channel assurance, timestamps, attachments, AI derivative and audit chain |
+| Channel-aware resolution engine | M11.5 | PLANNED | 0% | Domain Architecture 2 | Missing-fact routing through portal, email, WhatsApp, Teams, Slack and future controlled channels |
+| Archetype-aware matching engine | M11.5 | PLANNED | 0% | Domain Architecture 2 | Reconcile invoices/payables with applicable PO, contract, tariff, receipt/service, period, allocation and authority evidence |
+| Accounting orchestration engine | M11.5 | PLANNED | 0% | Domain Architecture 2 | Produce canonical, explainable AccountingProposal only when evidence, match, policy and authority are sufficient |
+| ERP Integration Hub contracts | M11.5 | PLANNED | 0% | ADR-001 | Vendor-neutral hub plus Mago, Coopselios and future ERP adapters; persist posting results and errors |
+| Graduated automation policy | M11.5 | PLANNED | 0% | Product Vision | L0–L4 by entity, archetype, amount, category, risk, supplier and evidence quality; treasury retains payment control |
 
 ---
 
