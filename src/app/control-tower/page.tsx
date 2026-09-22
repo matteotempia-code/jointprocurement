@@ -2,6 +2,7 @@ import { Metric, PageHeader } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { compareOffers, formatMoney } from "@/lib/pricing";
+import { preferredSpendShare } from "@/lib/procurement/preferred-spend";
 
 export default async function ControlTower() {
   const context = await requireRoles(["EXECUTIVE_SPONSOR"]);
@@ -13,7 +14,10 @@ export default async function ControlTower() {
     prisma.canonicalProduct.findMany({ where: { organizationId }, include: { category: true, offers: true } }), prisma.organization.findMany({ where: { id: organizationId }, select: { id: true, name: true } }),
   ]);
   const spend = orders.filter((order) => order.issuedAt.getFullYear() === new Date().getFullYear()).reduce((sum, order) => sum + Number(order.total), 0);
-  const compliance = offers.length ? offers.filter((offer) => offer.preferred).length / offers.length * 100 : 0;
+  const compliance = preferredSpendShare(
+    orders.flatMap((order) => order.lines.map((line) => ({ supplierId: order.supplierId, canonicalProductId: line.canonicalProductId, amount: line.lineTotal }))),
+    offers.filter((offer) => offer.preferred).map((offer) => `${offer.supplierId}:${offer.canonicalProductId}`),
+  );
   const opportunities = products.filter((product) => product.offers.length > 1).map((product) => ({ product, comparison: compareOffers(product.offers, context.organization.vatDeductibilityPercent) })).filter(({ comparison }) => comparison.spread > 5).sort((a, b) => b.comparison.spread - a.comparison.spread);
   const observedOpportunity = opportunities.reduce((sum, { product, comparison }) => {
     const observedQuantity = orders.flatMap((order) => order.lines).filter((line) => line.canonicalProductId === product.id).reduce((quantity, line) => quantity + Number(line.quantity), 0);
@@ -23,9 +27,9 @@ export default async function ControlTower() {
   const openOrders = orders.filter((order) => !["RECEIVED", "CANCELLED"].includes(order.status));
   const overdue = openOrders.filter((order) => order.expectedDeliveryDate < new Date()).length;
   const organizationSpend = organizations.map((organization) => ({ ...organization, spend: orders.filter((order) => order.organizationId === organization.id).reduce((sum, order) => sum + Number(order.total), 0) }));
-  return <main><PageHeader eyebrow="Control Tower direzionale" title="Performance della rete" description="Valore, affidabilitÃ  e rischi in una lettura di 30 secondi." />
-    <div className="metrics-grid executive"><Metric label="Spesa da inizio anno" value={formatMoney(spend)} /><Metric label="Acquisti convenzionati" value={`${compliance.toFixed(1)}%`} /><Metric label="OpportunitÃ  osservata" value={formatMoney(observedOpportunity)} detail="Sui volumi presenti" /><Metric label="Rischi operativi" value={overdue + issues} detail={`${overdue} ritardi Â· ${issues} problemi`} /></div>
-    <div className="executive-brief"><section><div className="section-heading"><div><p className="eyebrow">Top 3 opportunitÃ </p><h2>Dove creare valore</h2></div></div>{opportunities.slice(0, 3).map(({ product, comparison }, index) => <article key={product.id}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{product.name}</strong><small>{product.category.name}</small></div><b>{comparison.spread.toFixed(1)}%</b></article>)}</section><section><div className="section-heading"><div><p className="eyebrow">Top 3 rischi</p><h2>Cosa presidiare</h2></div></div><article><span>01</span><div><strong>Consegne in ritardo</strong><small>Ordini da sollecitare</small></div><b>{overdue}</b></article><article><span>02</span><div><strong>Problemi aperti</strong><small>Non conformitÃ  operative</small></div><b>{issues}</b></article><article><span>03</span><div><strong>Copertura convenzionata</strong><small>Offerte preferite sul catalogo</small></div><b>{compliance.toFixed(1)}%</b></article></section></div>
+  return <main><PageHeader eyebrow="Control Tower direzionale" title="Performance della rete" description="Valore, affidabilitÃƒÂ  e rischi in una lettura di 30 secondi." />
+    <div className="metrics-grid executive"><Metric label="Spesa da inizio anno" value={formatMoney(spend)} /><Metric label="Acquisti convenzionati" value={`${compliance.toFixed(1)}%`} /><Metric label="OpportunitÃƒÂ  osservata" value={formatMoney(observedOpportunity)} detail="Sui volumi presenti" /><Metric label="Rischi operativi" value={overdue + issues} detail={`${overdue} ritardi Ã‚Â· ${issues} problemi`} /></div>
+    <div className="executive-brief"><section><div className="section-heading"><div><p className="eyebrow">Top 3 opportunitÃƒÂ </p><h2>Dove creare valore</h2></div></div>{opportunities.slice(0, 3).map(({ product, comparison }, index) => <article key={product.id}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{product.name}</strong><small>{product.category.name}</small></div><b>{comparison.spread.toFixed(1)}%</b></article>)}</section><section><div className="section-heading"><div><p className="eyebrow">Top 3 rischi</p><h2>Cosa presidiare</h2></div></div><article><span>01</span><div><strong>Consegne in ritardo</strong><small>Ordini da sollecitare</small></div><b>{overdue}</b></article><article><span>02</span><div><strong>Problemi aperti</strong><small>Non conformitÃƒÂ  operative</small></div><b>{issues}</b></article><article><span>03</span><div><strong>Copertura convenzionata</strong><small>Quota della spesa su fornitori convenzionati</small></div><b>{compliance.toFixed(1)}%</b></article></section></div>
     <section><div className="section-heading"><div><p className="eyebrow">Rete congiunta</p><h2>Anteo e Coopselios</h2></div><span>Spesa osservata, non annualizzata</span></div><div className="organization-comparison">{organizationSpend.map((organization) => <div key={organization.id}><span>{organization.name}</span><strong>{formatMoney(organization.spend)}</strong><i><b style={{ width: `${organization.spend / Math.max(...organizationSpend.map((item) => item.spend), 1) * 100}%` }} /></i></div>)}</div></section>
   </main>;
 }

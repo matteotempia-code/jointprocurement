@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatMoney } from "@/lib/pricing";
 import { getFacilityBudget } from "@/lib/procurement/budget";
+import { preferredSpendShare } from "@/lib/procurement/preferred-spend";
 import { statusLabel } from "@/lib/presentation/status";
 import { resolveScope } from "@/lib/scope";
 
@@ -517,9 +518,9 @@ async function Procurement({
     priorityDeliveries,
     importQueue,
   ] = await Promise.all([
-    prisma.purchaseOrder.aggregate({
-      _sum: { total: true },
-      where: { issuedAt: { gte: new Date(new Date().getFullYear(), 0, 1) } },
+    prisma.purchaseOrder.findMany({
+      where: { organizationId, status: { not: "CANCELLED" }, issuedAt: { gte: new Date(new Date().getFullYear(), 0, 1) } },
+      include: { lines: true },
     }),
     prisma.purchaseRequisition.count({ where: { status: "PENDING_APPROVAL" } }),
     prisma.purchaseOrder.count({
@@ -588,9 +589,11 @@ async function Procurement({
       take: 3,
     }),
   ]);
-  const compliance = offers.length
-    ? (offers.filter(({ preferred }) => preferred).length / offers.length) * 100
-    : 0;
+  const observedSpend = spend.reduce((sum, order) => sum + Number(order.total), 0);
+  const compliance = preferredSpendShare(
+    spend.flatMap((order) => order.lines.map((line) => ({ supplierId: order.supplierId, canonicalProductId: line.canonicalProductId, amount: line.lineTotal }))),
+    offers.filter((offer) => offer.preferred).map((offer) => `${offer.supplierId}:${offer.canonicalProductId}`),
+  );
   const offerGroups = new Map<string, typeof offers>();
   for (const offer of offers)
     offerGroups.set(offer.canonicalProductId, [
@@ -703,7 +706,7 @@ async function Procurement({
       <div className="metrics-grid four">
         <Metric
           label="Spesa osservata da inizio anno"
-          value={formatMoney(Number(spend._sum.total ?? 0))}
+          value={formatMoney(observedSpend)}
         />
         <Metric label="Ordini aperti" value={orders} />
         <Metric label="Fornitori attivi" value={suppliers} />
