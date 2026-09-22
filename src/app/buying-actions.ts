@@ -8,6 +8,7 @@ import { resolveScope } from "@/lib/scope";
 import { getFacilityBudget } from "@/lib/procurement/budget";
 import { evaluatePurchasePolicy } from "@/lib/policy/engine";
 import { createPurchaseOrders } from "@/lib/procurement/orders";
+import { acknowledgePurchaseOrder } from "@/lib/procurement/acknowledge-order";
 import { resolveApprover } from "@/lib/policy/approver";
 import { evaluateCommercialConditions } from "@/lib/procurement/commercial-conditions";
 import { evaluateFacilityProcurementLimits } from "@/lib/procurement/limits";
@@ -51,7 +52,7 @@ export async function createOutOfCatalogRequest(formData:FormData){
  redirect(`/richieste?fuoriCatalogo=1&request=${requestId}`);
 }
 
-export async function acknowledgeOrder(formData:FormData){await requireRoles(["PROCUREMENT_MANAGER"]);const id=String(formData.get("poId"));await prisma.purchaseOrder.update({where:{id},data:{status:"ACKNOWLEDGED",supplierAcknowledgedAt:new Date(),expectedDeliveryDate:formData.get("expectedDate")?new Date(String(formData.get("expectedDate"))):undefined}});revalidatePath("/orders/"+id);}
+export async function acknowledgeOrder(formData:FormData){const context=await requireRoles(["PROCUREMENT_MANAGER"]);const id=String(formData.get("poId"));await acknowledgePurchaseOrder(prisma,{orderId:id,organizationId:context.organization.id,actorUserId:context.user.id,expectedDate:String(formData.get("expectedDate")??"")});revalidatePath("/orders/"+id);}
 
 export async function draftSupplierReminder(formData: FormData) {
  const context=await requireRoles(["RSA_DIRECTOR","AREA_MANAGER","PROCUREMENT_MANAGER"]),id=String(formData.get("poId"));const scope=await resolveScope(context.assignment);const order=await prisma.purchaseOrder.findFirstOrThrow({where:{id,organizationId:context.organization.id,...(context.roleCode!=="PROCUREMENT_MANAGER"?{facilityId:{in:scope.facilityIds}}:{})},include:{supplier:true}});const contact=(order.supplier.orderContact??{}) as {email?:string;name?:string};
