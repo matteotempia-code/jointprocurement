@@ -2,23 +2,19 @@ import { processTechnicalBatch } from "@/lib/technical-intelligence/service";
 
 async function processChunk(batchId: string, organizationId: string) {
   "use step";
-  let batch = await processTechnicalBatch(batchId, organizationId, 5);
-  let pending = batch.items.filter(
-    (item) => item.status === "QUEUED" || item.status === "PROCESSING",
-  ).length;
-  let retryable = batch.items.filter(
-    (item) => item.status === "FAILED" && item.attempts < item.maxAttempts,
-  ).length;
-  if (pending > 0 || retryable > 0) {
-    batch = await processTechnicalBatch(batchId, organizationId, 5);
-    pending = batch.items.filter(
+  let result = { status: "PROCESSING", pending: 1, retryable: 0 };
+  for (let group = 0; group < 4; group += 1) {
+    const batch = await processTechnicalBatch(batchId, organizationId, 5);
+    const pending = batch.items.filter(
       (item) => item.status === "QUEUED" || item.status === "PROCESSING",
     ).length;
-    retryable = batch.items.filter(
+    const retryable = batch.items.filter(
       (item) => item.status === "FAILED" && item.attempts < item.maxAttempts,
     ).length;
+    result = { status: batch.status, pending, retryable };
+    if (pending === 0 && retryable === 0) break;
   }
-  return { status: batch.status, pending, retryable };
+  return result;
 }
 
 export async function technicalBatchWorkflow(batchId: string, organizationId: string) {
