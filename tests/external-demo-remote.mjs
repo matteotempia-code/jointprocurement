@@ -47,9 +47,10 @@ try {
   checkpoint = "fixtures";
   const lucia = await db.user.findFirstOrThrow({ where: { name: "Lucia Ferri" }, include: { assignments: { where: { active: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: 1 } } });
   const facilityId = lucia.assignments[0].scopeId;
+  const organizationId = lucia.assignments[0].organizationId;
   assert.ok(facilityId && lucia.assignments[0].scopeType === "FACILITY");
   const limits = await db.procurementLimit.findMany({ where: { facilityId, active: true }, select: { canonicalProductId: true, categoryId: true } });
-  const product = await db.canonicalProduct.findFirstOrThrow({ where: { active: true, id: { notIn: limits.flatMap((limit) => limit.canonicalProductId ? [limit.canonicalProductId] : []) }, categoryId: { notIn: limits.flatMap((limit) => limit.categoryId ? [limit.categoryId] : []) }, offers: { some: { active: true, preferred: true, supplier: { active: true }, OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }] } } }, include: { offers: { where: { active: true, preferred: true, supplier: { active: true }, OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }] }, orderBy: { unitPrice: "asc" }, take: 1 } }, orderBy: { name: "asc" } });
+  const product = await db.canonicalProduct.findFirstOrThrow({ where: { id: { equals: "cert_m11_lifecycle_product_normal", notIn: limits.flatMap((limit) => limit.canonicalProductId ? [limit.canonicalProductId] : []) }, organizationId, active: true, categoryId: { notIn: limits.flatMap((limit) => limit.categoryId ? [limit.categoryId] : []) }, technicalStates: { some: { organizationId, status: "COMPLETE" } }, offers: { some: { id: "cert_m11_lifecycle_offer_normal", organizationId, active: true, preferred: true, supplier: { active: true }, OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }] } } }, include: { offers: { where: { id: "cert_m11_lifecycle_offer_normal", organizationId, active: true, preferred: true, supplier: { active: true }, OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }] }, take: 1 } } });
   const offer = product.offers[0]; assert.ok(offer);
   const cart = await db.cart.upsert({ where: { userId_facilityId: { userId: lucia.id, facilityId } }, create: { userId: lucia.id, facilityId }, update: {} });
   await db.cartLine.deleteMany({ where: { cartId: cart.id } });
