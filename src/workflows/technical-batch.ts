@@ -3,8 +3,8 @@ import { processTechnicalBatch } from "@/lib/technical-intelligence/service";
 async function processChunk(batchId: string, organizationId: string) {
   "use step";
   let result = { status: "PROCESSING", pending: 1, retryable: 0 };
-  for (let group = 0; group < 10; group += 1) {
-    const batch = await processTechnicalBatch(batchId, organizationId, 5);
+  for (let group = 0; group < 4; group += 1) {
+    const batch = await processTechnicalBatch(batchId, organizationId, 25);
     const pending = batch.items.filter(
       (item) => item.status === "QUEUED" || item.status === "PROCESSING",
     ).length;
