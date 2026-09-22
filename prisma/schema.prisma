@@ -237,6 +237,10 @@ enum SavingOpportunityType {
 }
 
 enum SavingOpportunityStatus {
+  IDENTIFIED
+  NEGOTIATED
+  CONTRACTED
+  REALIZED
   OPEN
   REVIEW_REQUIRED
   ACCEPTED
@@ -1299,7 +1303,7 @@ model TechnicalSavingOpportunity {
   estimatedAnnualSaving Decimal?                      @db.Decimal(18, 2)
   evidenceComplete      Boolean                       @default(false)
   confidence            Decimal                       @db.Decimal(5, 4)
-  status                SavingOpportunityStatus       @default(OPEN)
+  status                SavingOpportunityStatus       @default(IDENTIFIED)
   reason                String
   provenance            Json
   fingerprint           String
