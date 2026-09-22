@@ -4,27 +4,30 @@ import { PrismaClient } from "@prisma/client";
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function createPrismaClient() {
-  let connectionString = process.env.DATABASE_URL;
-  let connectionSource = "DATABASE_URL";
-  if (process.env.VERCEL_TARGET_ENV === "develop" && process.env.DIRECT_URL) {
-    const direct = new URL(process.env.DIRECT_URL);
-    const match = /^db\.([a-z0-9]+)\.supabase\.co$/.exec(direct.hostname);
-    if (match) {
-      direct.hostname = "aws-1-eu-west-1.pooler.supabase.com";
-      direct.port = "6543";
-      direct.username = `postgres.${match[1]}`;
-      direct.searchParams.set("pgbouncer", "true");
-      connectionString = direct.toString();
-      connectionSource = "DIRECT_URL_POOLER";
-    }
-  }
+  const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL is not configured");
-  const target = new URL(connectionString);
-  const projectRef = /^postgres\.([a-z0-9]+)$/.exec(decodeURIComponent(target.username))?.[1] ?? "unknown";
-  console.info(JSON.stringify({ level: "info", message: "Prisma database target", connectionSource, projectRef }));
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+
+  return new PrismaClient({
+    adapter: new PrismaPg({ connectionString, max: 1 }),
+  });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+function singletonPrismaClient() {
+  globalForPrisma.prisma ??= createPrismaClient();
+  return globalForPrisma.prisma;
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+export function lazyPrismaClient(factory: () => PrismaClient = singletonPrismaClient) {
+  let client: PrismaClient | undefined;
+  const resolve = () => (client ??= factory());
+
+  return new Proxy({} as PrismaClient, {
+    get(_target, property) {
+      const resolved = resolve();
+      const value = Reflect.get(resolved, property, resolved);
+      return typeof value === "function" ? value.bind(resolved) : value;
+    },
+  });
+}
+
+export const prisma = lazyPrismaClient();
