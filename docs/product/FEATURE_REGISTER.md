@@ -108,7 +108,7 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | ID | Feature | Descrizione | Milestone | % | Perché non è al 100% |
 |---|---|---|---|---:|---|
 | ORD-01 | Generazione PO | Trasforma una requisition approvata in ordine. | M11.5 | 100% | — |
-| ORD-02 | Numerazione PO | Identificativo univoco dell'ordine. | Core | 95% | Funzionante; resta hardening generale. |
+| ORD-02 | Numerazione PO | Identificativo univoco dell'ordine. | Core | **55%** | Univoco ma **non consecutivo**: per evitare collisioni si aggiunge un suffisso casuale ricavato dall'id della requisition (`orders.ts:8-9`). Per un documento fiscale italiano la consecutività è un requisito, non un dettaglio. Le serie `FC-` e `PR-` usano invece `count()+1`, che sotto concorrenza genera lo stesso numero e fa fallire la richiesta dell'utente; il contatore è globale mentre il prefisso è annuale, quindi al 1° gennaio non riparte. Serve una sequenza Postgres con reset annuale. — *audit 21/09/2026* |
 | ORD-03 | PO lifecycle | Gestione stati ordine fino al ricevimento. | Core / M11.5 / M13 | 95% | Core certificato; supplier acknowledgment arriverà in M13. |
 | ORD-04 | PO amendment | Modifica controllata dell'ordine emesso. | Future | 30% | Workflow non completo. |
 | REC-01 | Ricevimento totale | Registrazione della consegna completa. | M11.5 | 100% | — |
@@ -271,6 +271,14 @@ Stati di equivalenza minimi:
 Il principio è: **il fornitore propone e aggiorna; Sorgence interpreta e verifica; Procurement governa e approva.** Il supplier non modifica direttamente e senza controllo il catalogo canonico.
 
 ## M. M14 — Sourcing, gare e Reverse Auctions
+
+> **Revisione del 22/09/2026 — aste inverse depriorizzate.** `SRC-06`, `SRC-07` e `SRC-08`
+> restano registrate ma **escono dalla roadmap attiva**. Le aste inverse presuppongono un parco
+> fornitori ampio e intercambiabile; in ambito socio-sanitario, con vincoli di equivalenza
+> tecnica e di continuità di fornitura, sono poco applicabili e culturalmente ostili al
+> committente. Restano a 0% come opzione valutabile, non come impegno.
+> Le RFQ strutturate sotto soglia (`SRC-01`..`SRC-05`) restano invece in roadmap a 6-12 mesi:
+> per questo mercato sono più utili.
 
 | ID | Feature | Descrizione | Milestone | % | Perché non è al 100% |
 |---|---|---|---|---:|---|
@@ -440,6 +448,28 @@ These are architecture commitments, not implemented features. Their canonical de
 | Accounting orchestration engine | M11.5 | PLANNED | 0% | Domain Architecture 2 | Produce canonical, explainable AccountingProposal only when evidence, match, policy and authority are sufficient |
 | ERP Integration Hub contracts | M11.5 | PLANNED | 0% | ADR-001 | Vendor-neutral hub plus Mago, Coopselios and future ERP adapters; persist posting results and errors |
 | Graduated automation policy | M11.5 | PLANNED | 0% | Product Vision | L0–L4 by entity, archetype, amount, category, risk, supplier and evidence quality; treasury retains payment control |
+
+---
+
+## W. Contratti, spesa governata e copilot
+
+Voci decise il 22/09/2026 e non ancora presenti nel registro.
+
+| ID | Feature | Descrizione | Milestone | % | Perché non è al 100% |
+|---|---|---|---|---:|---|
+| CLM-01 | Contract Lifecycle Management | Repository contratti, clausole, rinnovi, scadenze, obblighi e prezzi negoziati; collegamento fra contratto, ordine e fattura. | Oltre 12 mesi | **0%** | Non implementato e **non prioritario**: dipende da CMP-03 (fatture SDI) e CMP-04 (three-way match), senza i quali un contratto non è confrontabile con la spesa reale. Da riprendere dopo il ciclo economico. — *decisione 22/09/2026* |
+| CLM-02 | Contract leakage | Acquisti effettuati fuori dalle condizioni negoziate, con quantificazione della perdita. | Oltre 12 mesi | **0%** | Dipende da CLM-01. Complementare a `ANA-05` maverick spend, che misura gli acquisti fuori processo anziché fuori prezzo. — *decisione 22/09/2026* |
+| SPD-01 | **Assisted Spend Control** | Le regole deterministiche rilevano l'anomalia di spesa, l'IA la spiega, **l'umano decide**. | Oltre 12 mesi | **0%** | Sostituisce la voce "Autonomous Spend Control" della roadmap esterna. **La rinomina è una decisione di prodotto, non di stile:** il valore per il cliente è quasi identico — l'anomalia viene trovata comunque — mentre il rischio è di un ordine di grandezza inferiore. In questo dominio il caso peggiore non è l'agente che sbaglia clamorosamente, è quello che sbaglia in modo plausibile per settimane senza che nessuno se ne accorga; e una sostituzione prodotto sbagliata in una RSA non è un errore di spesa, è un evento avverso. — *decisione 22/09/2026* |
+| SPD-02 | Spend intake unificato | Punto d'ingresso unico per qualsiasi richiesta di spesa, anche fuori catalogo, con instradamento automatico al processo corretto. | Oltre 12 mesi | **0%** | Concept della roadmap "Spending OS". Da riprendere solo dopo il consolidamento dei fondamentali: richiede autenticazione, isolamento tenant e ciclo economico chiusi. — *decisione 22/09/2026* |
+
+### Vincoli di prodotto sul Copilot (sezione R)
+
+Decisi il 22/09/2026 e vincolanti per tutte le voci `COP-*`:
+
+- **Sola lettura.** Il copilot interroga e prepara; non crea, non modifica, non approva. Gli strumenti che agiscono **non vanno disabilitati con un flag: non vanno implementati.** In un sistema che muove denaro la differenza fra una porta chiusa a chiave e un muro conta.
+- **Citazione obbligatoria delle fonti.** Ogni affermazione numerica riporta l'entità di origine (offerta, listino, documento). Una risposta senza fonti viene rifiutata dal validatore, non mostrata.
+- **Scope imposto dal server.** `organizationId` arriva dal contesto server, mai dall'input del modello.
+- **Documenti fornitore come dati non fidati.** I listini e le schede arrivano da terzi: vanno racchiusi in delimitatori espliciti e trattati come contenuto, mai come istruzioni.
 
 ---
 
