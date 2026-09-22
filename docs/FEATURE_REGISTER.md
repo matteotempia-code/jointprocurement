@@ -1,86 +1,85 @@
-# Sorgence — registro canonico delle feature
+# Feature register
 
-Questo documento è l'unica fonte di verità per stato, completezza e roadmap del prodotto. Le percentuali seguono l'audit tecnico del 21 settembre 2026. Dove l'audit non assegna una misura, la completezza resta **da verificare**.
+Cloud activation evidence (1 September 2026): live XLSX and native PDF ingestion, private signed readback, role denial and operation with `var/imports/` unavailable all pass. The complete cross-asset classification is recorded in `docs/ASSET_STORAGE_INVENTORY.md`.
 
-**Readiness complessiva MVP: 84%.** Il prodotto non è production-ready finché autenticazione, isolamento tenant e tutti i P0 elencati in questo registro non sono chiusi e certificati.
+## M11.5 — Enterprise Procurement Architecture (planned)
 
-| Area / Feature | Status | Completezza | Cosa fa / cosa manca |
-|---|---|---:|---|
-| Organizzazione — anagrafiche, ruoli e scope | Funzionale, hardening necessario | ~90% | Modella organizzazioni, entità, aree, strutture, centri di costo, ruoli e deleghe. Mancano isolamento tenant completo e identità reale. |
-| Authentication | Non implementata | 0% | L'identità corrente è una persona demo. Servono Supabase Auth, sessione firmata, middleware e route protette; il selettore persona deve esistere solo con `DEMO_MODE=true`. |
-| Multi-tenant isolation | Non implementata | 0% | Lo scope applicativo è parziale. Mancano `organizationId` sulle anagrafiche condivise, scoping sistematico di letture/scritture, test cross-tenant e successivo disegno RLS. |
-| Catalogo e Guided Buying | Funzionale, da stabilizzare | da verificare | Catalogo, ricerca, Product 360, preferiti, liste e carrello sono operativi. Restano scoping tenant, ordinamento DB e gestione errori. |
-| Requisition, approval e PO | Funzionale, P0 aperti | da verificare | Copre richiesta, policy, approvazione, ordine e ricevimento. Restano IDOR conferma ordine, numbering concorrente e validazione input uniforme. |
-| Procurement limits | Funzionale, P0 aperto | da verificare | Valuta limiti monetari e quantitativi. Mancano vincoli DB e validazione applicativa fail-fast delle configurazioni invalide. |
-| Supplier e Category 360 | Funzionale | da verificare | Espone viste operative, prezzi, qualità e rischio. Mancano isolamento tenant e alcuni KPI corretti. |
-| KPI Acquisti convenzionati | Non corretto | da verificare | Deve misurare la quota reale di spesa presso fornitori preferiti/contrattualizzati, non la percentuale di offerte marcate preferred. |
-| Smart Import | Parzialmente funzionale | ~70% | Upload, parser, staging, review e publish esistono. Elaborazione ancora sincrona; mancano workflow durevole, chunk, retry, reaper e scalabilità affidabile a migliaia di righe. |
-| Async Smart Import | Non implementata | da verificare | Deve riusare il workflow durevole dei documenti tecnici con job accodati, idempotenza, lease, retry, progress e transazioni per chunk. |
-| Exact Product Matching | Funzionale, da certificare | da verificare | **Deterministic weighted matching** basato su identificatori e segnali verificabili. Non è una capability generativa. |
-| Functional Equivalence | Funzionale, P0 aperto | da verificare | **Deterministic technical-rule engine** category-specific e spiegabile. Deve fallire chiuso quando le regole di categoria non esistono. |
-| Missing Evidence Detection | Funzionale, P0 aperto | da verificare | **Deterministic rule** che identifica documenti e attributi mancanti. Deve impedire COMPLETE/approved senza evidenza valida. |
-| M12 Product Intelligence | Sostanzialmente funzionale | ~96% | Ingestione, classificazione, associazione, profilo tecnico, versioni, code, equivalenza e Product 360 esistono. Restano fail-closed senza regole, OCR reale e chiusura della certificazione remota. |
-| Procurement Memory | Persistita, non consumata | da verificare | Le correzioni e decisioni vengono scritte; la memoria confermata **non è ancora consumata dal matching di import**. |
-| AI-assisted capabilities | Parziale | da verificare | Limitata a estrazione free-text di documenti tecnici, interpretazione SDS, pack/UOM irregolari, condizioni commerciali e spiegazione in linguaggio naturale di decisioni deterministiche. |
-| AI evaluation quality | Non misurata | da verificare | Manca golden dataset da `ImportFieldCorrection`, `ProductMatchCandidate.humanDecision` e `ImportedFieldValue.humanValue`, comando `npm run eval` e baseline committed. Target: precision ≥0,98 e recall ≥0,85. |
-| VAT deductibility / effective cost | Non implementata | da verificare | Manca la percentuale di detraibilità IVA per organizzazione e il costo effettivo: netto + quota IVA non detraibile. Confronti e saving sono oggi net-only. |
-| Savings Management | Parziale, baseline non corretta | da verificare | Il saving non deve usare l'offerta massima. Baseline primaria: prezzo storicamente pagato per facility/organizzazione; stati richiesti IDENTIFIED, NEGOTIATED, CONTRACTED, REALIZED. |
-| DDT | Non implementata | da verificare | Da registrare nel receiving e collegare a ordine e ricevimento. |
-| Lot / expiry traceability | Non implementata | da verificare | Mancano lotto, scadenza e tracciabilità facility → receipt → lot. |
-| Electronic invoicing / SDI | Non implementata | da verificare | Mancano import, conservazione e gestione dei flussi di fatturazione elettronica/SDI. |
-| Three-way match | Non implementata | da verificare | Manca la riconciliazione PO ↔ receipt ↔ invoice e la gestione delle discrepanze. |
-| Split payment / reverse charge | Non implementata | da verificare | Da modellare come capacità fiscale configurabile dove applicabile. |
-| CIG/CUP | Non implementata | da verificare | Da modellare come capacità di dominio configurabile. |
-| Document retention | Non implementata | da verificare | Mancano policy e prove di conservazione documentale. |
-| Notifications | Non implementata | da verificare | Mancano notifiche operative persistenti e canali configurabili. |
-| Onboarding / master data import | Non implementata | da verificare | Mancano import governati di organizzazioni, strutture, utenti, fornitori, categorie e prodotti. |
-| User-facing error handling | Incompleta | da verificare | Molti errori restano generici o solo tecnici; servono messaggi azionabili senza perdita di stato. |
-| Accessibility | Incompleta | da verificare | Serve audit WCAG, correzione sistematica di focus, label, contrasto, tastiera e annunci di stato. |
-| Supplier Performance | Parziale | da verificare | Esistono dati di ordine/ricevimento/NC; scorecard e KPI formalizzati sono roadmap 6–12 mesi. |
-| Limited Supplier Portal | Non implementata | da verificare | Perimetro futuro limitato a PO acknowledgement, ETA, disponibilità e documentazione tecnica. |
-| CAPA / supplier quality collaboration | Differita | da verificare | Non rientra nella roadmap attiva prima della stabilizzazione core. |
-| Assisted Spend Control | Differita | da verificare | Supporto assistito e governato; nessuna decisione autonoma. |
-| AI Spend Copilot | Differito, read-only | da verificare | Deve essere read-only, citare obbligatoriamente fonti/evidenze e non prendere decisioni autonome. |
-| Quadro design system | Direzione approvata, adozione parziale | da verificare | Direzione light-first, accent `#00696E`, Plus Jakarta Sans/Public Sans via `next/font`, minimo 12px e token Tailwind v4 `@theme`. Nessun rewrite UI nel ciclo di remediation. |
+These are architecture commitments, not implemented features. Their canonical definitions are in `PRODUCT_VISION.md`, `DOMAIN_ARCHITECTURE_2.md`, and `ADR/ADR-001-universal-procurement-orchestration.md`.
 
-## Roadmap riallineata
+| Feature | Phase | Status | Completion | Evidence | Depth note |
+| --- | --- | --- | ---: | --- | --- |
+| Canonical enterprise domain schema | M11.5 | PLANNED | 0% | Domain Architecture 2 | Formalize Procedure, Commitment, Payable, Evidence, Resolution, Authority, AccountingProposal and PostingResult before migrations |
+| Purchase archetype framework | M11.5 | PLANNED | 0% | ADR-001 | Catalog, contracts/utilities, kitchen, delegated executive, professional services and recurring/non-PO strategies on one lifecycle |
+| Enterprise identity boundary | M11.5 | PLANNED | 0% | Product Vision | AD/Windows domains, Entra ID, OIDC/SAML and LDAP; demo identity remains development-only |
+| Organization master ingestion | M11.5 | PLANNED | 0% | Domain Architecture 2 | API and CSV/XLSX ingestion for entities, facilities, services, cost centers, people, functions and hierarchies |
+| Authority graph and snapshots | M11.5 | PLANNED | 0% | ADR-001 | Contextual evidence, allocation and approval powers with scope, subject, action, threshold, dates and delegation |
+| Enterprise multidimensional budget and limit model | M11.5 | PLANNED | 15% | Domain Architecture 2; M11 `ProcurementLimit` subset | M11 implements facility × product/category × period monetary/quantity controls; legal-entity, service/project and normalized allocations remain planned |
+| Immutable evidence engine | M11.5 | PLANNED | 0% | Domain Architecture 2 | Original response, identity/authority snapshot, channel assurance, timestamps, attachments, AI derivative and audit chain |
+| Channel-aware resolution engine | M11.5 | PLANNED | 0% | Domain Architecture 2 | Missing-fact routing through portal, email, WhatsApp, Teams, Slack and future controlled channels |
+| Archetype-aware matching engine | M11.5 | PLANNED | 0% | Domain Architecture 2 | Reconcile invoices/payables with applicable PO, contract, tariff, receipt/service, period, allocation and authority evidence |
+| Accounting orchestration engine | M11.5 | PLANNED | 0% | Domain Architecture 2 | Produce canonical, explainable AccountingProposal only when evidence, match, policy and authority are sufficient |
+| ERP Integration Hub contracts | M11.5 | PLANNED | 0% | ADR-001 | Vendor-neutral hub plus Mago, Coopselios and future ERP adapters; persist posting results and errors |
+| Graduated automation policy | M11.5 | PLANNED | 0% | Product Vision | L0–L4 by entity, archetype, amount, category, risk, supplier and evidence quality; treasury retains payment control |
 
-### 0–3 mesi — Foundation / Correction
+Stima complessiva dell’MVP operativo: **84%**. Il denominatore comprende organizzazione/accesso, catalogo, ciclo buying, fornitori/categorie, qualità, intelligence e dashboard; esclude Smart Import, fatture e sourcing. Smart Import è valutato separatamente all’**82%**: il percorso XLSX/CSV è end-to-end, mentre OCR e provider AI reali non sono configurati. La stima considera correttezza, profondità, test e maturità UX, non la sola presenza delle route.
 
-- autenticazione reale;
-- isolamento tenant;
-- equivalenza tecnica fail-closed;
-- motore detraibilità IVA/costo effettivo;
-- DDT;
-- tracciabilità lotto/scadenza;
-- notifiche;
-- onboarding/import anagrafiche;
-- architettura asincrona Smart Import.
-
-### 3–6 mesi — Economic Cycle
-
-- fattura elettronica / SDI;
-- three-way match;
-- Savings Management con baseline corretta.
-
-### 6–12 mesi — Domain Differentiation
-
-- aggregazione domanda tra strutture;
-- RFQ strutturato;
-- Supplier Performance;
-- Supplier Portal limitato a PO acknowledgement, ETA, disponibilità e documentazione tecnica.
-
-### Later
-
-- CLM;
-- Spend Analytics avanzata;
-- Assisted Spend Control.
-
-CAPA e collaborazione qualità fornitore completa sono differite. Reverse Auctions, Cards, Payments e SaaS Management non fanno parte della roadmap attiva.
-
-## Regole di manutenzione
-
-- Questo file è il solo registro canonico; documenti storici possono collegarlo ma non duplicarne percentuali o roadmap.
-- `100%` richiede implementazione, persistenza, test e certificazione remota nel perimetro dichiarato.
-- Le capability deterministiche non devono essere presentate come AI generativa.
-- Non dichiarare production-ready finché tutti i P0 sono chiusi e la certificazione remota completa è PASS.
+| Feature | Phase | Status | Completion | Evidence | Depth note |
+| --- | --- | --- | ---: | --- | --- |
+| Design system e UX coherence | Final polish | DONE | 92% | `design-system.css`, `STYLE_SYSTEM.md`, visual QA | Un solo entry CSS, token e responsive centralizzati; resta evolvibile senza nuova cascata |
+| Organization model | Foundation | DONE | 100% | Prisma, Organizzazione | 2 organizzazioni, 4 entità, 6 aree, 102 strutture sintetiche |
+| Role / scope / authority | Foundation | DONE | 100% | Assignment, resolver, guard, test | ORGANIZATION / AREA / FACILITY server-side |
+| Catalogo | Recovery | DONE | 95% | `/catalog` | 227 prodotti sintetici nel master DEV certificato, filtri estesi, acquisto e convenzionato |
+| Product 360 | Recovery | DONE | 95% | `/products/[id]` | Hero decisionale e disclosure progressiva per specifiche, storico, utilizzo, documenti e alternative |
+| Confronto prodotti | Hardening | DONE | 90% | `/compare-products` | Side-by-side 2–4 con specifiche, prezzi normalizzati, documenti e utilizzo |
+| Supplier 360 | Hardening | DONE | 92% | `/suppliers/[id]` | Dipendenza in apertura, trend, prezzo, termini, contatti, delivery e qualità con campione |
+| Cart | V1 | DONE | 100% | `/cart`, Server Actions | Persistente, multi-fornitore, budget e policy preview |
+| Budget | Recovery | DONE | 95% | `/budget` | Scope facility/area/org, forecast deterministico e breakdown |
+| Requests | Recovery | DONE | 95% | `/richieste`, detail | Area dedicata, stati e timeline |
+| Out-of-catalog request | M11 | DONE | 96% | `/richieste#fuori-catalogo`, `OperationalAttachment` | Persistenza, allegati multipli privati Supabase, checksum, download scoped e coda Procurement; conversione futura |
+| Facility product/category period limits | M11 | DONE | 92% | `ProcurementLimit`, cart, policy snapshot | Limiti monetari e quantitativi con usato, impegnato, riservato, richiesto e residuo; matrice enterprise completa rinviata a M11.5 |
+| Receiving and NC evidence | M11 | DONE | 94% | receive flow, `OperationalAttachment`, `/non-conformita` | Foto/PDF privati, metadata, audit, download autorizzato e immutabilità dopo registrazione |
+| Policy engine | V1 | DONE | 100% | `src/lib/policy`, test | Quattro regole spiegabili |
+| Approval cockpit | V1 | DONE | 90% | `/approvals/[id]` | Decisione, budget, policy e contesto |
+| Approval delegation | Hardening | DONE | 92% | resolver, Prisma, test, `/deleghe` | Routing per data, scope, categoria e soglia con audit |
+| Purchase Order | V1 | DONE | 100% | Service transazionale | Split per fornitore e snapshot |
+| PO PDF | V1 | DONE | 90% | `/orders/[id]/pdf` | PDF locale scaricabile |
+| Orders | Recovery | DONE | 95% | `/orders` | Workspace per stato, scope RSA/procurement |
+| Supplier acknowledgment | Recovery | DONE | 80% | Server Action, PO status | Conferma e data attesa; portale escluso |
+| Deliveries | Recovery | DONE | 95% | `/consegne` | Oggi, prossime, ritardi e ricevute |
+| Receiving | V1 | DONE | 100% | `/orders/[id]/receive` | Ricezioni multiple, parziali e mobile |
+| Non-conformity | Recovery | DONE | 95% | `/non-conformita` | Area dedicata, presa in carico, risoluzione, audit |
+| Favorites | Recovery | DONE | 100% | `/preferiti`, catalogo | Persistenza per utente e struttura |
+| Repeat purchase | Recovery | DONE | 85% | `buyAgain` action | Riempimento carrello; CTA PO da estendere su tutti gli stati |
+| Recurring lists | Recovery | DONE | 95% | `/liste` | Liste persistenti e aggiunta massiva |
+| Category 360 | Recovery | DONE | 90% | `/categorie/[id]` | “Cosa fare” prima dei KPI, spread, copertura, compliance e rischio budget |
+| Price intelligence | V1 | DONE | 90% | `/compare`, Product 360 | Spread, preferred-not-best, storico DB |
+| Procurement compliance | Recovery | DONE | 85% | Control Center / Control Tower | Convenzionato e segnali; catalog purchasing da affinare |
+| Supplier metrics | V1 | DONE | 100% | Metrics service, test | Puntualità, completezza, issue rate |
+| Procurement Control Center | Recovery | DONE | 95% | Home Giulia | Attention-first e percorsi decisionali |
+| Area dashboard | Recovery | DONE | 95% | Home Andrea | Eccezioni, budget, strutture e criticità scoped |
+| RSA cockpit | Recovery | DONE | 95% | Home Lucia | Search-first, oggi, budget, frequenti, attività |
+| Executive Control Tower | V1 | DONE | 90% | `/control-tower` | Quattro KPI, Top 3 rischi/opportunità e confronto organizzazioni |
+| Audit / task signals | Recovery | DONE | 90% | AuditEvent, timeline | Eventi transazionali e attività recenti |
+| Smart Import — upload e storage | AI-native | DONE | 100% | `/imports/new`, `SourceDocument`, `DocumentStorageProvider` | File originale, checksum, duplicati, limiti, MIME/estensione e storage Supabase privato scoped per organizzazione; adapter locale solo per test |
+| Smart Import — parser XLSX | AI-native | DONE | 100% | `parser.ts`, fixture reali, test | Header non in riga 1, multi-sheet e provenienza cella |
+| Smart Import — parser CSV/TSV | AI-native | DONE | 100% | `parser.ts`, fixture Italy-first, test | Virgola/punto e virgola/tab, quoted values e virgola decimale |
+| Smart Import — PDF nativo | AI-native | DONE | 85% | fixture PDF reale, test | Estrazione testo e righe; tabelle PDF molto complesse richiedono estensione futura |
+| Smart Import — Word | AI-native | IN PROGRESS | 75% | parser DOCX strutturale | Paragrafi/tabelle supportati; fixture browser dedicata non inclusa |
+| Smart Import — immagini/PDF scanner | AI-native | IN PROGRESS | 25% | upload, stato failure onesto | Conservazione e guardrail presenti; OCR non disponibile senza provider reale |
+| Smart Import — staging e mapping | AI-native | DONE | 95% | `ImportedRecord`, `ImportedFieldValue`, mapping UI | Raw/interpreted/normalized/human separati; correzione mapping rielabora lo staging |
+| Smart Import — normalizzazione | AI-native | DONE | 100% | servizio canonico UOM/prezzi, test | Confezione ≠ unità di consumo; non confrontabile quando la conversione manca |
+| Smart Import — product matching | AI-native | DONE | 90% | matching identifier-first, candidati spiegati | GTIN/SKU prevalgono sul testo; similarità semantica provider futuro |
+| Smart Import — review umana | AI-native | DONE | 95% | review per eccezione, record three-way | Accetta, correggi, nuovo prodotto, ignora e non confrontabile con audit |
+| Smart Import — publish | AI-native | DONE | 95% | transazione e test idempotenza | Nessuna scrittura canonica prima della conferma; versioning e provenienza offerta |
+| Smart Import — variazioni e prezzi | AI-native | DONE | 90% | `/imports/[id]/changes` | Vecchio/nuovo normalizzato, pack change, nuovi/rimossi e migliore offerta |
+| Smart Import — provider AI | AI-native | IN PROGRESS | 45% | provider abstraction, OpenAI + fallback `LOCAL_HEURISTIC` | OpenAI interpreta contesto/condizioni e fino a 12 righe ambigue; matching semantico, equivalenza e riuso memoria non collegati |
+| Smart Import — UX scalabile | AI-native hardening | DONE | 96% | work queue, paginazione, filtri, batch, 20 screenshot UX | Review by exception fino a migliaia di righe; resta desktop-primary |
+| Smart Import — large import review | AI-native hardening | DONE | 95% | fixture/test 1.000 righe, query paginate | 25 righe per pagina; ricerca e sort server-side; queue asincrona futura |
+| Smart Import — provider readiness | AI-native hardening | DONE | 85% | capability contract, env detection, evidence per campo | Vendor-neutral e data-residency esplicita; nessun adapter esterno attivo |
+| M11 — procurement direttore operativo | Hardening | IN PROGRESS | 85% | lifecycle, allegati, limiti, condizioni commerciali, dataset rete | Workflow core molto esteso; accettazione finale resta subordinata al browser/visual audit completo e all’eliminazione di ogni gap corrente |
+| Smart Import — provider document intelligence reale | AI-native future | NOT STARTED | 0% | fallback locale dichiarato | Nessuna credenziale o chiamata esterna configurata |
+| Smart Import — OCR / vision reale | AI-native future | NOT STARTED | 0% | stato `REQUIRES_PROVIDER`, test | File conservato senza falsa estrazione o mutazione canonica |
+| Smart Import — processing asincrono grandi file | AI-native future | NOT STARTED | 10% | stati job compatibili | Nessuna queue/worker introdotta nell’MVP |
+| Automated product demo | Enablement | DONE | 100% | `scripts/video-demo`, `artifacts/video-demo`, `docs/VIDEO_DEMO.md` | Nove clip deterministici, manifest temporali, cue narration, readiness e validazione tecnica; separato dal Browser QA |
+| Invoice matching | Future | NOT STARTED | 0% | Finance future-state | Fuori perimetro |
+| Sourcing | Future | NOT STARTED | 0% | — | Fuori perimetro |
