@@ -105,9 +105,9 @@ async function clearCart() {
 
 async function ensureLifecycleFixtures(organizationId, userId) {
   const category = await db.category.upsert({
-    where: { code: FIXTURE.prefix },
-    create: { id: FIXTURE.categoryId, code: FIXTURE.prefix, name: "Certification lifecycle category" },
-    update: { name: "Certification lifecycle category" },
+    where: { organizationId_code: { organizationId, code: FIXTURE.prefix } },
+    create: { id: FIXTURE.categoryId, organizationId, code: FIXTURE.prefix, name: "Certification lifecycle category" },
+    update: { organizationId, name: "Certification lifecycle category" },
   });
   await db.technicalEvidenceRequirement.upsert({
     where: { organizationId_categoryId_requirementType_label: { organizationId, categoryId: category.id, requirementType: "DOCUMENT", label: "CERT M11 technical sheet" } },
@@ -115,14 +115,14 @@ async function ensureLifecycleFixtures(organizationId, userId) {
     update: { documentType: "TECHNICAL_SHEET", required: true, validityRequired: true, active: true },
   });
   const supplier = await db.supplier.upsert({
-    where: { vatNumber: "ITCERTM110000001" },
-    create: { id: FIXTURE.supplierId, name: "CERT M11 Lifecycle Supplier", vatNumber: "ITCERTM110000001", active: true },
-    update: { name: "CERT M11 Lifecycle Supplier", active: true },
+    where: { organizationId_vatNumber: { organizationId, vatNumber: "ITCERTM110000001" } },
+    create: { id: FIXTURE.supplierId, organizationId, name: "CERT M11 Lifecycle Supplier", vatNumber: "ITCERTM110000001", active: true },
+    update: { organizationId, name: "CERT M11 Lifecycle Supplier", active: true },
   });
   await db.priceList.upsert({
     where: { id: FIXTURE.priceListId },
-    create: { id: FIXTURE.priceListId, name: "CERT M11 Lifecycle Price List", supplierId: supplier.id, active: true, version: 1, publishedByUserId: userId, publishedAt: new Date() },
-    update: { supplierId: supplier.id, active: true, publishedByUserId: userId },
+    create: { id: FIXTURE.priceListId, organizationId, name: "CERT M11 Lifecycle Price List", supplierId: supplier.id, active: true, version: 1, publishedByUserId: userId, publishedAt: new Date() },
+    update: { organizationId, supplierId: supplier.id, active: true, publishedByUserId: userId },
   });
   const products = [
     { id: FIXTURE.normalProductId, name: "CERT M11 Normal Product", sku: "CERT-M11-NORMAL", ean: "9900000000011", offerId: FIXTURE.normalOfferId, price: 12 },
@@ -131,13 +131,13 @@ async function ensureLifecycleFixtures(organizationId, userId) {
   for (const fixture of products) {
     await db.canonicalProduct.upsert({
       where: { id: fixture.id },
-      create: { id: fixture.id, name: fixture.name, description: `${FIXTURE.prefix} deterministic fixture`, manufacturer: "Certification Industries", manufacturerSku: fixture.sku, ean: fixture.ean, uom: "EA", purchaseUom: "PACK", unitsPerPackage: 1, categoryId: category.id, active: true },
-      update: { name: fixture.name, categoryId: category.id, manufacturer: "Certification Industries", manufacturerSku: fixture.sku, ean: fixture.ean, active: true },
+      create: { id: fixture.id, organizationId, name: fixture.name, description: `${FIXTURE.prefix} deterministic fixture`, manufacturer: "Certification Industries", manufacturerSku: fixture.sku, ean: fixture.ean, uom: "EA", purchaseUom: "PACK", unitsPerPackage: 1, categoryId: category.id, active: true },
+      update: { organizationId, name: fixture.name, categoryId: category.id, manufacturer: "Certification Industries", manufacturerSku: fixture.sku, ean: fixture.ean, active: true },
     });
     await db.supplierOffer.upsert({
       where: { id: fixture.offerId },
-      create: { id: fixture.offerId, supplierId: supplier.id, canonicalProductId: fixture.id, priceListId: FIXTURE.priceListId, supplierSku: fixture.sku, unitPrice: fixture.price, normalizedUnitPrice: fixture.price, moq: 1, taxRate: 22, preferred: true, active: true, availabilityStatus: "IN_STOCK" },
-      update: { supplierId: supplier.id, canonicalProductId: fixture.id, priceListId: FIXTURE.priceListId, unitPrice: fixture.price, normalizedUnitPrice: fixture.price, moq: 1, preferred: true, active: true, availabilityStatus: "IN_STOCK" },
+      create: { id: fixture.offerId, organizationId, supplierId: supplier.id, canonicalProductId: fixture.id, priceListId: FIXTURE.priceListId, supplierSku: fixture.sku, unitPrice: fixture.price, normalizedUnitPrice: fixture.price, moq: 1, taxRate: 22, preferred: true, active: true, availabilityStatus: "IN_STOCK" },
+      update: { organizationId, supplierId: supplier.id, canonicalProductId: fixture.id, priceListId: FIXTURE.priceListId, unitPrice: fixture.price, normalizedUnitPrice: fixture.price, moq: 1, preferred: true, active: true, availabilityStatus: "IN_STOCK" },
     });
     const sourceId = `${fixture.id}_source`, documentId = `${fixture.id}_document`, versionId = `${fixture.id}_version`;
     await db.sourceDocument.upsert({
