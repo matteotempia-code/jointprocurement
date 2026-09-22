@@ -2,7 +2,7 @@ import { processTechnicalBatch } from "@/lib/technical-intelligence/service";
 
 async function processChunk(batchId: string, organizationId: string) {
   "use step";
-  const batch = await processTechnicalBatch(batchId, organizationId, 3);
+  const batch = await processTechnicalBatch(batchId, organizationId, 5);
   const pending = batch.items.filter(
     (item) => item.status === "QUEUED" || item.status === "PROCESSING",
   ).length;
