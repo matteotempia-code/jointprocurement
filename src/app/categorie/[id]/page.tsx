@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Metric, PageHeader } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatMoney } from "@/lib/pricing";
+import { effectiveCost, formatMoney } from "@/lib/pricing";
 
 export default async function Categoria({ params }: { params: Promise<{ id: string }> }) {
   const context = await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
@@ -12,7 +12,7 @@ export default async function Categoria({ params }: { params: Promise<{ id: stri
   const spend = category.products.flatMap(({ requisitionLines }) => requisitionLines).reduce((sum, line) => sum + Number(line.lineTotal), 0);
   const budget = category.budgets.reduce((sum, item) => sum + Number(item.approvedAmount), 0);
   const supplierIds = new Set(category.products.flatMap(({ offers }) => offers.map(({ supplierId }) => supplierId)));
-  const opportunities = category.products.map((product) => { const prices = product.offers.map((offer) => Number(offer.normalizedUnitPrice ?? offer.unitPrice)); return { product, spread: prices.length > 1 ? (Math.max(...prices) - Math.min(...prices)) / Math.min(...prices) * 100 : 0 }; }).sort((a, b) => b.spread - a.spread);
+  const opportunities = category.products.map((product) => { const prices = product.offers.map((offer) => effectiveCost(offer.normalizedUnitPrice ?? offer.unitPrice, offer.taxRate, context.organization.vatDeductibilityPercent)); return { product, spread: prices.length > 1 ? (Math.max(...prices) - Math.min(...prices)) / Math.min(...prices) * 100 : 0 }; }).sort((a, b) => b.spread - a.spread);
   const offers = category.products.flatMap(({ offers: productOffers }) => productOffers);
   const compliance = offers.length ? offers.filter(({ preferred }) => preferred).length / offers.length * 100 : 0;
   const averageCoverage = category.products.length ? offers.length / category.products.length : 0;

@@ -5,6 +5,7 @@ import { activeInterpretationProvider, providerSupportsScannedDocuments } from "
 import { extractCommercialConditions, suggestSupplierFromDocument } from "./document-context";
 import { normalizeImportedFields } from "./normalization";
 import { mergeAiInterpretedFields } from "./ai-merge";
+import { effectiveCost } from "@/lib/pricing";
 import { parseDocument, supportedExtensions, xlsxRuntimeDiagnosticFromError } from "./parser";
 import { suggestMatches } from "./matching";
 import type { ImportField, NormalizedImport } from "./types";
@@ -45,7 +46,7 @@ const allowedMimeByExtension: Record<string, string[]> = {
 function validateMime(filename: string, mimeType: string) {
   if (!mimeType) return;
   const extension = filename.split(".").pop()?.toLocaleLowerCase("it-IT") ?? "";
-  if (!allowedMimeByExtension[extension]?.includes(mimeType.toLocaleLowerCase("it-IT"))) throw new Error("Il tipo dichiarato del file non corrisponde all’estensione.");
+  if (!allowedMimeByExtension[extension]?.includes(mimeType.toLocaleLowerCase("it-IT"))) throw new Error("Il tipo dichiarato del file non corrisponde allâ€™estensione.");
 }
 
 function fieldEvidence(input: { recordId: string; raw: Record<string, unknown>; interpreted: Record<string, unknown>; normalized: Record<string, unknown>; mapping: Record<string, ImportField>; locator: Record<string, unknown>; extractionConfidence: number; mappingConfidence: number }) {
@@ -74,14 +75,14 @@ function fieldEvidence(input: { recordId: string; raw: Record<string, unknown>; 
 type ProductWithCommercialOffers = Awaited<ReturnType<typeof loadMatchableProducts>>[number];
 
 async function loadMatchableProducts(organizationId: string) {
-  return prisma.canonicalProduct.findMany({ where: { organizationId }, include: { category: true, offers: { where: { active: true }, select: { supplierId: true, supplierSku: true, normalizedUnitPrice: true, packageSize: true, priceList: { select: { version: true, createdAt: true } } } } } });
+  return prisma.canonicalProduct.findMany({ where: { organizationId }, include: { category: true, offers: { where: { active: true }, select: { supplierId: true, supplierSku: true, normalizedUnitPrice: true, taxRate: true, packageSize: true, priceList: { select: { version: true, createdAt: true } } } } } });
 }
 
 function exceptionTypeFor(normalized: NormalizedImport, best: ReturnType<typeof suggestMatches>[number]) {
   const messages = [...normalized.validationErrors, ...normalized.warnings].join(" ").toLocaleLowerCase("it-IT");
   if (messages.includes("identificator") || messages.includes("gtin") || messages.includes("ean")) return "IDENTIFIER_CONFLICT";
   if (normalized.netPrice == null || messages.includes("prezzo")) return "PRICE_NOT_NORMALIZABLE";
-  if (!normalized.purchaseUom || !normalized.consumptionUom || messages.includes("unità")) return "UOM_AMBIGUOUS";
+  if (!normalized.purchaseUom || !normalized.consumptionUom || messages.includes("unitÃ ")) return "UOM_AMBIGUOUS";
   if (!normalized.unitsPerPackage || !normalized.comparable || messages.includes("confezion")) return best.packagingCompatibility === false ? "PACKAGE_CHANGE" : "PACKAGE_AMBIGUOUS";
   if (!best.canonicalProductId || best.matchType === "NEW_PRODUCT") return "NEW_PRODUCT";
   if (best.packagingCompatibility === false) return "PACKAGE_CHANGE";
@@ -90,14 +91,14 @@ function exceptionTypeFor(normalized: NormalizedImport, best: ReturnType<typeof 
   return null;
 }
 
-function stagingProjection(normalized: NormalizedImport, best: ReturnType<typeof suggestMatches>[number], products: ProductWithCommercialOffers[], supplierId?: string | null) {
+function stagingProjection(normalized: NormalizedImport, best: ReturnType<typeof suggestMatches>[number], products: ProductWithCommercialOffers[], vatDeductibilityPercent: unknown, supplierId?: string | null) {
   const product = products.find((item) => item.id === best.canonicalProductId);
   const supplierOffers = product?.offers.filter((offer) => offer.supplierId === supplierId).sort((a, b) => b.priceList.version - a.priceList.version || Number(b.priceList.createdAt) - Number(a.priceList.createdAt)) ?? [];
   const previous = supplierOffers[0];
-  const comparableOffers = product?.offers.filter((offer) => offer.normalizedUnitPrice != null).sort((a, b) => Number(a.normalizedUnitPrice) - Number(b.normalizedUnitPrice)) ?? [];
+  const comparableOffers = product?.offers.filter((offer) => offer.normalizedUnitPrice != null).sort((a, b) => effectiveCost(a.normalizedUnitPrice, a.taxRate, vatDeductibilityPercent) - effectiveCost(b.normalizedUnitPrice, b.taxRate, vatDeductibilityPercent)) ?? [];
   const bestCurrent = comparableOffers[0];
-  const previousNormalized = previous?.normalizedUnitPrice == null ? null : Number(previous.normalizedUnitPrice);
-  const nextNormalized = normalized.comparable && normalized.normalizedPrice != null ? Number(normalized.normalizedPrice) : null;
+  const previousNormalized = previous?.normalizedUnitPrice == null ? null : effectiveCost(previous.normalizedUnitPrice, previous.taxRate, vatDeductibilityPercent);
+  const nextNormalized = normalized.comparable && normalized.normalizedPrice != null ? effectiveCost(normalized.normalizedPrice, normalized.taxRate ?? 22, vatDeductibilityPercent) : null;
   const change = classifyPriceChange({ oldNormalizedPrice: previousNormalized, newNormalizedPrice: nextNormalized, oldPackageQuantity: previous?.packageSize == null ? null : Number(previous.packageSize), newPackageQuantity: normalized.unitsPerPackage == null ? null : Number(normalized.unitsPerPackage) });
   const searchText = [normalized.supplierSku, normalized.ean, normalized.manufacturerSku, normalized.description, normalized.brand].filter(Boolean).join(" ").toLocaleLowerCase("it-IT");
   return {
@@ -111,12 +112,12 @@ function stagingProjection(normalized: NormalizedImport, best: ReturnType<typeof
     priceDeltaAmount: change.deltaAmount,
     priceDeltaPercent: change.deltaPercent,
     changeType: change.kind,
-    bestCurrentNormalizedPrice: bestCurrent?.normalizedUnitPrice == null ? null : Number(bestCurrent.normalizedUnitPrice),
+    bestCurrentNormalizedPrice: bestCurrent?.normalizedUnitPrice == null ? null : effectiveCost(bestCurrent.normalizedUnitPrice, bestCurrent.taxRate, vatDeductibilityPercent),
   };
 }
 
 export async function ingestDocument(input: { buffer: Buffer; filename: string; mimeType: string; supplierId?: string | null; documentKind: string; notes?: string; organizationId: string; userId: string }) {
-  if (!input.buffer.length) throw new Error("Il file è vuoto.");
+  if (!input.buffer.length) throw new Error("Il file Ã¨ vuoto.");
   if (input.buffer.length > MAX_IMPORT_BYTES) throw new Error("Il file supera il limite di 8 MB.");
   const filename = safeFilename(input.filename);
   validateMime(filename, input.mimeType);
@@ -161,7 +162,10 @@ export async function ingestDocument(input: { buffer: Buffer; filename: string; 
       const ai = await procurementAI.interpretProductRow(parsed.rows[index].rawSource, parsed.rows[index].values, { organizationId: input.organizationId, importJobId: job.id, operation: "ROW_INTERPRETATION" });
       if (ai && ai.confidence >= .8) interpreted[index] = mergeAiInterpretedFields(row, ai.fields); calls += 1;
     }
-    const products = await loadMatchableProducts(input.organizationId);
+    const [products, organization] = await Promise.all([
+      loadMatchableProducts(input.organizationId),
+      prisma.organization.findUniqueOrThrow({ where: { id: input.organizationId }, select: { vatDeductibilityPercent: true } }),
+    ]);
     let review = 0; let ready = 0;
     await prisma.$transaction(async (tx) => {
       for (let index = 0; index < parsed.rows.length; index += 1) {
@@ -170,7 +174,7 @@ export async function ingestDocument(input: { buffer: Buffer; filename: string; 
         const best = candidates[0];
         const blocking = normalized.validationErrors.length > 0 || !normalized.comparable || !best.canonicalProductId || best.score < .88 || best.packagingCompatibility === false;
         if (blocking) review += 1; else ready += 1;
-        await tx.importedRecord.create({ data: { importJobId: job.id, recordIndex: index + 1, rawSource: parsed.rows[index].rawSource, rawFields: parsed.rows[index].values as Prisma.InputJsonValue, interpretedFields: interpreted[index] as Prisma.InputJsonValue, normalizedFields: normalized as Prisma.InputJsonValue, sourceLocator: { ...parsed.rows[index].locator, columns: Object.fromEntries(Object.entries(mapping).map(([source, target]) => [target, source])) } as Prisma.InputJsonValue, ...stagingProjection(normalized, best, products, input.supplierId), extractionConfidence: parsed.parserType.includes("XLSX") || parsed.parserType.includes("CSV") ? 1 : .82, mappingConfidence, normalizationConfidence: normalized.comparable ? .98 : .35, matchConfidence: best.score, status: blocking ? "NEEDS_REVIEW" : "READY", requiresReview: blocking, validationErrors: normalized.validationErrors, warnings: [...normalized.warnings, ...(best.packagingCompatibility === false ? ["Confezione differente dal prodotto candidato"] : [])], canonicalProductId: blocking ? null : best.canonicalProductId, matchCandidates: { create: candidates.map((candidate) => ({ canonicalProductId: candidate.canonicalProductId, matchType: candidate.matchType, score: candidate.score, reasons: candidate.reasons, identifierMatches: candidate.identifierMatches, descriptionSimilarity: candidate.descriptionSimilarity, uomCompatibility: candidate.uomCompatibility, packagingCompatibility: candidate.packagingCompatibility, categoryCompatibility: candidate.categoryCompatibility, recommended: candidate.recommended })) } } });
+        await tx.importedRecord.create({ data: { importJobId: job.id, recordIndex: index + 1, rawSource: parsed.rows[index].rawSource, rawFields: parsed.rows[index].values as Prisma.InputJsonValue, interpretedFields: interpreted[index] as Prisma.InputJsonValue, normalizedFields: normalized as Prisma.InputJsonValue, sourceLocator: { ...parsed.rows[index].locator, columns: Object.fromEntries(Object.entries(mapping).map(([source, target]) => [target, source])) } as Prisma.InputJsonValue, ...stagingProjection(normalized, best, products, organization.vatDeductibilityPercent, input.supplierId), extractionConfidence: parsed.parserType.includes("XLSX") || parsed.parserType.includes("CSV") ? 1 : .82, mappingConfidence, normalizationConfidence: normalized.comparable ? .98 : .35, matchConfidence: best.score, status: blocking ? "NEEDS_REVIEW" : "READY", requiresReview: blocking, validationErrors: normalized.validationErrors, warnings: [...normalized.warnings, ...(best.packagingCompatibility === false ? ["Confezione differente dal prodotto candidato"] : [])], canonicalProductId: blocking ? null : best.canonicalProductId, matchCandidates: { create: candidates.map((candidate) => ({ canonicalProductId: candidate.canonicalProductId, matchType: candidate.matchType, score: candidate.score, reasons: candidate.reasons, identifierMatches: candidate.identifierMatches, descriptionSimilarity: candidate.descriptionSimilarity, uomCompatibility: candidate.uomCompatibility, packagingCompatibility: candidate.packagingCompatibility, categoryCompatibility: candidate.categoryCompatibility, recommended: candidate.recommended })) } } });
       }
       for (let index = 0; index < parsed.rows.length; index += 1) {
         const record = await tx.importedRecord.findUniqueOrThrow({ where: { importJobId_recordIndex: { importJobId: job.id, recordIndex: index + 1 } } });
@@ -211,7 +215,10 @@ async function processExistingJob(input: { organizationId: string; jobId: string
   const mapping = input.mapping ?? automatic.mapping;
   const mappingConfidence = input.mapping ? 1 : automatic.confidence;
   const interpreted = activeInterpretationProvider.interpretRows(parsed.rows, mapping);
-  const products = await loadMatchableProducts(input.organizationId);
+  const [products, organization] = await Promise.all([
+    loadMatchableProducts(input.organizationId),
+    prisma.organization.findUniqueOrThrow({ where: { id: input.organizationId }, select: { vatDeductibilityPercent: true } }),
+  ]);
   let review = 0;
   let ready = 0;
   await prisma.$transaction(async (tx) => {
@@ -222,7 +229,7 @@ async function processExistingJob(input: { organizationId: string; jobId: string
       const best = candidates[0];
       const blocking = normalized.validationErrors.length > 0 || !normalized.comparable || !best.canonicalProductId || best.score < 0.88 || best.packagingCompatibility === false;
       if (blocking) review += 1; else ready += 1;
-      await tx.importedRecord.create({ data: { importJobId: input.jobId, recordIndex: index + 1, rawSource: parsed.rows[index].rawSource, rawFields: parsed.rows[index].values as Prisma.InputJsonValue, interpretedFields: interpreted[index] as Prisma.InputJsonValue, normalizedFields: normalized as Prisma.InputJsonValue, sourceLocator: { ...parsed.rows[index].locator, columns: Object.fromEntries(Object.entries(mapping).map(([source, target]) => [target, source])) } as Prisma.InputJsonValue, ...stagingProjection(normalized, best, products, input.supplierId), extractionConfidence: parsed.parserType.includes("XLSX") || parsed.parserType.includes("CSV") ? 1 : 0.82, mappingConfidence, normalizationConfidence: normalized.comparable ? 0.98 : 0.35, matchConfidence: best.score, status: blocking ? "NEEDS_REVIEW" : "READY", requiresReview: blocking, validationErrors: normalized.validationErrors, warnings: [...normalized.warnings, ...(best.packagingCompatibility === false ? ["Confezione differente dal prodotto candidato"] : [])], canonicalProductId: blocking ? null : best.canonicalProductId, matchCandidates: { create: candidates.map((candidate) => ({ canonicalProductId: candidate.canonicalProductId, matchType: candidate.matchType, score: candidate.score, reasons: candidate.reasons, identifierMatches: candidate.identifierMatches, descriptionSimilarity: candidate.descriptionSimilarity, uomCompatibility: candidate.uomCompatibility, packagingCompatibility: candidate.packagingCompatibility, categoryCompatibility: candidate.categoryCompatibility, recommended: candidate.recommended })) } } });
+      await tx.importedRecord.create({ data: { importJobId: input.jobId, recordIndex: index + 1, rawSource: parsed.rows[index].rawSource, rawFields: parsed.rows[index].values as Prisma.InputJsonValue, interpretedFields: interpreted[index] as Prisma.InputJsonValue, normalizedFields: normalized as Prisma.InputJsonValue, sourceLocator: { ...parsed.rows[index].locator, columns: Object.fromEntries(Object.entries(mapping).map(([source, target]) => [target, source])) } as Prisma.InputJsonValue, ...stagingProjection(normalized, best, products, organization.vatDeductibilityPercent, input.supplierId), extractionConfidence: parsed.parserType.includes("XLSX") || parsed.parserType.includes("CSV") ? 1 : 0.82, mappingConfidence, normalizationConfidence: normalized.comparable ? 0.98 : 0.35, matchConfidence: best.score, status: blocking ? "NEEDS_REVIEW" : "READY", requiresReview: blocking, validationErrors: normalized.validationErrors, warnings: [...normalized.warnings, ...(best.packagingCompatibility === false ? ["Confezione differente dal prodotto candidato"] : [])], canonicalProductId: blocking ? null : best.canonicalProductId, matchCandidates: { create: candidates.map((candidate) => ({ canonicalProductId: candidate.canonicalProductId, matchType: candidate.matchType, score: candidate.score, reasons: candidate.reasons, identifierMatches: candidate.identifierMatches, descriptionSimilarity: candidate.descriptionSimilarity, uomCompatibility: candidate.uomCompatibility, packagingCompatibility: candidate.packagingCompatibility, categoryCompatibility: candidate.categoryCompatibility, recommended: candidate.recommended })) } } });
     }
     for (let index = 0; index < parsed.rows.length; index += 1) {
       const record = await tx.importedRecord.findUniqueOrThrow({ where: { importJobId_recordIndex: { importJobId: input.jobId, recordIndex: index + 1 } } });
@@ -310,7 +317,7 @@ export async function publishImport(jobId: string, actorUserId: string, organiza
     const validEnds = normalizedRecords.map((record) => record.validUntil).filter(Boolean).map((value) => new Date(String(value)));
     const validFrom = validStarts.length ? new Date(Math.min(...validStarts.map(Number))) : new Date();
     const validUntil = validEnds.length ? new Date(Math.max(...validEnds.map(Number))) : new Date(new Date().setFullYear(new Date().getFullYear() + 1));
-    const list = await tx.priceList.create({ data: { organizationId, name: `${job.sourceDocument.originalFilename.replace(/\.[^.]+$/, "")} · v${(previous?.version ?? 0) + 1}`, supplierId: job.sourceDocument.supplierId, sourceFile: job.sourceDocument.originalFilename, sourceDocumentId: job.sourceDocument.id, importJobId: job.id, previousVersionId: previous?.id, version: (previous?.version ?? 0) + 1, active: true, publishedByUserId: actorUserId, publishedAt: new Date(), validFrom, validUntil } });
+    const list = await tx.priceList.create({ data: { organizationId, name: `${job.sourceDocument.originalFilename.replace(/\.[^.]+$/, "")} Â· v${(previous?.version ?? 0) + 1}`, supplierId: job.sourceDocument.supplierId, sourceFile: job.sourceDocument.originalFilename, sourceDocumentId: job.sourceDocument.id, importJobId: job.id, previousVersionId: previous?.id, version: (previous?.version ?? 0) + 1, active: true, publishedByUserId: actorUserId, publishedAt: new Date(), validFrom, validUntil } });
     const summary = (job.summary ?? {}) as { aiCommercialConditions?: Array<{ type: string; value: string | number | null; confidence: number; sourceEvidence: string; reasoningSummary: string }> };
     for (const condition of summary.aiCommercialConditions ?? []) if (condition.value != null && condition.sourceEvidence) await tx.priceListCommercialCondition.create({ data: { priceListId: list.id, conditionType: condition.type, numericValue: typeof condition.value === "number" ? condition.value : null, textValue: typeof condition.value === "string" ? condition.value : null, currency: typeof condition.value === "number" ? "EUR" : null, sourceEvidence: condition.sourceEvidence.slice(0,500), reasoningSummary: condition.reasoningSummary.slice(0,500), confidence: condition.confidence, interpretationProvider: job.interpretationProvider, providerModel: job.providerModel, humanConfirmationState: "PENDING" } });
     if (previous) {
