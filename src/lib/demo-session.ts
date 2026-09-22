@@ -28,9 +28,13 @@ export function openDemoUserId(token: string | undefined, environment: DemoEnvir
   try {
     const [ivValue, tagValue, encryptedValue, extra] = token.split(".");
     if (!ivValue || !tagValue || !encryptedValue || extra) return null;
-    const decipher = createDecipheriv("aes-256-gcm", demoSessionKey(environment), Buffer.from(ivValue, "base64url"));
-    decipher.setAuthTag(Buffer.from(tagValue, "base64url"));
-    return Buffer.concat([decipher.update(Buffer.from(encryptedValue, "base64url")), decipher.final()]).toString("utf8");
+    const iv = Buffer.from(ivValue, "base64url");
+    const tag = Buffer.from(tagValue, "base64url");
+    const encrypted = Buffer.from(encryptedValue, "base64url");
+    if (iv.toString("base64url") !== ivValue || tag.toString("base64url") !== tagValue || encrypted.toString("base64url") !== encryptedValue) return null;
+    const decipher = createDecipheriv("aes-256-gcm", demoSessionKey(environment), iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");
   } catch {
     return null;
   }
