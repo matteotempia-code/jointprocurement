@@ -16,14 +16,14 @@ export default async function Product360({ params, searchParams }: { params: Pro
   const context = await requireRoles(["RSA_DIRECTOR", "AREA_MANAGER", "PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
   const query = await searchParams;
   const scope = await resolveScope(context.assignment);
-  const product = await prisma.canonicalProduct.findUnique({ where: { id: (await params).id }, include: { category: true, offers: { where: { active: true }, include: { supplier: true, priceList: { include: { commercialConditions: { where: { humanConfirmationState: "CONFIRMED" } } } }, sourceDocument: true, importedRecord: { select: { importJobId: true, sourceLocator: true } }, priceHistory: { orderBy: { effectiveAt: "asc" } } } } } });
+  const product = await prisma.canonicalProduct.findFirst({ where: { id: (await params).id, organizationId: context.organization.id }, include: { category: true, offers: { where: { active: true }, include: { supplier: true, priceList: { include: { commercialConditions: { where: { humanConfirmationState: "CONFIRMED" } } } }, sourceDocument: true, importedRecord: { select: { importJobId: true, sourceLocator: true } }, priceHistory: { orderBy: { effectiveAt: "asc" } } } } } });
   if (!product) notFound();
   const preferred = getPreferredOffer(product.offers);
   const comparison = compareOffers(product.offers);
   const selectedOffer = preferred ?? comparison.lowest ?? product.offers[0];
   const [usage, alternatives, favorite, lists] = await Promise.all([
     prisma.purchaseOrderLine.findMany({ where: { canonicalProductId: product.id, purchaseOrder: { facilityId: { in: scope.facilityIds } } }, include: { purchaseOrder: { include: { facility: true } } } }),
-    prisma.canonicalProduct.findMany({ where: { subcategory: product.subcategory, id: { not: product.id }, active: true }, take: 4, include: { category: true, offers: { where: { active: true }, include: { supplier: true }, orderBy: { preferred: "desc" } } } }),
+    prisma.canonicalProduct.findMany({ where: { organizationId: context.organization.id, subcategory: product.subcategory, id: { not: product.id }, active: true }, take: 4, include: { category: true, offers: { where: { active: true }, include: { supplier: true }, orderBy: { preferred: "desc" } } } }),
     context.roleCode === "RSA_DIRECTOR" ? prisma.favorite.findFirst({ where: { userId: context.user.id, facilityId: scope.id, canonicalProductId: product.id } }) : null,
     context.roleCode === "RSA_DIRECTOR" ? prisma.shoppingList.findMany({ where: { userId: context.user.id, facilityId: scope.id }, orderBy: { updatedAt: "desc" } }) : [],
   ]);

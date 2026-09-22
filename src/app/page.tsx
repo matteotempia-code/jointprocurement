@@ -18,6 +18,7 @@ export default async function Home() {
       <Director
         name={context.user.name}
         userId={context.user.id}
+        organizationId={context.organization.id}
         facilityId={scope.id}
         facility={scope.label}
       />
@@ -119,11 +120,13 @@ export default async function Home() {
 async function Director({
   name,
   userId,
+  organizationId,
   facilityId,
   facility,
 }: {
   name: string;
   userId: string;
+  organizationId: string;
   facilityId: string;
   facility: string;
 }) {
@@ -169,7 +172,7 @@ async function Director({
         },
       }),
       prisma.auditEvent.findMany({
-        where: { actorUserId: userId },
+        where: { organizationId, actorUserId: userId },
         orderBy: { createdAt: "desc" },
         take: 100,
       }),
@@ -203,6 +206,7 @@ async function Director({
   ].filter(({ value }) => value > 0);
   const products = await prisma.canonicalProduct.findMany({
     where: {
+      organizationId,
       id: { in: frequent.map(({ canonicalProductId }) => canonicalProductId) },
     },
     include: {
@@ -525,8 +529,8 @@ async function Procurement({
         },
       },
     }),
-    prisma.supplier.count({ where: { active: true } }),
-    prisma.supplierOffer.findMany({ where: { active: true } }),
+    prisma.supplier.count({ where: { organizationId, active: true } }),
+    prisma.supplierOffer.findMany({ where: { organizationId, active: true } }),
     prisma.qualityIssue.count({
       where: { status: { in: ["OPEN", "UNDER_REVIEW"] } },
     }),

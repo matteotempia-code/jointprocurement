@@ -12,15 +12,15 @@ type Contact = { name?: string; email?: string; phone?: string };
 const tabs = [["overview", "Overview"], ["products", "Prodotti & prezzi"], ["commercial", "Condizioni"], ["quality", "Qualità"], ["documents", "Documenti"], ["activity", "Attività"]] as const;
 
 export default async function Supplier360({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; page?: string }> }) {
-  await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
+  const context = await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
   const id = (await params).id;
   const filters = await searchParams;
   const tab = tabs.some(([key]) => key === filters.tab) ? filters.tab! : "overview";
   const page = Math.max(1, Number.parseInt(filters.page ?? "1", 10) || 1);
   const [supplier, metrics, network] = await Promise.all([
-    prisma.supplier.findUnique({ where: { id }, include: { offers: { where: { active: true }, include: { canonicalProduct: { include: { category: true, offers: { where: { active: true } } } } } }, purchaseOrders: { include: { facility: true, lines: true, receipts: true }, orderBy: { issuedAt: "desc" } }, priceLists: { include: { sourceDocument: true, importJob: true }, orderBy: { createdAt: "desc" }, take: 6 } } }),
+    prisma.supplier.findFirst({ where: { id, organizationId: context.organization.id }, include: { offers: { where: { active: true }, include: { canonicalProduct: { include: { category: true, offers: { where: { active: true } } } } } }, purchaseOrders: { include: { facility: true, lines: true, receipts: true }, orderBy: { issuedAt: "desc" } }, priceLists: { include: { sourceDocument: true, importJob: true }, orderBy: { createdAt: "desc" }, take: 6 } } }),
     getSupplierMetrics(id),
-    prisma.purchaseOrder.aggregate({ _sum: { total: true }, where: { status: { not: "CANCELLED" } } }),
+    prisma.purchaseOrder.aggregate({ _sum: { total: true }, where: { organizationId: context.organization.id, status: { not: "CANCELLED" } } }),
   ]);
   if (!supplier) notFound();
   const issues = await prisma.qualityIssue.findMany({ where: { purchaseOrderLine: { purchaseOrder: { supplierId: id } } }, include: { purchaseOrderLine: { include: { canonicalProduct: true, purchaseOrder: true } } }, orderBy: { openedAt: "desc" }, take: 20 });

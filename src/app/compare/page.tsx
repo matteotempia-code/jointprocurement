@@ -6,8 +6,8 @@ import { compareOffers, getComparablePrice } from "@/lib/pricing";
 
 const PAGE_SIZE = 12;
 export default async function ConfrontoPrezzi({ searchParams }: { searchParams: Promise<{ q?: string; pagina?: string }> }) {
-  await requireRoles(["PROCUREMENT_MANAGER"]); const query = await searchParams, page = Math.max(1, Number(query.pagina ?? 1));
-  const where = { active: true, offers: { some: { active: true } }, ...(query.q ? { name: { contains: query.q, mode: "insensitive" as const } } : {}) };
+  const context = await requireRoles(["PROCUREMENT_MANAGER"]); const query = await searchParams, page = Math.max(1, Number(query.pagina ?? 1));
+  const where = { organizationId: context.organization.id, active: true, offers: { some: { active: true } }, ...(query.q ? { name: { contains: query.q, mode: "insensitive" as const } } : {}) };
   const [total, products] = await Promise.all([prisma.canonicalProduct.count({ where }), prisma.canonicalProduct.findMany({ where, include: { category: true, offers: { where: { active: true }, include: { supplier: true } } }, orderBy: { name: "asc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE })]);
   const comparisons = products.filter((item) => item.offers.length > 1).map((product) => ({ product, result: compareOffers(product.offers) })), pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   return <main className="phase2-page phase2-compare"><PageHeader eyebrow="Intelligence prezzi" title="Confronto offerte" description="Le differenze normalizzate sono dominanti; gli attributi identici restano secondari." />

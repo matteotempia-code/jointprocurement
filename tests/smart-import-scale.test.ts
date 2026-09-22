@@ -15,8 +15,8 @@ after(async () => { await prisma.$disconnect(); });
 async function fixtureContext() {
   const user = await prisma.user.findFirstOrThrow({ where: { name: "Giulia Bianchi" }, include: { assignments: { take: 1 } } });
   const assignment = user.assignments[0];
-  const supplier = await prisma.supplier.findFirstOrThrow({ where: { active: true } });
-  const product = await prisma.canonicalProduct.findFirstOrThrow({ where: { active: true } });
+  const supplier = await prisma.supplier.findFirstOrThrow({ where: { organizationId: assignment.organizationId, active: true } });
+  const product = await prisma.canonicalProduct.findFirstOrThrow({ where: { organizationId: assignment.organizationId, active: true } });
   return { user, assignment, supplier, product };
 }
 
@@ -65,11 +65,11 @@ test("bulk review rifiuta selezioni miste, aggiorna contatori e non duplica audi
       await prisma.productMatchCandidate.create({ data: { importedRecordId: record.id, canonicalProductId: product.id, matchType: "PROBABLE_MATCH", score: .95, reasons: ["test"], uomCompatibility: true, packagingCompatibility: index === 0, recommended: true } });
       records.push(record);
     }
-    await assert.rejects(() => applyBulkReview(prisma, { jobId: job.id, recordIds: records.map(({ id }) => id), action: "ACCEPT_RECOMMENDED", actorUserId: user.id }), BulkReviewValidationError);
+    await assert.rejects(() => applyBulkReview(prisma, { jobId: job.id, recordIds: records.map(({ id }) => id), action: "ACCEPT_RECOMMENDED", actorUserId: user.id, organizationId: assignment.organizationId }), BulkReviewValidationError);
     assert.equal(await prisma.importedRecord.count({ where: { importJobId: job.id, status: "CONFIRMED" } }), 0, "una selezione mista deve essere atomica");
-    const first = await applyBulkReview(prisma, { jobId: job.id, recordIds: [records[0].id], action: "ACCEPT_RECOMMENDED", actorUserId: user.id });
+    const first = await applyBulkReview(prisma, { jobId: job.id, recordIds: [records[0].id], action: "ACCEPT_RECOMMENDED", actorUserId: user.id, organizationId: assignment.organizationId });
     const auditAfterFirst = await prisma.auditEvent.count({ where: { OR: [{ entityType: "IMPORTED_RECORD", entityId: records[0].id }, { entityType: "IMPORT_JOB", entityId: job.id }], action: "MATCH_ACCEPTED" } });
-    await assert.rejects(() => applyBulkReview(prisma, { jobId: job.id, recordIds: [records[0].id], action: "ACCEPT_RECOMMENDED", actorUserId: user.id }), BulkReviewValidationError);
+    await assert.rejects(() => applyBulkReview(prisma, { jobId: job.id, recordIds: [records[0].id], action: "ACCEPT_RECOMMENDED", actorUserId: user.id, organizationId: assignment.organizationId }), BulkReviewValidationError);
     assert.equal(first.changed, 1);
     assert.equal(auditAfterFirst, 2, "la decisione bulk deve lasciare audit sia sul record sia sul job");
     assert.equal(await prisma.auditEvent.count({ where: { OR: [{ entityType: "IMPORTED_RECORD", entityId: records[0].id }, { entityType: "IMPORT_JOB", entityId: job.id }], action: "MATCH_ACCEPTED" } }), auditAfterFirst, "la ripetizione non deve duplicare audit");

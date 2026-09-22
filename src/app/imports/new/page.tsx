@@ -5,8 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { procurementAIStatus } from "@/lib/procurement-ai";
 
 export default async function NewImportPage() {
-  await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
-  const suppliers = await prisma.supplier.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } });
+  const context = await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
+  const suppliers = await prisma.supplier.findMany({ where: { organizationId: context.organization.id, active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } });
   return <main>
     <PageHeader eyebrow="Nuova importazione" title="Carica un documento" description="Il file originale viene conservato. La lettura non aggiorna il catalogo: prima vedrai mapping, anomalie e corrispondenze proposte." />
     <div className="import-new-layout">

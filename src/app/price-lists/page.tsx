@@ -8,10 +8,11 @@ import { formatDate } from "@/lib/pricing";
 const PAGE_SIZE = 20;
 
 export default async function Listini({ searchParams }: { searchParams: Promise<{ q?: string; stato?: string; pagina?: string }> }) {
-  await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
+  const context = await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
   const query = await searchParams;
   const page = Math.max(1, Number.parseInt(query.pagina ?? "1", 10) || 1);
   const where = {
+    organizationId: context.organization.id,
     ...(query.q ? { OR: [{ name: { contains: query.q, mode: "insensitive" as const } }, { supplier: { name: { contains: query.q, mode: "insensitive" as const } } }] } : {}),
     ...(query.stato === "active" ? { active: true } : query.stato === "history" ? { active: false } : {}),
   };

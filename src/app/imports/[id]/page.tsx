@@ -34,9 +34,9 @@ export default async function ImportDetailPage({ params, searchParams }: { param
   const sort = ["confidence", "delta", "price", "description", "status"].includes(query.ordine ?? "") ? query.ordine as ImportReviewSort : "confidence";
   const pageData = await getImportRecordPage(prisma, { jobId: id, filter, search: query.q ?? "", sort, exceptionType: query.eccezione, page: Number(query.pagina ?? 1) });
   const [events, suppliers, categories] = await Promise.all([
-    prisma.auditEvent.findMany({ where: { OR: [{ entityType: "IMPORT_JOB", entityId: job.id }, { entityType: "SOURCE_DOCUMENT", entityId: job.sourceDocument.id }] }, include: { actor: true }, orderBy: { createdAt: "desc" }, take: 8 }),
-    prisma.supplier.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.category.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.auditEvent.findMany({ where: { organizationId: context.organization.id, OR: [{ entityType: "IMPORT_JOB", entityId: job.id }, { entityType: "SOURCE_DOCUMENT", entityId: job.sourceDocument.id }] }, include: { actor: true }, orderBy: { createdAt: "desc" }, take: 8 }),
+    prisma.supplier.findMany({ where: { organizationId: context.organization.id, active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.category.findMany({ where: { organizationId: context.organization.id }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
   const summary = (job.summary ?? {}) as {
     duplicateDocumentId?: string | null;

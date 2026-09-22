@@ -60,14 +60,14 @@ export async function acceptRecord(formData: FormData) {
       }
       await tx.productMatchCandidate.updateMany({ where: { importedRecordId: recordId }, data: { humanDecision: "REJECTED", decidedByUserId: context.user.id, decidedAt: new Date() } });
       await tx.productMatchCandidate.update({ where: { id: candidate.id }, data: { humanDecision: "ACCEPTED", decidedByUserId: context.user.id, decidedAt: new Date() } });
-      await tx.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: "MATCH_ACCEPTED", metadata: { candidateId, canonicalProductId, importJobId: jobId } } });
+      await tx.auditEvent.create({ data: { organizationId: context.organization.id, actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: "MATCH_ACCEPTED", metadata: { candidateId, canonicalProductId, importJobId: jobId } } });
       return true;
     });
   } catch (error) {
     redirect(`/imports/${jobId}/records/${recordId}?errore=${encodeURIComponent(safeDecisionError(error))}`);
   }
   if (changed && record.supplierSkuText && job.sourceDocument.supplierId) await prisma.procurementMemory.upsert({ where: { organizationId_supplierId_memoryType_lookupKey: { organizationId: context.assignment.organizationId, supplierId: job.sourceDocument.supplierId, memoryType: "SUPPLIER_SKU_PRODUCT", lookupKey: record.supplierSkuText.toLocaleLowerCase("it-IT") } }, update: { canonicalValue: { canonicalProductId }, sourceEntityId: recordId, confirmedByUserId: context.user.id }, create: { organizationId: context.assignment.organizationId, supplierId: job.sourceDocument.supplierId, memoryType: "SUPPLIER_SKU_PRODUCT", lookupKey: record.supplierSkuText.toLocaleLowerCase("it-IT"), canonicalValue: { canonicalProductId }, sourceEntityId: recordId, confirmedByUserId: context.user.id } });
-  await refreshJob(jobId, context.user.id); redirect(`/imports/${jobId}?review=1`);
+  await refreshJob(jobId, context.user.id, context.organization.id); redirect(`/imports/${jobId}?review=1`);
 }
 
 export async function correctAndAcceptRecord(formData: FormData) {
@@ -87,15 +87,15 @@ export async function correctAndAcceptRecord(formData: FormData) {
       await tx.importedFieldValue.updateMany({ where: { importedRecordId: recordId, fieldName }, data: { humanValue: humanValue == null ? Prisma.JsonNull : humanValue as Prisma.InputJsonValue, normalizedValue: normalizedValue == null ? Prisma.JsonNull : normalizedValue as Prisma.InputJsonValue, normalizationConfidence: 1, confirmedByUserId: context.user.id, confirmedAt: new Date() } });
     }
     if (candidate) await tx.productMatchCandidate.update({ where: { id: candidate.id }, data: { humanDecision: "ACCEPTED", decidedByUserId: context.user.id, decidedAt: new Date() } });
-    await tx.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: "FIELD_CORRECTED", metadata: { fields: ["description", "netPrice", "unitsPerPackage", "purchaseUom", "consumptionUom"] } } });
+    await tx.auditEvent.create({ data: { organizationId: context.organization.id, actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: "FIELD_CORRECTED", metadata: { fields: ["description", "netPrice", "unitsPerPackage", "purchaseUom", "consumptionUom"] } } });
   });
-  await refreshJob(jobId, context.user.id); redirect(`/imports/${jobId}/records/${recordId}?corretto=1`);
+  await refreshJob(jobId, context.user.id, context.organization.id); redirect(`/imports/${jobId}/records/${recordId}?corretto=1`);
 }
 
 export async function confirmNewProduct(formData: FormData) {
   const recordId = String(formData.get("recordId")); const jobId = String(formData.get("jobId")); const { context } = await scopedJob(jobId);
   const categoryId = String(formData.get("categoryId") ?? "");
-  const category = await prisma.category.findUnique({ where: { id: categoryId } });
+  const category = await prisma.category.findUnique({ where: { id: categoryId, organizationId: context.organization.id } });
   if (!category) redirect(`/imports/${jobId}/records/${recordId}?errore=${encodeURIComponent("Seleziona una categoria esistente prima di confermare il nuovo prodotto.")}`);
   const record = await prisma.importedRecord.findFirstOrThrow({ where: { id: recordId, importJobId: jobId } });
   const currentOverride = (record.humanOverride ?? {}) as Record<string, unknown>;
@@ -119,12 +119,12 @@ export async function confirmNewProduct(formData: FormData) {
         throw new Error("La riga è già stata decisa o è cambiata. Ricarica la pagina.");
       }
       await tx.productMatchCandidate.updateMany({ where: { importedRecordId: recordId }, data: { humanDecision: "CREATE_NEW", decidedByUserId: context.user.id, decidedAt: new Date() } });
-      await tx.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: "NEW_PRODUCT_CONFIRMED", metadata: { categoryId, categoryName: category.name, importJobId: jobId } } });
+      await tx.auditEvent.create({ data: { organizationId: context.organization.id, actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: "NEW_PRODUCT_CONFIRMED", metadata: { categoryId, categoryName: category.name, importJobId: jobId } } });
     });
   } catch (error) {
     redirect(`/imports/${jobId}/records/${recordId}?errore=${encodeURIComponent(safeDecisionError(error))}`);
   }
-  await refreshJob(jobId, context.user.id); redirect(`/imports/${jobId}?nuovo=confermato`);
+  await refreshJob(jobId, context.user.id, context.organization.id); redirect(`/imports/${jobId}?nuovo=confermato`);
 }
 
 export async function markRecord(formData: FormData) {
@@ -141,12 +141,12 @@ export async function markRecord(formData: FormData) {
         if (record.status === nextStatus) return;
         throw new Error("La riga è già stata decisa o è cambiata. Ricarica la pagina.");
       }
-      await tx.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: nonComparable ? "RECORD_NOT_COMPARABLE" : "RECORD_IGNORED", metadata: { importJobId: jobId } } });
+      await tx.auditEvent.create({ data: { organizationId: context.organization.id, actorUserId: context.user.id, entityType: "IMPORTED_RECORD", entityId: recordId, action: nonComparable ? "RECORD_NOT_COMPARABLE" : "RECORD_IGNORED", metadata: { importJobId: jobId } } });
     });
   } catch (error) {
     redirect(`/imports/${jobId}/records/${recordId}?errore=${encodeURIComponent(safeDecisionError(error))}`);
   }
-  await refreshJob(jobId, context.user.id); redirect(`/imports/${jobId}?review=1`);
+  await refreshJob(jobId, context.user.id, context.organization.id); redirect(`/imports/${jobId}?review=1`);
 }
 
 export async function approveHighConfidence(formData: FormData) {
@@ -158,7 +158,7 @@ export async function approveHighConfidence(formData: FormData) {
     redirect(`/imports/${jobId}?errore=${encodeURIComponent(safeDecisionError(error))}`);
   }
   if (!confirmed) redirect(`/imports/${jobId}?errore=${encodeURIComponent("Nessuna proposta è più confermabile. Ricarica la pagina e verifica le righe aggiornate.")}`);
-  await refreshJob(jobId, context.user.id); redirect(`/imports/${jobId}?alta=approvata`);
+  await refreshJob(jobId, context.user.id, context.organization.id); redirect(`/imports/${jobId}?alta=approvata`);
 }
 
 export async function bulkReviewRecords(formData: FormData) {
@@ -170,11 +170,11 @@ export async function bulkReviewRecords(formData: FormData) {
   if (!["ACCEPT_RECOMMENDED", "ASSIGN_CATEGORY", "NON_COMPARABLE", "IGNORE"].includes(action)) redirect(`/imports/${jobId}?filtro=attenzione&errore=${encodeURIComponent("Seleziona un’azione multipla valida.")}`);
   let changed = 0;
   try {
-    ({ changed } = await applyBulkReview(prisma, { jobId, recordIds, action: action as BulkReviewAction, actorUserId: context.user.id, categoryId: String(formData.get("categoryId") ?? "") || undefined }));
+    ({ changed } = await applyBulkReview(prisma, { jobId, recordIds, action: action as BulkReviewAction, actorUserId: context.user.id, organizationId: context.organization.id, categoryId: String(formData.get("categoryId") ?? "") || undefined }));
   } catch (error) {
     redirect(`/imports/${jobId}?filtro=attenzione&errore=${encodeURIComponent(safeDecisionError(error))}`);
   }
-  await refreshJob(jobId, context.user.id);
+  await refreshJob(jobId, context.user.id, context.organization.id);
   revalidatePath(`/imports/${jobId}`);
   redirect(`/imports/${jobId}?filtro=attenzione&batch=${changed}`);
 }
@@ -226,25 +226,25 @@ export async function confirmImportSupplier(formData: FormData) {
   const jobId = String(formData.get("jobId"));
   const supplierId = String(formData.get("supplierId"));
   const { context, job } = await scopedJob(jobId);
-  const supplier = await prisma.supplier.findFirstOrThrow({ where: { id: supplierId, active: true } });
+  const supplier = await prisma.supplier.findFirstOrThrow({ where: { id: supplierId, organizationId: context.organization.id, active: true } });
   try {
     await reprocessImportForSupplier(jobId, supplier.id, context.user.id, context.assignment.organizationId);
   } catch (error) {
     redirect(`/imports/${jobId}?errore=${encodeURIComponent(safeDecisionError(error))}`);
   }
-  await prisma.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "SOURCE_DOCUMENT", entityId: job.sourceDocumentId, action: "SUPPLIER_CONFIRMED", metadata: { supplierId: supplier.id, supplierName: supplier.name, matchingRecomputed: true } } });
+  await prisma.auditEvent.create({ data: { organizationId: context.organization.id, actorUserId: context.user.id, entityType: "SOURCE_DOCUMENT", entityId: job.sourceDocumentId, action: "SUPPLIER_CONFIRMED", metadata: { supplierId: supplier.id, supplierName: supplier.name, matchingRecomputed: true } } });
   revalidatePath(`/imports/${jobId}`);
   redirect(`/imports/${jobId}?fornitore=confermato`);
 }
 
-async function refreshJob(jobId: string, actorUserId: string) {
+async function refreshJob(jobId: string, actorUserId: string, organizationId: string) {
   const records = await prisma.importedRecord.findMany({ where: { importJobId: jobId }, select: { status: true } });
   const review = records.filter((record) => record.status === "NEEDS_REVIEW").length;
   const proposed = records.filter((record) => record.status === "READY").length;
   const publishable = records.filter((record) => ["CONFIRMED", "NEW_PRODUCT_CONFIRMED"].includes(record.status)).length;
   const current = await prisma.importJob.findUniqueOrThrow({ where: { id: jobId }, select: { status: true } });
   await prisma.importJob.update({ where: { id: jobId }, data: { status: review + proposed ? "NEEDS_REVIEW" : "READY_TO_PUBLISH", reviewRequiredRecords: review, publishableRecords: publishable } });
-  if (!review && !proposed && current.status !== "READY_TO_PUBLISH") await prisma.auditEvent.create({ data: { actorUserId, entityType: "IMPORT_JOB", entityId: jobId, action: "IMPORT_READY", metadata: { publishableRecords: publishable } } });
+  if (!review && !proposed && current.status !== "READY_TO_PUBLISH") await prisma.auditEvent.create({ data: { organizationId, actorUserId, entityType: "IMPORT_JOB", entityId: jobId, action: "IMPORT_READY", metadata: { publishableRecords: publishable } } });
   revalidatePath(`/imports/${jobId}`);
   revalidatePath(`/imports/${jobId}/summary`);
 }

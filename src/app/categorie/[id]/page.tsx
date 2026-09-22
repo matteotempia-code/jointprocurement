@@ -6,8 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/pricing";
 
 export default async function Categoria({ params }: { params: Promise<{ id: string }> }) {
-  await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
-  const category = await prisma.category.findUnique({ where: { id: (await params).id }, include: { budgets: true, products: { include: { offers: { where: { active: true }, include: { supplier: true } }, requisitionLines: { where: { requisition: { status: "APPROVED" } } } } } } });
+  const context = await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
+  const category = await prisma.category.findFirst({ where: { id: (await params).id, organizationId: context.organization.id }, include: { budgets: true, products: { include: { offers: { where: { active: true }, include: { supplier: true } }, requisitionLines: { where: { requisition: { status: "APPROVED" } } } } } } });
   if (!category) notFound();
   const spend = category.products.flatMap(({ requisitionLines }) => requisitionLines).reduce((sum, line) => sum + Number(line.lineTotal), 0);
   const budget = category.budgets.reduce((sum, item) => sum + Number(item.approvedAmount), 0);

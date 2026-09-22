@@ -16,7 +16,7 @@ export default async function ColumnMappingPage({ params, searchParams }: { para
   const summary = (job.summary ?? {}) as { sourceHeaders?: string[] };
   const headers = summary.sourceHeaders?.length ? summary.sourceHeaders : Object.keys(mapping);
   const sheets = Array.isArray(job.detectedSheets) ? job.detectedSheets as { name: string; records: number; selected: boolean }[] : [];
-  const manualChanges = await prisma.auditEvent.count({ where: { entityType: "IMPORT_JOB", entityId: job.id, action: "COLUMN_MAPPING_CHANGED" } });
+  const manualChanges = await prisma.auditEvent.count({ where: { organizationId: context.organization.id, entityType: "IMPORT_JOB", entityId: job.id, action: "COLUMN_MAPPING_CHANGED" } });
   const mapped = headers.filter((header) => mapping[header]).length;
   return <main>
     {query.salvato && <div className="success">Mapping aggiornato. I record sono stati ricalcolati usando le nuove associazioni.</div>}

@@ -43,6 +43,7 @@ export async function acknowledgePurchaseOrder(
 
     await tx.auditEvent.create({
       data: {
+        organizationId: input.organizationId,
         actorUserId: input.actorUserId,
         entityType: "PURCHASE_ORDER",
         entityId: input.orderId,

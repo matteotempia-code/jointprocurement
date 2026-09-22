@@ -10,8 +10,8 @@ export default async function Cerca({ searchParams }: { searchParams: Promise<{ 
   const context = await getCurrentUser(), scope = await resolveScope(context.assignment), q = (await searchParams).q?.trim() ?? "";
   const privileged = context.roleCode !== "RSA_DIRECTOR";
   const [products, suppliers, orders, requests, facilities] = q ? await Promise.all([
-    prisma.canonicalProduct.findMany({ where: { active: true, OR: [{ name: { contains: q, mode: "insensitive" } }, { brand: { contains: q, mode: "insensitive" } }, { manufacturerSku: { contains: q, mode: "insensitive" } }] }, include: { category: true, offers: { where: { active: true }, include: { supplier: true }, orderBy: { preferred: "desc" }, take: 1 } }, take: 8 }),
-    privileged ? prisma.supplier.findMany({ where: { name: { contains: q, mode: "insensitive" } }, take: 6 }) : [],
+    prisma.canonicalProduct.findMany({ where: { organizationId: context.organization.id, active: true, OR: [{ name: { contains: q, mode: "insensitive" } }, { brand: { contains: q, mode: "insensitive" } }, { manufacturerSku: { contains: q, mode: "insensitive" } }] }, include: { category: true, offers: { where: { active: true }, include: { supplier: true }, orderBy: { preferred: "desc" }, take: 1 } }, take: 8 }),
+    privileged ? prisma.supplier.findMany({ where: { organizationId: context.organization.id, name: { contains: q, mode: "insensitive" } }, take: 6 }) : [],
     prisma.purchaseOrder.findMany({ where: { facilityId: { in: scope.facilityIds }, OR: [{ poNumber: { contains: q, mode: "insensitive" } }, { supplier: { name: { contains: q, mode: "insensitive" } } }] }, include: { supplier: true, facility: true }, take: 6 }),
     prisma.purchaseRequisition.findMany({ where: { facilityId: { in: scope.facilityIds }, OR: [{ requisitionNumber: { contains: q, mode: "insensitive" } }, { justification: { contains: q, mode: "insensitive" } }] }, include: { facility: true }, take: 6 }),
     context.roleCode === "AREA_MANAGER" ? prisma.facility.findMany({ where: { id: { in: scope.facilityIds }, name: { contains: q, mode: "insensitive" } }, include: { area: true }, take: 6 }) : [],

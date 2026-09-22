@@ -22,7 +22,7 @@ export default async function RecordReviewPage({ params, searchParams }: { param
   const { id, recordId } = await params;
   const record = await prisma.importedRecord.findFirst({ where: { id: recordId, importJobId: id, importJob: { sourceDocument: { organizationId: context.assignment.organizationId } } }, include: { importJob: { include: { sourceDocument: { include: { supplier: true } } } }, matchCandidates: { include: { canonicalProduct: { include: { category: true } } }, orderBy: [{ recommended: "desc" }, { score: "desc" }] }, corrections: { include: { correctedBy: true }, orderBy: { correctedAt: "desc" } }, fieldValues: { include: { confirmedBy: true }, orderBy: { fieldName: "asc" } } } });
   if (!record) notFound();
-  const categories = await prisma.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
+  const categories = await prisma.category.findMany({ where: { organizationId: context.organization.id }, orderBy: { name: "asc" }, select: { id: true, name: true } });
   const interpreted = record.interpretedFields as Record<string, unknown>;
   const normalized = record.normalizedFields as NormalizedImport;
   const locator = record.sourceLocator as SourceLocator;

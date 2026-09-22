@@ -4,12 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { compareOffers, formatMoney } from "@/lib/pricing";
 
 export default async function ControlTower() {
-  await requireRoles(["EXECUTIVE_SPONSOR"]);
+  const context = await requireRoles(["EXECUTIVE_SPONSOR"]);
+  const organizationId = context.organization.id;
   const [orders, offers, issues, products, organizations] = await Promise.all([
-    prisma.purchaseOrder.findMany({ where: { status: { not: "CANCELLED" } }, include: { lines: true } }),
-    prisma.supplierOffer.findMany({ where: { active: true } }),
-    prisma.qualityIssue.count({ where: { status: "OPEN" } }),
-    prisma.canonicalProduct.findMany({ include: { category: true, offers: true } }), prisma.organization.findMany({ select: { id: true, name: true } }),
+    prisma.purchaseOrder.findMany({ where: { organizationId, status: { not: "CANCELLED" } }, include: { lines: true } }),
+    prisma.supplierOffer.findMany({ where: { organizationId, active: true } }),
+    prisma.qualityIssue.count({ where: { purchaseOrderLine: { purchaseOrder: { organizationId } }, status: "OPEN" } }),
+    prisma.canonicalProduct.findMany({ where: { organizationId }, include: { category: true, offers: true } }), prisma.organization.findMany({ where: { id: organizationId }, select: { id: true, name: true } }),
   ]);
   const spend = orders.filter((order) => order.issuedAt.getFullYear() === new Date().getFullYear()).reduce((sum, order) => sum + Number(order.total), 0);
   const compliance = offers.length ? offers.filter((offer) => offer.preferred).length / offers.length * 100 : 0;

@@ -17,7 +17,7 @@ export default async function TechnicalCompare({
   const query = await searchParams;
   const ids = (query.ids ?? "").split(",").filter(Boolean).slice(0, 2);
   const products = await prisma.canonicalProduct.findMany({
-    where: { id: { in: ids }, active: true },
+    where: { organizationId: context.organization.id, id: { in: ids }, active: true },
     include: {
       category: true,
       offers: {
@@ -27,7 +27,7 @@ export default async function TechnicalCompare({
       },
     },
   });
-  const selectableProducts = products.length === 2 ? [] : await prisma.canonicalProduct.findMany({ where: { active: true }, orderBy: { name: "asc" }, take: 200, select: { id: true, name: true } });
+  const selectableProducts = products.length === 2 ? [] : await prisma.canonicalProduct.findMany({ where: { organizationId: context.organization.id, active: true }, orderBy: { name: "asc" }, take: 200, select: { id: true, name: true } });
   let assessment = null;
   let attributes: Awaited<ReturnType<typeof prisma.technicalProductAttribute.findMany>> = [];
   if (ids.length === 2) {
