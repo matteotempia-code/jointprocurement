@@ -94,12 +94,14 @@ jobs:
             git diff-tree --check --root --no-commit-id -r HEAD
           fi
 
-  remote-smoke:
-    name: Vercel develop remote smoke
+  prepare-deployment:
+    name: Prepare Vercel develop deployment
     needs: quality-and-db
     runs-on: ubuntu-latest
     environment: develop
-    timeout-minutes: 25
+    timeout-minutes: 15
+    outputs:
+      deployment_url: ${{ steps.deployment.outputs.url }}
     env:
       DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
       NODE_ENV: test
@@ -167,44 +169,69 @@ jobs:
           QA_BASE_URL: ${{ steps.deployment.outputs.url }}
         run: node scripts/qa/assert-remote-database-health.mjs
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
 
-      - name: Certify remote procurement lifecycle and personas
-        env:
-          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
-        run: npm run qa:demo:remote
+  lifecycle:
+    name: Remote lifecycle and personas
+    needs: prepare-deployment
+    uses: ./.github/workflows/remote-certification.yml
+    with:
+      certification_name: lifecycle
+      command: npm run qa:demo:remote
+      deployment_url: ${{ needs.prepare-deployment.outputs.deployment_url }}
+      timeout_minutes: 15
+    secrets: inherit
 
-      - name: Certify external-demo hardening
-        env:
-          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
-        run: npm run qa:demo:external
+  external-demo:
+    name: Remote external-demo hardening
+    needs: prepare-deployment
+    uses: ./.github/workflows/remote-certification.yml
+    with:
+      certification_name: external-demo
+      command: npm run qa:demo:external
+      deployment_url: ${{ needs.prepare-deployment.outputs.deployment_url }}
+      timeout_minutes: 10
+    secrets: inherit
 
-      - name: Certify Procurement AI on a new remote import
-        env:
-          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
-        run: npm run qa:procurement-ai:remote
+  procurement-ai:
+    name: Remote Procurement AI
+    needs: prepare-deployment
+    uses: ./.github/workflows/remote-certification.yml
+    with:
+      certification_name: procurement-ai
+      command: npm run qa:procurement-ai:remote
+      deployment_url: ${{ needs.prepare-deployment.outputs.deployment_url }}
+      timeout_minutes: 10
+    secrets: inherit
 
-      - name: Certify M12 Product Intelligence
-        env:
-          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
-        run: npm run qa:m12:remote
+  m12-product-intelligence:
+    name: Remote M12 Product Intelligence
+    needs: prepare-deployment
+    uses: ./.github/workflows/remote-certification.yml
+    with:
+      certification_name: m12-product-intelligence
+      command: npm run qa:m12:remote
+      deployment_url: ${{ needs.prepare-deployment.outputs.deployment_url }}
+      timeout_minutes: 15
+    secrets: inherit
 
-      - name: Run remote Smart Import certification
-        env:
-          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
-        run: npm run qa:smart-import:remote
+  smart-import:
+    name: Remote Smart Import
+    needs: prepare-deployment
+    uses: ./.github/workflows/remote-certification.yml
+    with:
+      certification_name: smart-import
+      command: npm run qa:smart-import:remote
+      deployment_url: ${{ needs.prepare-deployment.outputs.deployment_url }}
+      timeout_minutes: 15
+    secrets: inherit
 
-      - name: Run remote critical smoke
-        env:
-          QA_BASE_URL: ${{ steps.deployment.outputs.url }}
-        run: npm run qa:develop:remote
-
-      - name: Upload remote certification evidence
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: remote-certification-evidence-${{ github.sha }}
-          path: artifacts/remote-certification/
-          if-no-files-found: ignore
-          retention-days: 7
+  critical-smoke:
+    name: Remote critical smoke
+    needs: prepare-deployment
+    uses: ./.github/workflows/remote-certification.yml
+    with:
+      certification_name: critical-smoke
+      command: npm run qa:develop:remote
+      deployment_url: ${{ needs.prepare-deployment.outputs.deployment_url }}
+      timeout_minutes: 10
+    secrets: inherit
