@@ -407,13 +407,43 @@ fattura, SDI, DDT, lotto, scadenza, CIG, MDR, HACCP.
 | CMP-07 | Conservazione sostitutiva | Conservazione a norma dei documenti fiscali. | Da valutare | **0%** | Assente. — *audit 21/09/2026* |
 | UX-01 | **Messaggi d'errore all'utente** | L'utente legge il motivo reale del rifiuto. | P1 | **15%** | `error.tsx` riceve l'errore e **lo scarta**: i dodici messaggi delle azioni d'acquisto non arrivano mai. Il direttore legge un generico problema di connessione, e il pulsante riprova rilancia l'azione perdendo il modulo compilato. **Il pattern corretto esiste già in `imports/actions.ts:16-21`.** — *audit 21/09/2026* |
 | UX-02 | **Accessibilità** | Navigazione da tastiera, contrasti, dimensioni leggibili. | P1 | **20%** | In 1.187 righe di CSS l'unica regola `:focus-visible` fa `outline:none`. Bordo dei campi a 1,36:1, grigio secondario a 3,43:1, testo fino a 7,5px. Rilevante anche per conformità AgID. — *audit 21/09/2026* |
-| UX-03 | Riscontro sulle azioni | Stato di attesa, conferma, contatore carrello. | P1 | **25%** | Sedici azioni su cinquantacinque non comunicano nulla. Aggiungi al carrello impiega fino a 600 ms senza disabilitare il pulsante: **al doppio clic la quantità si somma due volte**. Il carrello non ha contatore in nessun punto dell'applicazione. — *audit 21/09/2026* |
+| UX-03 | Riscontro sulle azioni brevi | Stato di attesa, conferma, contatore carrello. | P1 | **25%** | Sedici azioni su cinquantacinque non comunicano nulla. Aggiungi al carrello impiega fino a 600 ms senza disabilitare il pulsante: **al doppio clic la quantità si somma due volte**. Il carrello non ha contatore in nessun punto dell'applicazione. Vedi la regola di prodotto «Ogni attesa è spiegata e stimata» in fondo alla sezione. — *audit 21/09/2026* |
+| UX-05 | **Avanzamento e stima sui lavori lunghi** | Ogni operazione oltre i 10 secondi dichiara il passo in corso, quanto ha fatto sul totale e una stima del tempo residuo. | P1 | **10%** | Esiste `ImportProgress` (`imports/[id]/page.tsx:71`) ma mostra solo uno stato testuale, non avanzamento né stima: l'import gira in una server action sincrona e l'utente attende col browser aperto senza sapere a che punto sia. Il lotto tecnico M12 espone i conteggi ma non una stima. Prerequisito: `IMP-13` import asincrono. — *decisione 23/09/2026* |
 | UX-04 | Design system «Quadro» | Direzione visiva scelta il 22/09/2026: tema chiaro, accento `#00696E`, Plus Jakarta Sans + Public Sans, pavimento tipografico 12px. | Dopo P0 | **0%** | Da applicare. Stato attuale misurato: 29 dimensioni di testo distinte su 261 occorrenze, 46 colori letterali, 3 vocabolari di token coesistenti. Va imposta con token e lint, non adottata informalmente. — *audit 21/09/2026* |
 | OPS-01 | **Notifiche** | Avvisi per approvazioni, consegne, anomalie e scadenze. | P0 | **0%** | Non esiste alcun sistema di notifica: **chi deve approvare non viene avvisato**. Il workflow autorizzativo dipende dal fatto che qualcuno apra la pagina. — *audit 21/09/2026* |
 | OPS-02 | Onboarding / import anagrafiche | Caricamento iniziale di strutture, utenti e centri di costo. | P0 | **0%** | Assente: per un nuovo cliente è tutto manuale. — *audit 21/09/2026* |
 | AI-Q1 | **Valutazione qualità IA** | Golden set, precision/recall, gate di regressione in CI. | Dopo P0 | **0%** | Nessun test sulla qualità delle risposte: solo verifiche che la chiamata non esploda. Cambiare modello oggi è non misurabile. **Le etichette esistono già nel database e vengono buttate via**: `ImportFieldCorrection` e `ProductMatchCandidate.humanDecision` sono coppie (predizione, verità corretta dall'umano). Serve uno script di export, non annotazione. — *audit 21/09/2026* |
 | AI-Q2 | Procurement Memory ricollegata | La memoria confermata migliora il matching successivo. | Dopo P0 | **40%** | Scritta dagli import (`actions.ts:69`) ma **mai riletta** dagli import: `suggestMatches` non vi ha accesso. Il vantaggio competitivo dichiarato oggi non si materializza nel matching dei listini. — *audit 21/09/2026* |
 | SEC-01 | Cifratura connessione database | TLS verificato verso PostgreSQL. | P0 | **0%** | Verificato sperimentalmente: `pg_stat_ssl` riporta `ssl = false`. La stringa di connessione non specifica `sslmode` e l'adapter non riceve configurazione TLS. Serve il certificato CA di Supabase, **non** `sslmode=no-verify`. — *audit 21/09/2026* |
+
+---
+
+### Regola di prodotto: ogni attesa è spiegata e stimata
+
+Decisa il 23/09/2026. Vincolante per ogni operazione, presente e futura.
+
+> **Quando il software impiega tempo, deve dire che cosa sta facendo e quanto stima
+> di metterci. L'utente non deve mai guardare uno schermo che non spiega sé stesso.**
+
+Tre soglie, tre comportamenti distinti:
+
+| Durata | Obbligo |
+|---|---|
+| **fino a 1 s** | Il controllo si disabilita all'istante. Nessun indicatore necessario, ma il doppio invio dev'essere impossibile. |
+| **1–10 s** | Stato di attesa che **nomina l'azione** in corso: «Invio della richiesta…», non «Attendere…». Il controllo resta disabilitato fino all'esito. |
+| **oltre 10 s** | L'operazione diventa un lavoro di sfondo: l'utente può chiudere la pagina. Deve vedere il **passo corrente**, **quanto fatto sul totale** e una **stima del tempo residuo**. |
+
+**Come si calcola la stima**, perché una stima fatta male costa più di nessuna stima:
+
+1. **Non stimare prima di avere dati.** Finché non c'è un ritmo misurato si scrive «Preparazione…», non un numero inventato.
+2. **La stima nasce dal ritmo osservato di questo lavoro**, non da una costante nel codice: righe al secondo degli ultimi blocchi completati. Un listino da un fornitore lento e uno da un fornitore veloce non impiegano lo stesso tempo.
+3. **Mai arrivare a zero e continuare.** È il modo più rapido per far perdere fiducia in ogni stima successiva. Meglio arrotondare per eccesso e finire prima.
+4. **Esprimere ordini di grandezza, non precisione falsa**: «circa 4 minuti», non «3 minuti e 47 secondi».
+5. **In caso di errore, dire a che passo è successo e che fine fa il lavoro già svolto.** «Interrotto alla riga 3.200 di 5.000; le righe già elaborate sono conservate, puoi riprendere» è utilizzabile. «Operazione fallita» no.
+
+**Dove si applica per prima**, in ordine di frequenza d'uso: aggiunta al carrello e invio richiesta (soglia 1–10 s); ricezione merce con allegati e import listini (oltre 10 s); lotto documenti tecnici M12, che oggi impiega circa 8 minuti e mezzo per cento documenti.
+
+**Perché è una regola e non una preferenza:** gli utenti sono direttori di struttura che lavorano fra un turno e l'altro, su connessioni mediocri. Un'attesa non spiegata viene interpretata come un blocco, e la reazione è cliccare di nuovo — che oggi, sul carrello, raddoppia davvero la quantità ordinata.
 
 ---
 
