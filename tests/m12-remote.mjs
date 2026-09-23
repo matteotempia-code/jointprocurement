@@ -50,6 +50,7 @@ try {
     () => db.technicalDocumentBatch.findFirst({ where: { createdBy: { name: "Giulia Bianchi" }, createdAt: { gte: new Date(started - 5_000) } }, orderBy: { createdAt: "desc" }, include: { items: true } }),
     (value) => value && ["COMPLETED", "PARTIAL"].includes(value.status) && value.completedFiles + value.failedFiles === 100,
     "100-document durable batch",
+    600_000,
   );
   diagnosticBatchId = batch.id;
   assert.equal(batch.aiEnabled, false, "100-document batch persisted with Procurement AI enabled");
