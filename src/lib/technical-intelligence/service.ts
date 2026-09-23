@@ -39,7 +39,7 @@ async function refreshBatchProgress(batchId:string){
 
 export async function processTechnicalBatch(batchId:string,organizationId:string,limit=3){
   await prisma.technicalDocumentBatch.findFirstOrThrow({where:{id:batchId,organizationId},select:{id:true}});
-  const now=new Date(),items=await prisma.technicalDocumentBatchItem.findMany({where:{batchId,batch:{organizationId},attempts:{lt:3},OR:[{status:"QUEUED"},{status:"FAILED"},{status:"PROCESSING",leaseExpiresAt:{lt:now}}]},orderBy:{createdAt:"asc"},take:Math.min(Math.max(limit,1),1),include:{sourceDocument:true,batch:{select:{aiEnabled:true}}}});
+  const now=new Date(),items=await prisma.technicalDocumentBatchItem.findMany({where:{batchId,batch:{organizationId},attempts:{lt:3},OR:[{status:"QUEUED"},{status:"FAILED"},{status:"PROCESSING",leaseExpiresAt:{lt:now}}]},orderBy:{createdAt:"asc"},take:Math.min(Math.max(limit,1),2),include:{sourceDocument:true,batch:{select:{aiEnabled:true}}}});
   await Promise.all(items.map(async item=>{
     const leaseToken=randomUUID(),claimed=await prisma.technicalDocumentBatchItem.updateMany({where:{id:item.id,OR:[{status:{in:["QUEUED","FAILED"]}},{status:"PROCESSING",leaseExpiresAt:{lt:now}}]},data:{status:"PROCESSING",leaseToken,leaseExpiresAt:new Date(Date.now()+120_000),attempts:{increment:1},startedAt:new Date(),lastError:null}});if(!claimed.count)return;
     try{
