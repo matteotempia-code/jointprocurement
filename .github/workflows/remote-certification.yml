@@ -1,0 +1,60 @@
+name: Remote certification
+
+on:
+  workflow_call:
+    inputs:
+      certification_name:
+        required: true
+        type: string
+      command:
+        required: true
+        type: string
+      deployment_url:
+        required: true
+        type: string
+      timeout_minutes:
+        required: true
+        type: number
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    environment: develop
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    env:
+      DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+      NODE_ENV: test
+      DEMO_MODE: "true"
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.DEV_VERCEL_AUTOMATION_BYPASS_SECRET }}
+      VERCEL_TARGET: develop
+      QA_BASE_URL: ${{ inputs.deployment_url }}
+    steps:
+      - name: Check out develop commit
+        uses: actions/checkout@v7
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run ${{ inputs.certification_name }} certification
+        run: ${{ inputs.command }}
+
+      - name: Upload certification evidence
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: remote-certification-${{ inputs.certification_name }}-${{ github.sha }}
+          path: artifacts/remote-certification/
+          if-no-files-found: ignore
+          retention-days: 7

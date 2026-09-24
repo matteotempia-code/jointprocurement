@@ -37,9 +37,9 @@ export async function seedSmartImports(args: { prisma: PrismaClient; organizatio
       createdByUserId: uploader.id, version: 1, createdAt: uploadedAt,
     } });
     await prisma.auditEvent.createMany({ data: [
-      { actorUserId: uploader.id, entityType: "SOURCE_DOCUMENT", entityId: source.id, action: "DOCUMENT_UPLOADED", metadata: { seeded: true, filename: definition.filename }, createdAt: uploadedAt },
-      { actorUserId: uploader.id, entityType: "IMPORT_JOB", entityId: job.id, action: "IMPORT_STARTED", metadata: { seeded: true, provider: "LOCAL_HEURISTIC" }, createdAt: new Date(uploadedAt.getTime() + 30_000) },
-      ...(definition.status === "PUBLISHED" ? [{ actorUserId: uploader.id, entityType: "IMPORT_JOB", entityId: job.id, action: "IMPORT_PUBLISHED", metadata: { seeded: true }, createdAt: new Date(uploadedAt.getTime() + 180_000) }] : []),
+      { organizationId: organization.id, actorUserId: uploader.id, entityType: "SOURCE_DOCUMENT", entityId: source.id, action: "DOCUMENT_UPLOADED", metadata: { seeded: true, filename: definition.filename }, createdAt: uploadedAt },
+      { organizationId: organization.id, actorUserId: uploader.id, entityType: "IMPORT_JOB", entityId: job.id, action: "IMPORT_STARTED", metadata: { seeded: true, provider: "LOCAL_HEURISTIC" }, createdAt: new Date(uploadedAt.getTime() + 30_000) },
+      ...(definition.status === "PUBLISHED" ? [{ organizationId: organization.id, actorUserId: uploader.id, entityType: "IMPORT_JOB", entityId: job.id, action: "IMPORT_PUBLISHED", metadata: { seeded: true }, createdAt: new Date(uploadedAt.getTime() + 180_000) }] : []),
     ] });
 
     for (let row = 0; row < definition.records; row += 1) {
@@ -65,7 +65,7 @@ export async function seedSmartImports(args: { prisma: PrismaClient; organizatio
         rawSource: `${sku ?? "SENZA-CODICE"};${description};${product.purchaseUom};${packageQuantity};${purchasePrice.toFixed(2)}`,
         rawFields: { supplierSku: sku, description, purchaseUom: product.purchaseUom, unitsPerPackage: packageQuantity, netPrice: purchasePrice },
         interpretedFields: { supplierSku: sku, description, brand, purchaseUom: product.purchaseUom, unitsPerPackage: packageQuantity, consumptionUom: product.consumptionUom ?? "PIECE", netPrice: purchasePrice, currency: "EUR" },
-        normalizedFields: { supplierSku: sku, description, brand, netPrice: purchasePrice, purchaseUom: product.purchaseUom, unitsPerPackage: packageQuantity, packageDescription: `${packageQuantity} ${product.consumptionUomLabel ?? "pezzi"}`, consumptionUom: product.consumptionUom ?? "PIECE", normalizedPrice, comparable: !newProduct, normalizedLabel: `${normalizedPrice.toFixed(4)} € / ${product.consumptionUomLabel ?? "pezzo"}`, validationErrors: newProduct ? ["Nessun prodotto canonico affidabile"] : [], warnings: packageChanged ? ["Confezione differente dal prodotto canonico"] : [] },
+        normalizedFields: { supplierSku: sku, description, brand, netPrice: purchasePrice, purchaseUom: product.purchaseUom, unitsPerPackage: packageQuantity, packageDescription: `${packageQuantity} ${product.consumptionUomLabel ?? "pezzi"}`, consumptionUom: product.consumptionUom ?? "PIECE", normalizedPrice, comparable: !newProduct, normalizedLabel: `${normalizedPrice.toFixed(4)} â‚¬ / ${product.consumptionUomLabel ?? "pezzo"}`, validationErrors: newProduct ? ["Nessun prodotto canonico affidabile"] : [], warnings: packageChanged ? ["Confezione differente dal prodotto canonico"] : [] },
         sourceLocator: { kind: definition.filename.endsWith(".csv") ? "CSV" : "XLSX", sheet: definition.filename.endsWith(".csv") ? undefined : "Listino", row: row + 5, columns: { supplierSku: "Codice art.", description: "Descrizione", netPrice: "Prezzo netto" } },
         searchText: `${sku ?? ""} ${description} ${brand ?? ""}`.toLocaleLowerCase("it-IT"), supplierSkuText: sku,
         normalizedPriceValue: normalizedPrice, exceptionType: newProduct ? "NEW_PRODUCT" : packageChanged ? "PACKAGE_CHANGE" : needsReview ? "UNCERTAIN_MATCH" : undefined,

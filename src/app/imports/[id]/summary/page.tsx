@@ -15,7 +15,7 @@ export default async function ImportSummaryPage({ params }: { params: Promise<{ 
   const [counts, createdProducts, currentVersion] = await Promise.all([
     getImportRecordCounts(prisma, job.id),
     prisma.productMatchCandidate.count({ where: { importedRecord: { importJobId: job.id }, humanDecision: "CREATE_NEW" } }),
-    job.sourceDocument.supplierId ? prisma.priceList.aggregate({ where: { supplierId: job.sourceDocument.supplierId }, _max: { version: true } }) : null,
+    job.sourceDocument.supplierId ? prisma.priceList.aggregate({ where: { organizationId: context.organization.id, supplierId: job.sourceDocument.supplierId }, _max: { version: true } }) : null,
   ]);
   const publishable = job.status === "PUBLISHED" ? job.publishedRecords : counts.ready;
   const blocking = counts.attention + counts.proposed;

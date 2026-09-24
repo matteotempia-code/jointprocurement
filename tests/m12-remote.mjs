@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -18,6 +18,7 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, extraHTTPHeaders: headers });
 const page = await context.newPage();
 const errors = []; let checkpoint = "startup";
+let diagnosticBatchId;
 page.on("pageerror", (error) => errors.push(error.message.slice(0, 300)));
 page.on("console", (message) => { if (message.type() === "error" && !/tree hydrated/i.test(message.text())) errors.push(message.text().slice(0, 300)); });
 
@@ -38,7 +39,9 @@ try {
   await open("/technical-documents");
   const files = Array.from({ length: 100 }, (_, index) => ({ name: `${marker}-technical-${String(index).padStart(3, "0")}.txt`, mimeType: "text/plain", buffer: text(product, `Documento ${index}`) }));
   await page.locator('input[name="files"]').setInputFiles(files);
-  await page.getByLabel(/Usa Procurement AI/).uncheck();
+  const aiToggle = page.getByLabel(/Usa Procurement AI/);
+  await aiToggle.uncheck();
+  assert.equal(await aiToggle.isChecked(), false, "100-document batch must have Procurement AI disabled at submit");
   const started = Date.now();
   await page.getByRole("button", { name: "Carica e analizza" }).click();
   await page.getByText(/Acquisiti|Analizzati|Lotto/).waitFor({ timeout: 30_000 });
@@ -47,7 +50,10 @@ try {
     () => db.technicalDocumentBatch.findFirst({ where: { createdBy: { name: "Giulia Bianchi" }, createdAt: { gte: new Date(started - 5_000) } }, orderBy: { createdAt: "desc" }, include: { items: true } }),
     (value) => value && ["COMPLETED", "PARTIAL"].includes(value.status) && value.completedFiles + value.failedFiles === 100,
     "100-document durable batch",
+    600_000,
   );
+  diagnosticBatchId = batch.id;
+  assert.equal(batch.aiEnabled, false, "100-document batch persisted with Procurement AI enabled");
   assert.equal(batch.totalFiles, 100);
   assert.equal(batch.items.length, 100);
   assert.equal(batch.failedFiles, 0);
@@ -119,6 +125,17 @@ try {
   console.log(JSON.stringify({ status: "PASS", marker, batch: { total: batch.totalFiles, completed: batch.completedFiles, failed: batch.failedFiles }, negativeBatch: { partialFailure: true, needsOcr: true, duplicate: true, retry: true }, associationCount: associations, productTechnicalStatus: state.status, openAI: { provider: aiCall.provider, model: aiCall.model, resultState: aiCall.resultState }, authorization: true }));
 } catch (error) {
   const directory = path.join(process.cwd(), "artifacts", "remote-certification"); await mkdir(directory, { recursive: true });
+  const diagnosticBatch = diagnosticBatchId
+    ? await db.technicalDocumentBatch.findUnique({ where: { id: diagnosticBatchId }, include: { items: { select: { status: true, attempts: true, lastError: true } } } }).catch(() => null)
+    : await db.technicalDocumentBatch.findFirst({ where: { createdBy: { name: "Giulia Bianchi" } }, orderBy: { createdAt: "desc" }, include: { items: { select: { status: true, attempts: true, lastError: true } } } }).catch(() => null);
+  if (diagnosticBatch) {
+    const groups = new Map();
+    for (const item of diagnosticBatch.items) {
+      const key = JSON.stringify({ status: item.status, attempts: item.attempts, lastError: item.lastError });
+      groups.set(key, (groups.get(key) ?? 0) + 1);
+    }
+    await writeFile(path.join(directory, `m12-${checkpoint}-batch.json`), JSON.stringify({ batch: { id: diagnosticBatch.id, status: diagnosticBatch.status, aiEnabled: diagnosticBatch.aiEnabled, totalFiles: diagnosticBatch.totalFiles, completedFiles: diagnosticBatch.completedFiles, failedFiles: diagnosticBatch.failedFiles }, itemGroups: [...groups].map(([key, count]) => ({ ...JSON.parse(key), count })) }, null, 2));
+  }
   await page.screenshot({ path: path.join(directory, `m12-${checkpoint}.png`), fullPage: true }).catch(() => undefined);
   const safe = (error instanceof Error ? error.message : String(error)).replace(/https?:\/\/\S+/g, "[url]").replace(/\s+/g, " ").slice(0, 600);
   if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=M12 ${checkpoint}::${safe}`);

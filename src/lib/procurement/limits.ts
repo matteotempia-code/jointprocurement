@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { requireFiniteProcurementLimitMaximum, validateProcurementLimit } from "@/lib/procurement/limit-validation";
 
 export type LimitCandidateLine = { canonicalProductId: string; categoryId: string; productName: string; quantity: number; unitPrice: number; unitsPerPackage?: number | null; consumptionUomLabel?: string | null };
 export type ProcurementLimitEvaluation = { limitId: string; productId: string; productName: string; scopeLabel: string; periodLabel: string; kind: "MONETARY" | "QUANTITY"; uom: string; limit: number; used: number; committed: number; reserved: number; requested: number; remainingAfter: number; exceeded: boolean };
@@ -31,13 +32,14 @@ export async function evaluateFacilityProcurementLimits(facilityId: string, line
     });
     return selectedLimits.map((selected) => {
       const kind = selected.limitType;
+      validateProcurementLimit(selected);
       const relatedOrders = orders.filter((item) => item.canonicalProductId === line.canonicalProductId && item.purchaseOrder.issuedAt >= selected.periodStart && item.purchaseOrder.issuedAt <= selected.periodEnd);
       const factor = (item: (typeof relatedOrders)[number]) => kind === "QUANTITY" ? Number(item.canonicalProduct.unitsPerPackage ?? 1) : Number(item.unitPrice);
       const used = relatedOrders.reduce((sum, item) => sum + item.receiptLines.reduce((receiptSum, receipt) => receiptSum + Number(receipt.quantityAccepted), 0) * factor(item), 0);
       const committed = relatedOrders.reduce((sum, item) => { const received = item.receiptLines.reduce((receiptSum, receipt) => receiptSum + Number(receipt.quantityReceived), 0); return sum + Math.max(0, Number(item.quantity) - received) * factor(item); }, 0);
       const reserved = pending.filter((item) => item.canonicalProductId === line.canonicalProductId && item.requisition.submittedAt && item.requisition.submittedAt >= selected.periodStart && item.requisition.submittedAt <= selected.periodEnd).reduce((sum, item) => sum + Number(item.quantity) * (kind === "QUANTITY" ? Number(item.canonicalProduct.unitsPerPackage ?? 1) : Number(item.unitPrice)), 0);
       const requested = amountFor(line, kind);
-      const maximum = Number(kind === "MONETARY" ? selected.maximumAmount : selected.maximumQuantity);
+      const maximum = requireFiniteProcurementLimitMaximum(selected);
       const remainingAfter = maximum - used - committed - reserved - requested;
       return { limitId: selected.id, productId: line.canonicalProductId, productName: line.productName, scopeLabel: `${selected.facility.name} · ${selected.canonicalProduct?.name ?? selected.category?.name ?? "Limite"}`, periodLabel: `${selected.periodStart.toLocaleDateString("it-IT")} – ${selected.periodEnd.toLocaleDateString("it-IT")}`, kind, uom: kind === "MONETARY" ? "EUR" : selected.quantityUom ?? line.consumptionUomLabel ?? "unità", limit: maximum, used, committed, reserved, requested, remainingAfter, exceeded: remainingAfter < 0 };
     });

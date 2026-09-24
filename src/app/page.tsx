@@ -3,21 +3,23 @@ import { addToCart } from "@/app/buying-actions";
 import { ArrowIcon } from "@/components/icons";
 import { ProductImage } from "@/components/product-image";
 import { Metric, PageHeader } from "@/components/ui";
-import { getCurrentDemoUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatMoney } from "@/lib/pricing";
 import { getFacilityBudget } from "@/lib/procurement/budget";
+import { preferredSpendShare } from "@/lib/procurement/preferred-spend";
 import { statusLabel } from "@/lib/presentation/status";
 import { resolveScope } from "@/lib/scope";
 
 export default async function Home() {
-  const context = await getCurrentDemoUser();
+  const context = await getCurrentUser();
   const scope = await resolveScope(context.assignment);
   if (context.roleCode === "RSA_DIRECTOR")
     return (
       <Director
         name={context.user.name}
         userId={context.user.id}
+        organizationId={context.organization.id}
         facilityId={scope.id}
         facility={scope.label}
       />
@@ -119,11 +121,13 @@ export default async function Home() {
 async function Director({
   name,
   userId,
+  organizationId,
   facilityId,
   facility,
 }: {
   name: string;
   userId: string;
+  organizationId: string;
   facilityId: string;
   facility: string;
 }) {
@@ -169,7 +173,7 @@ async function Director({
         },
       }),
       prisma.auditEvent.findMany({
-        where: { actorUserId: userId },
+        where: { organizationId, actorUserId: userId },
         orderBy: { createdAt: "desc" },
         take: 100,
       }),
@@ -203,6 +207,7 @@ async function Director({
   ].filter(({ value }) => value > 0);
   const products = await prisma.canonicalProduct.findMany({
     where: {
+      organizationId,
       id: { in: frequent.map(({ canonicalProductId }) => canonicalProductId) },
     },
     include: {
@@ -513,9 +518,9 @@ async function Procurement({
     priorityDeliveries,
     importQueue,
   ] = await Promise.all([
-    prisma.purchaseOrder.aggregate({
-      _sum: { total: true },
-      where: { issuedAt: { gte: new Date(new Date().getFullYear(), 0, 1) } },
+    prisma.purchaseOrder.findMany({
+      where: { organizationId, status: { not: "CANCELLED" }, issuedAt: { gte: new Date(new Date().getFullYear(), 0, 1) } },
+      include: { lines: true },
     }),
     prisma.purchaseRequisition.count({ where: { status: "PENDING_APPROVAL" } }),
     prisma.purchaseOrder.count({
@@ -525,8 +530,8 @@ async function Procurement({
         },
       },
     }),
-    prisma.supplier.count({ where: { active: true } }),
-    prisma.supplierOffer.findMany({ where: { active: true } }),
+    prisma.supplier.count({ where: { organizationId, active: true } }),
+    prisma.supplierOffer.findMany({ where: { organizationId, active: true } }),
     prisma.qualityIssue.count({
       where: { status: { in: ["OPEN", "UNDER_REVIEW"] } },
     }),
@@ -584,9 +589,11 @@ async function Procurement({
       take: 3,
     }),
   ]);
-  const compliance = offers.length
-    ? (offers.filter(({ preferred }) => preferred).length / offers.length) * 100
-    : 0;
+  const observedSpend = spend.reduce((sum, order) => sum + Number(order.total), 0);
+  const compliance = preferredSpendShare(
+    spend.flatMap((order) => order.lines.map((line) => ({ supplierId: order.supplierId, canonicalProductId: line.canonicalProductId, amount: line.lineTotal }))),
+    offers.filter((offer) => offer.preferred).map((offer) => `${offer.supplierId}:${offer.canonicalProductId}`),
+  );
   const offerGroups = new Map<string, typeof offers>();
   for (const offer of offers)
     offerGroups.set(offer.canonicalProductId, [
@@ -699,7 +706,7 @@ async function Procurement({
       <div className="metrics-grid four">
         <Metric
           label="Spesa osservata da inizio anno"
-          value={formatMoney(Number(spend._sum.total ?? 0))}
+          value={formatMoney(observedSpend)}
         />
         <Metric label="Ordini aperti" value={orders} />
         <Metric label="Fornitori attivi" value={suppliers} />

@@ -37,7 +37,7 @@ export default async function TechnicalDocumentsPage({
     prisma.missingEvidenceItem.count({ where: { organizationId: context.organization.id, status: "OPEN" } }),
     prisma.productEquivalenceAssessment.count({ where: { organizationId: context.organization.id, reviewStatus: { in: ["AI_PROPOSED", "REVIEW_REQUIRED", "STALE"] } } }),
     prisma.productTechnicalState.count({ where: { organizationId: context.organization.id, status: "CONFLICTED" } }),
-    prisma.technicalSavingOpportunity.count({ where: { organizationId: context.organization.id, status: { in: ["OPEN", "REVIEW_REQUIRED"] } } }),
+    prisma.technicalSavingOpportunity.count({ where: { organizationId: context.organization.id, status: { in: ["IDENTIFIED", "NEGOTIATED", "CONTRACTED", "REVIEW_REQUIRED"] } } }),
   ]);
   return (
     <main className="phase2-page technical-control-center">

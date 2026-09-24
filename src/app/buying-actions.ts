@@ -8,65 +8,65 @@ import { resolveScope } from "@/lib/scope";
 import { getFacilityBudget } from "@/lib/procurement/budget";
 import { evaluatePurchasePolicy } from "@/lib/policy/engine";
 import { createPurchaseOrders } from "@/lib/procurement/orders";
+import { acknowledgePurchaseOrder } from "@/lib/procurement/acknowledge-order";
 import { resolveApprover } from "@/lib/policy/approver";
 import { evaluateCommercialConditions } from "@/lib/procurement/commercial-conditions";
 import { evaluateFacilityProcurementLimits } from "@/lib/procurement/limits";
-import { receiptNumberFromId } from "@/lib/procurement/receipt-number";
+import { isTechnicallyApproved } from "@/lib/technical-intelligence/engine";
+import { nextDocumentNumber } from "@/lib/procurement/document-number";
 import { cleanupOperationalAttachments, uploadOperationalAttachments } from "@/lib/storage/operational-attachments";
 import { offerAvailability, validReceiptQuantity } from "@/lib/procurement/offer-eligibility";
+import { actionId, actionQuantity, procurementActionSchemas } from "@/lib/procurement/action-validation";
 
 export async function addToCart(formData:FormData){
- const context=await requireRoles(["RSA_DIRECTOR"]); const scope=await resolveScope(context.assignment); const offerId=String(formData.get("offerId")); const quantity=Number(formData.get("quantity")??1),now=new Date();
- if(!Number.isFinite(quantity)||quantity<=0)redirect("/catalog?error=invalid-quantity");
- const offer=await prisma.supplierOffer.findFirst({where:{id:offerId,active:true},include:{canonicalProduct:true}}); if(!offer)throw new Error("L’offerta selezionata non è disponibile.");
- const supplier=await prisma.supplier.findUnique({where:{id:offer.supplierId},select:{active:true}});if(!supplier||!offerAvailability({...offer,supplier},now).purchasable)redirect("/catalog?error=offer-unavailable");
- const technicalState=await prisma.productTechnicalState.findUnique({where:{organizationId_canonicalProductId:{organizationId:context.organization.id,canonicalProductId:offer.canonicalProductId}}});if(technicalState&&technicalState.status!=="COMPLETE")redirect(`/products/${offer.canonicalProductId}?error=technical-evidence`);
+ const context=await requireRoles(["RSA_DIRECTOR"]); const scope=await resolveScope(context.assignment); const offerId=actionId(formData.get("offerId"),"offerId"); const quantity=actionQuantity(formData.get("quantity")??1),now=new Date();
+ const offer=await prisma.supplierOffer.findFirst({where:{id:offerId,organizationId:context.organization.id,active:true},include:{canonicalProduct:true}}); if(!offer)throw new Error("L’offerta selezionata non è disponibile.");
+ const supplier=await prisma.supplier.findFirst({where:{id:offer.supplierId,organizationId:context.organization.id},select:{active:true}});if(!supplier||!offerAvailability({...offer,supplier},now).purchasable)redirect("/catalog?error=offer-unavailable");
+ const technicalState=await prisma.productTechnicalState.findUnique({where:{organizationId_canonicalProductId:{organizationId:context.organization.id,canonicalProductId:offer.canonicalProductId}}});if(!isTechnicallyApproved(technicalState))redirect(`/products/${offer.canonicalProductId}?error=technical-evidence`);
  const cart=await prisma.cart.upsert({where:{userId_facilityId:{userId:context.user.id,facilityId:scope.id}},create:{userId:context.user.id,facilityId:scope.id},update:{}});
  await prisma.cartLine.upsert({where:{cartId_supplierOfferId:{cartId:cart.id,supplierOfferId:offer.id}},create:{cartId:cart.id,supplierOfferId:offer.id,canonicalProductId:offer.canonicalProductId,quantity},update:{quantity:{increment:quantity}}});
  revalidatePath("/catalog");revalidatePath("/cart");
 }
-export async function updateCartLine(formData:FormData){const c=await requireRoles(["RSA_DIRECTOR"]);const id=String(formData.get("lineId")),quantity=Number(formData.get("quantity"));if(quantity<=0)await prisma.cartLine.deleteMany({where:{id,cart:{userId:c.user.id}}});else await prisma.cartLine.updateMany({where:{id,cart:{userId:c.user.id}},data:{quantity}});revalidatePath("/cart");}
-export async function removeCartLine(formData:FormData){const c=await requireRoles(["RSA_DIRECTOR"]);await prisma.cartLine.deleteMany({where:{id:String(formData.get("lineId")),cart:{userId:c.user.id}}});revalidatePath("/cart");}
+export async function updateCartLine(formData:FormData){const c=await requireRoles(["RSA_DIRECTOR"]);const id=actionId(formData.get("lineId"),"lineId"),quantity=actionQuantity(formData.get("quantity"),{removable:true});if(quantity<=0)await prisma.cartLine.deleteMany({where:{id,cart:{userId:c.user.id}}});else await prisma.cartLine.updateMany({where:{id,cart:{userId:c.user.id}},data:{quantity}});revalidatePath("/cart");}
+export async function removeCartLine(formData:FormData){const c=await requireRoles(["RSA_DIRECTOR"]);await prisma.cartLine.deleteMany({where:{id:actionId(formData.get("lineId"),"lineId"),cart:{userId:c.user.id}}});revalidatePath("/cart");}
 
-export async function toggleFavorite(formData:FormData){const c=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(c.assignment),productId=String(formData.get("productId"));const deleted=await prisma.favorite.deleteMany({where:{userId:c.user.id,facilityId:scope.id,canonicalProductId:productId}});if(deleted.count===0)await prisma.favorite.upsert({where:{userId_facilityId_canonicalProductId:{userId:c.user.id,facilityId:scope.id,canonicalProductId:productId}},create:{userId:c.user.id,facilityId:scope.id,canonicalProductId:productId},update:{}});revalidatePath("/catalog");revalidatePath("/preferiti");revalidatePath("/products/"+productId);}
+export async function toggleFavorite(formData:FormData){const c=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(c.assignment),productId=actionId(formData.get("productId"),"productId");const deleted=await prisma.favorite.deleteMany({where:{userId:c.user.id,facilityId:scope.id,canonicalProductId:productId}});if(deleted.count===0)await prisma.favorite.upsert({where:{userId_facilityId_canonicalProductId:{userId:c.user.id,facilityId:scope.id,canonicalProductId:productId}},create:{userId:c.user.id,facilityId:scope.id,canonicalProductId:productId},update:{}});revalidatePath("/catalog");revalidatePath("/preferiti");revalidatePath("/products/"+productId);}
 
 export async function addShoppingListToCart(formData:FormData){
- const c=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(c.assignment),list=await prisma.shoppingList.findFirstOrThrow({where:{id:String(formData.get("listId")),userId:c.user.id,facilityId:scope.id},include:{items:{include:{canonicalProduct:{include:{offers:{where:{active:true},orderBy:{preferred:"desc"},take:1}}}}}}});
+ const c=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(c.assignment),list=await prisma.shoppingList.findFirstOrThrow({where:{id:actionId(formData.get("listId"),"listId"),userId:c.user.id,facilityId:scope.id},include:{items:{include:{canonicalProduct:{include:{offers:{where:{active:true},orderBy:{preferred:"desc"},take:1}}}}}}});
  const cart=await prisma.cart.upsert({where:{userId_facilityId:{userId:c.user.id,facilityId:scope.id}},create:{userId:c.user.id,facilityId:scope.id},update:{}});
  for(const item of list.items){const offer=item.canonicalProduct.offers[0];if(offer)await prisma.cartLine.upsert({where:{cartId_supplierOfferId:{cartId:cart.id,supplierOfferId:offer.id}},create:{cartId:cart.id,supplierOfferId:offer.id,canonicalProductId:item.canonicalProductId,quantity:item.quantity},update:{quantity:{increment:item.quantity}}});}
  await prisma.shoppingList.update({where:{id:list.id},data:{lastUsedAt:new Date()}});
  redirect("/cart?lista=aggiunta");
 }
 
-export async function buyAgain(formData:FormData){const c=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(c.assignment),po=await prisma.purchaseOrder.findFirstOrThrow({where:{id:String(formData.get("poId")),facilityId:scope.id},include:{lines:true}}),cart=await prisma.cart.upsert({where:{userId_facilityId:{userId:c.user.id,facilityId:scope.id}},create:{userId:c.user.id,facilityId:scope.id},update:{}});for(const line of po.lines){const offer=await prisma.supplierOffer.findFirst({where:{canonicalProductId:line.canonicalProductId,supplierId:po.supplierId,active:true}})??await prisma.supplierOffer.findFirst({where:{canonicalProductId:line.canonicalProductId,active:true},orderBy:{preferred:"desc"}});if(offer)await prisma.cartLine.upsert({where:{cartId_supplierOfferId:{cartId:cart.id,supplierOfferId:offer.id}},create:{cartId:cart.id,supplierOfferId:offer.id,canonicalProductId:line.canonicalProductId,quantity:line.quantity},update:{quantity:{increment:line.quantity}}});}redirect("/cart?riordino=1");}
+export async function buyAgain(formData:FormData){const c=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(c.assignment),po=await prisma.purchaseOrder.findFirstOrThrow({where:{id:actionId(formData.get("poId"),"poId"),facilityId:scope.id},include:{lines:true}}),cart=await prisma.cart.upsert({where:{userId_facilityId:{userId:c.user.id,facilityId:scope.id}},create:{userId:c.user.id,facilityId:scope.id},update:{}});for(const line of po.lines){const offer=await prisma.supplierOffer.findFirst({where:{organizationId:c.organization.id,canonicalProductId:line.canonicalProductId,supplierId:po.supplierId,active:true}})??await prisma.supplierOffer.findFirst({where:{organizationId:c.organization.id,canonicalProductId:line.canonicalProductId,active:true},orderBy:{preferred:"desc"}});if(offer)await prisma.cartLine.upsert({where:{cartId_supplierOfferId:{cartId:cart.id,supplierOfferId:offer.id}},create:{cartId:cart.id,supplierOfferId:offer.id,canonicalProductId:line.canonicalProductId,quantity:line.quantity},update:{quantity:{increment:line.quantity}}});}redirect("/cart?riordino=1");}
 
 export async function createOutOfCatalogRequest(formData:FormData){
- const c=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(c.assignment),description=String(formData.get("description")??"").trim(),justification=String(formData.get("justification")??"").trim();
+ const c=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(c.assignment),description=String(formData.get("description")??"").trim(),justification=String(formData.get("justification")??"").trim(),quantity=actionQuantity(formData.get("quantity")??1);
  if(description.length<8||justification.length<8)throw new Error("Descrizione e motivazione sono obbligatorie");
  const requestId=randomUUID(),files=formData.getAll("attachments").filter((value):value is File=>value instanceof File&&value.size>0),uploaded=await uploadOperationalAttachments({files,organizationId:c.organization.id,ownerType:"out-of-catalog",ownerId:requestId});
  try{
-  const count=await prisma.outOfCatalogRequest.count();
-  await prisma.$transaction(async tx=>{const request=await tx.outOfCatalogRequest.create({data:{id:requestId,requestNumber:"FC-"+new Date().getFullYear()+"-"+String(count+1).padStart(6,"0"),requesterId:c.user.id,organizationId:c.organization.id,facilityId:scope.id,categoryId:String(formData.get("categoryId")||"")||null,needDescription:description,quantity:Math.max(1,Number(formData.get("quantity")||1)),estimatedAmount:Number(formData.get("estimatedAmount"))||null,suggestedSupplier:String(formData.get("supplier")||"")||null,justification,attachments:{create:uploaded.map(file=>({...file,kind:"OUT_OF_CATALOG" as const,organizationId:c.organization.id,facilityId:scope.id,uploadedByUserId:c.user.id,immutableAt:new Date()}))}}});await tx.auditEvent.create({data:{actorUserId:c.user.id,entityType:"OUT_OF_CATALOG_REQUEST",entityId:request.id,action:"SUBMITTED",metadata:{number:request.requestNumber,attachmentIds:uploaded.map(file=>file.id)}}});});
+  await prisma.$transaction(async tx=>{const requestNumber=await nextDocumentNumber(tx,"OUT_OF_CATALOG");const request=await tx.outOfCatalogRequest.create({data:{id:requestId,requestNumber,requesterId:c.user.id,organizationId:c.organization.id,facilityId:scope.id,categoryId:String(formData.get("categoryId")||"")||null,needDescription:description,quantity,estimatedAmount:Number(formData.get("estimatedAmount"))||null,suggestedSupplier:String(formData.get("supplier")||"")||null,justification,attachments:{create:uploaded.map(file=>({...file,kind:"OUT_OF_CATALOG" as const,organizationId:c.organization.id,facilityId:scope.id,uploadedByUserId:c.user.id,immutableAt:new Date()}))}}});await tx.auditEvent.create({data:{organizationId:c.organization.id,actorUserId:c.user.id,entityType:"OUT_OF_CATALOG_REQUEST",entityId:request.id,action:"SUBMITTED",metadata:{number:request.requestNumber,attachmentIds:uploaded.map(file=>file.id)}}});});
  }catch(error){await cleanupOperationalAttachments(uploaded);throw error;}
  redirect(`/richieste?fuoriCatalogo=1&request=${requestId}`);
 }
 
-export async function acknowledgeOrder(formData:FormData){await requireRoles(["PROCUREMENT_MANAGER"]);const id=String(formData.get("poId"));await prisma.purchaseOrder.update({where:{id},data:{status:"ACKNOWLEDGED",supplierAcknowledgedAt:new Date(),expectedDeliveryDate:formData.get("expectedDate")?new Date(String(formData.get("expectedDate"))):undefined}});revalidatePath("/orders/"+id);}
+export async function acknowledgeOrder(formData:FormData){const context=await requireRoles(["PROCUREMENT_MANAGER"]);const id=actionId(formData.get("poId"),"poId");await acknowledgePurchaseOrder(prisma,{orderId:id,organizationId:context.organization.id,actorUserId:context.user.id,expectedDate:String(formData.get("expectedDate")??"")});revalidatePath("/orders/"+id);}
 
 export async function draftSupplierReminder(formData: FormData) {
- const context=await requireRoles(["RSA_DIRECTOR","AREA_MANAGER","PROCUREMENT_MANAGER"]),id=String(formData.get("poId"));const scope=await resolveScope(context.assignment);const order=await prisma.purchaseOrder.findFirstOrThrow({where:{id,organizationId:context.organization.id,...(context.roleCode!=="PROCUREMENT_MANAGER"?{facilityId:{in:scope.facilityIds}}:{})},include:{supplier:true}});const contact=(order.supplier.orderContact??{}) as {email?:string;name?:string};
+ const context=await requireRoles(["RSA_DIRECTOR","AREA_MANAGER","PROCUREMENT_MANAGER"]),id=actionId(formData.get("poId"),"poId");const scope=await resolveScope(context.assignment);const order=await prisma.purchaseOrder.findFirstOrThrow({where:{id,organizationId:context.organization.id,...(context.roleCode!=="PROCUREMENT_MANAGER"?{facilityId:{in:scope.facilityIds}}:{})},include:{supplier:true}});const contact=(order.supplier.orderContact??{}) as {email?:string;name?:string};
  const subject=`Sollecito consegna ${order.poNumber}`;const body=`Buongiorno, chiediamo aggiornamento sulla consegna ${order.poNumber}, prevista il ${order.expectedDeliveryDate.toLocaleDateString("it-IT")}. La comunicazione è una bozza e non è stata inviata.`;
- await prisma.auditEvent.create({data:{actorUserId:context.user.id,entityType:"PURCHASE_ORDER",entityId:order.id,action:"SUPPLIER_REMINDER_DRAFTED",metadata:{recipient:contact.email??order.supplier.contactEmail??null,contactName:contact.name??null,subject,body,deliveryProviderConfigured:false}}});revalidatePath("/consegne");revalidatePath(`/orders/${order.id}`);redirect(`/orders/${order.id}?reminder=draft`);
+ await prisma.auditEvent.create({data:{organizationId:context.organization.id,actorUserId:context.user.id,entityType:"PURCHASE_ORDER",entityId:order.id,action:"SUPPLIER_REMINDER_DRAFTED",metadata:{recipient:contact.email??order.supplier.contactEmail??null,contactName:contact.name??null,subject,body,deliveryProviderConfigured:false}}});revalidatePath("/consegne");revalidatePath(`/orders/${order.id}`);redirect(`/orders/${order.id}?reminder=draft`);
 }
 
 export async function resolveQualityIssue(formData:FormData){
- const c=await requireRoles(["PROCUREMENT_MANAGER"]),id=String(formData.get("issueId")),decision=String(formData.get("status"));
- if(!["UNDER_REVIEW","RESOLVED","CLOSED"].includes(decision))throw new Error("Stato non valido.");
+ const c=await requireRoles(["PROCUREMENT_MANAGER"]),id=actionId(formData.get("issueId"),"issueId"),decision=procurementActionSchemas.qualityStatus.parse(formData.get("status"));
  const issue=await prisma.qualityIssue.findFirstOrThrow({where:{id,purchaseOrderLine:{purchaseOrder:{organizationId:c.organization.id}}},include:{purchaseOrderLine:{include:{purchaseOrder:true}}}}),files=formData.getAll("attachments").filter((value):value is File=>value instanceof File&&value.size>0),uploaded=await uploadOperationalAttachments({files,organizationId:c.organization.id,ownerType:"quality-issue",ownerId:issue.id});
  try {
   await prisma.$transaction(async (tx) => {
    await tx.qualityIssue.update({ where: { id }, data: { status: decision as "UNDER_REVIEW" | "RESOLVED" | "CLOSED", resolutionType: String(formData.get("resolutionType") || "") || null, resolutionNote: String(formData.get("note") || "") || null, resolvedAt: decision === "RESOLVED" || decision === "CLOSED" ? new Date() : null, attachments: { create: uploaded.map((file) => ({ ...file, kind: "QUALITY_ISSUE" as const, organizationId: c.organization.id, facilityId: issue.purchaseOrderLine.purchaseOrder.facilityId, uploadedByUserId: c.user.id, immutableAt: new Date() })) } } });
-   await tx.auditEvent.create({ data: { actorUserId: c.user.id, entityType: "QUALITY_ISSUE", entityId: id, action: `ISSUE_${decision}`, metadata: { resolutionType: String(formData.get("resolutionType") || ""), attachmentIds: uploaded.map((file) => file.id) } } });
+   await tx.auditEvent.create({ data: { organizationId: c.organization.id, actorUserId: c.user.id, entityType: "QUALITY_ISSUE", entityId: id, action: `ISSUE_${decision}`, metadata: { resolutionType: String(formData.get("resolutionType") || ""), attachmentIds: uploaded.map((file) => file.id) } } });
   });
  } catch(error) { await cleanupOperationalAttachments(uploaded); throw error; }
  revalidatePath("/non-conformita");
@@ -80,35 +80,35 @@ export async function submitRequisition(formData:FormData){
  const commercialCosts=Object.values(Object.groupBy(cart.lines,line=>line.supplierOffer.supplierId)).reduce((sum,lines)=>{if(!lines?.length)return sum;const groupSubtotal=lines.reduce((value,line)=>value+Number(line.quantity)*Number(line.supplierOffer.unitPrice),0),commercial=evaluateCommercialConditions(groupSubtotal,lines[0].supplierOffer.supplier);return sum+commercial.shippingFee+commercial.surcharge;},0),total=subtotal+taxTotal+commercialCosts;
  const limitEvaluations=await evaluateFacilityProcurementLimits(scope.id,cart.lines.map(line=>({canonicalProductId:line.canonicalProductId,categoryId:line.canonicalProduct.categoryId,productName:line.canonicalProduct.name,quantity:Number(line.quantity),unitPrice:Number(line.supplierOffer.unitPrice),unitsPerPackage:Number(line.canonicalProduct.unitsPerPackage??1),consumptionUomLabel:line.canonicalProduct.consumptionUomLabel}))),exceededLimits=limitEvaluations.filter(limit=>limit.exceeded);
  const baseDecision=evaluatePurchasePolicy({total,availableBudget:budget.available,approvedBudget:budget.approved,requesterLimit:Number(context.assignment.approvalLimit??0),areaManagerLimit:20000,justification:String(formData.get("justification")??"")}),decision=exceededLimits.length?{...baseDecision,outcome:"PROCUREMENT_APPROVAL" as const,requiredApproverRole:"PROCUREMENT_MANAGER" as const,reason:"Limite prodotto/struttura/periodo superato",explanation:"La richiesta supera almeno un limite operativo di prodotto o categoria e richiede una decisione Procurement.",evaluatedRules:[...baseDecision.evaluatedRules,"PRODUCT_FACILITY_PERIOD_LIMIT"],requiresJustification:true}:baseDecision;const justification=String(formData.get("justification")??"").trim();if(decision.requiresJustification&&!justification)throw new Error("La motivazione è obbligatoria per questa eccezione alla policy.");
- const count=await prisma.purchaseRequisition.count(),submittedAt=new Date(),requisitionId=randomUUID();const req=await prisma.$transaction(async tx=>{
-  const requisition=await tx.purchaseRequisition.create({data:{id:requisitionId,requisitionNumber:"PR-"+submittedAt.getFullYear()+"-"+String(count+1).padStart(6,"0")+`-${requisitionId.slice(-6).toUpperCase()}`,requesterId:context.user.id,organizationId:context.organization.id,facilityId:scope.id,costCenterId:center.id,status:decision.outcome==="AUTO_APPROVE"?"APPROVED":"PENDING_APPROVAL",subtotal,taxTotal,total,justification:justification||null,requiredByDate:formData.get("requiredByDate")?new Date(String(formData.get("requiredByDate"))):null,policyDecision:decision.outcome,policyExplanation:decision.explanation,policyEvaluation:{rules:decision.evaluatedRules,reason:decision.reason,commercialCosts,productLimits:limitEvaluations},budgetBefore:budget.available,budgetAfter:budget.available-total,createdAt:submittedAt,updatedAt:submittedAt,submittedAt,approvedAt:decision.outcome==="AUTO_APPROVE"?submittedAt:null,lines:{create:cart.lines.map(l=>({canonicalProductId:l.canonicalProductId,supplierOfferId:l.supplierOfferId,descriptionSnapshot:l.canonicalProduct.name,supplierSnapshot:l.supplierOffer.supplier.name,supplierSkuSnapshot:l.supplierOffer.supplierSku,quantity:l.quantity,unitPrice:l.supplierOffer.unitPrice,normalizedUnitPrice:l.supplierOffer.normalizedUnitPrice,taxRate:l.supplierOffer.taxRate,lineTotal:Number(l.quantity)*Number(l.supplierOffer.unitPrice)}))}}});
-  await tx.auditEvent.createMany({data:[{actorUserId:context.user.id,entityType:"PURCHASE_REQUISITION",entityId:requisition.id,action:"REQUISITION_CREATED",metadata:{number:requisition.requisitionNumber}},{actorUserId:context.user.id,entityType:"PURCHASE_REQUISITION",entityId:requisition.id,action:"POLICY_EVALUATED",metadata:{outcome:decision.outcome,rules:decision.evaluatedRules}}]});
-  if(decision.outcome==="AUTO_APPROVE")await createPurchaseOrders(tx,requisition.id,context.user.id);else{const role=decision.requiredApproverRole!;const approver=await resolveApprover(tx,{organizationId:context.organization.id,requiredRole:role,facilityId:scope.id,total,categoryIds:[...new Set(cart.lines.map(l=>l.canonicalProduct.categoryId))]});await tx.approvalRequest.create({data:{requisitionId:requisition.id,approverUserId:approver.userId,approverAssignmentId:approver.assignmentId,delegationId:approver.delegationId,status:"PENDING",level:role==="AREA_MANAGER"?1:2,reason:decision.reason+" "+approver.reason}});await tx.auditEvent.create({data:{actorUserId:context.user.id,entityType:"PURCHASE_REQUISITION",entityId:requisition.id,action:"APPROVAL_REQUESTED",metadata:{role,approver:approver.user.name,delegationId:approver.delegationId,routingReason:approver.reason}}});}
+ const submittedAt=new Date(),requisitionId=randomUUID();const req=await prisma.$transaction(async tx=>{
+  const requisitionNumber=await nextDocumentNumber(tx,"REQUISITION",submittedAt);const requisition=await tx.purchaseRequisition.create({data:{id:requisitionId,requisitionNumber,requesterId:context.user.id,organizationId:context.organization.id,facilityId:scope.id,costCenterId:center.id,status:decision.outcome==="AUTO_APPROVE"?"APPROVED":"PENDING_APPROVAL",subtotal,taxTotal,total,justification:justification||null,requiredByDate:formData.get("requiredByDate")?new Date(String(formData.get("requiredByDate"))):null,policyDecision:decision.outcome,policyExplanation:decision.explanation,policyEvaluation:{rules:decision.evaluatedRules,reason:decision.reason,commercialCosts,productLimits:limitEvaluations},budgetBefore:budget.available,budgetAfter:budget.available-total,createdAt:submittedAt,updatedAt:submittedAt,submittedAt,approvedAt:decision.outcome==="AUTO_APPROVE"?submittedAt:null,lines:{create:cart.lines.map(l=>({canonicalProductId:l.canonicalProductId,supplierOfferId:l.supplierOfferId,descriptionSnapshot:l.canonicalProduct.name,supplierSnapshot:l.supplierOffer.supplier.name,supplierSkuSnapshot:l.supplierOffer.supplierSku,quantity:l.quantity,unitPrice:l.supplierOffer.unitPrice,normalizedUnitPrice:l.supplierOffer.normalizedUnitPrice,taxRate:l.supplierOffer.taxRate,lineTotal:Number(l.quantity)*Number(l.supplierOffer.unitPrice)}))}}});
+  await tx.auditEvent.createMany({data:[{organizationId:context.organization.id,actorUserId:context.user.id,entityType:"PURCHASE_REQUISITION",entityId:requisition.id,action:"REQUISITION_CREATED",metadata:{number:requisition.requisitionNumber}},{organizationId:context.organization.id,actorUserId:context.user.id,entityType:"PURCHASE_REQUISITION",entityId:requisition.id,action:"POLICY_EVALUATED",metadata:{outcome:decision.outcome,rules:decision.evaluatedRules}}]});
+  if(decision.outcome==="AUTO_APPROVE")await createPurchaseOrders(tx,requisition.id,context.user.id);else{const role=decision.requiredApproverRole!;const approver=await resolveApprover(tx,{organizationId:context.organization.id,requiredRole:role,facilityId:scope.id,total,categoryIds:[...new Set(cart.lines.map(l=>l.canonicalProduct.categoryId))]});await tx.approvalRequest.create({data:{requisitionId:requisition.id,approverUserId:approver.userId,approverAssignmentId:approver.assignmentId,delegationId:approver.delegationId,status:"PENDING",level:role==="AREA_MANAGER"?1:2,reason:decision.reason+" "+approver.reason}});await tx.auditEvent.create({data:{organizationId:context.organization.id,actorUserId:context.user.id,entityType:"PURCHASE_REQUISITION",entityId:requisition.id,action:"APPROVAL_REQUESTED",metadata:{role,approver:approver.user.name,delegationId:approver.delegationId,routingReason:approver.reason}}});}
   await tx.cartLine.deleteMany({where:{cartId:cart.id}});return requisition;
  });redirect("/requisitions/"+req.id+"?created=1");
 }
 
 export async function decideApproval(formData:FormData){
- const context=await requireRoles(["AREA_MANAGER","PROCUREMENT_MANAGER"]);const approvalId=String(formData.get("approvalId")),decision=String(formData.get("decision")),note=String(formData.get("note")??"").trim();if(["REJECTED","CLARIFICATION_REQUESTED"].includes(decision)&&!note)throw new Error("La nota è obbligatoria per rifiutare o chiedere chiarimenti");
+ const context=await requireRoles(["AREA_MANAGER","PROCUREMENT_MANAGER"]);const approvalId=actionId(formData.get("approvalId"),"approvalId"),decision=procurementActionSchemas.decision.parse(formData.get("decision")),note=String(formData.get("note")??"").trim();if(["REJECTED","CLARIFICATION_REQUESTED"].includes(decision)&&!note)throw new Error("La nota è obbligatoria per rifiutare o chiedere chiarimenti");
  const approval=await prisma.approvalRequest.findFirst({where:{id:approvalId,approverUserId:context.user.id}});if(!approval||approval.status!=="PENDING")redirect("/approvals?decision=already-decided");
  const applied=await prisma.$transaction(async tx=>{const claimed=await tx.approvalRequest.updateMany({where:{id:approval.id,status:"PENDING"},data:{status:decision as "APPROVED"|"REJECTED"|"CLARIFICATION_REQUESTED",decisionNote:note||null,decidedAt:new Date()}});if(!claimed.count)return false;
   if(decision==="APPROVED"){await tx.purchaseRequisition.update({where:{id:approval.requisitionId},data:{status:"APPROVED",approvedAt:new Date()}});await createPurchaseOrders(tx,approval.requisitionId,context.user.id);}else await tx.purchaseRequisition.update({where:{id:approval.requisitionId},data:{status:decision==="REJECTED"?"REJECTED":"CLARIFICATION_REQUESTED",rejectedAt:decision==="REJECTED"?new Date():null}});
-  await tx.auditEvent.create({data:{actorUserId:context.user.id,entityType:"PURCHASE_REQUISITION",entityId:approval.requisitionId,action:decision==="APPROVED"?"APPROVED":decision,metadata:{approvalId:approval.id,note}}});return true;});if(!applied)redirect("/approvals?decision=already-decided");
+  await tx.auditEvent.create({data:{organizationId:context.organization.id,actorUserId:context.user.id,entityType:"PURCHASE_REQUISITION",entityId:approval.requisitionId,action:decision==="APPROVED"?"APPROVED":decision,metadata:{approvalId:approval.id,note}}});return true;});if(!applied)redirect("/approvals?decision=already-decided");
  redirect("/approvals?decision="+decision.toLowerCase());
 }
 
 export async function answerClarification(formData: FormData) {
- const context = await requireRoles(["RSA_DIRECTOR"]); const scope = await resolveScope(context.assignment); const requisitionId = String(formData.get("requisitionId")); const answer = String(formData.get("answer") ?? "").trim(); const justification = String(formData.get("justification") ?? "").trim();
+ const context = await requireRoles(["RSA_DIRECTOR"]); const scope = await resolveScope(context.assignment); const requisitionId = actionId(formData.get("requisitionId"),"requisitionId"); const answer = String(formData.get("answer") ?? "").trim(); const justification = String(formData.get("justification") ?? "").trim();
  if (answer.length < 3) throw new Error("Inserisci una risposta al chiarimento.");
  const request = await prisma.purchaseRequisition.findFirstOrThrow({ where: { id: requisitionId, requesterId: context.user.id, facilityId: scope.id, status: "CLARIFICATION_REQUESTED" }, include: { lines: true, approvals: { orderBy: { requestedAt: "desc" }, take: 1 } } });
  const previous = request.approvals[0]; if (!previous || previous.status !== "CLARIFICATION_REQUESTED") throw new Error("Richiesta di chiarimento non disponibile.");
- const updates = request.lines.map((line) => ({ line, quantity: Math.max(.0001, Number(formData.get(`quantity-${line.id}`) ?? line.quantity)) }));
+ const updates = request.lines.map((line) => ({ line, quantity: actionQuantity(formData.get(`quantity-${line.id}`) ?? Number(line.quantity)) }));
  const subtotal = updates.reduce((sum, item) => sum + item.quantity * Number(item.line.unitPrice), 0); const taxTotal = updates.reduce((sum, item) => sum + item.quantity * Number(item.line.unitPrice) * Number(item.line.taxRate) / 100, 0); const total = subtotal + taxTotal;
  await prisma.$transaction(async (tx) => {
   for (const item of updates) await tx.purchaseRequisitionLine.update({ where: { id: item.line.id }, data: { quantity: item.quantity, lineTotal: item.quantity * Number(item.line.unitPrice) } });
   await tx.purchaseRequisition.update({ where: { id: request.id }, data: { status: "PENDING_APPROVAL", subtotal, taxTotal, total, justification: justification || request.justification, budgetAfter: Number(request.budgetBefore) - total } });
   const next = await tx.approvalRequest.create({ data: { requisitionId: request.id, approverUserId: previous.approverUserId, approverAssignmentId: previous.approverAssignmentId, delegationId: previous.delegationId, status: "PENDING", level: previous.level, reason: `Chiarimento risposto · ${previous.reason}` } });
-  await tx.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "PURCHASE_REQUISITION", entityId: request.id, action: "CLARIFICATION_ANSWERED", metadata: { previousApprovalId: previous.id, approvalId: next.id, question: previous.decisionNote, answer, quantitiesUpdated: updates.some((item) => Number(item.line.quantity) !== item.quantity) } } });
+  await tx.auditEvent.create({ data: { organizationId: context.organization.id, actorUserId: context.user.id, entityType: "PURCHASE_REQUISITION", entityId: request.id, action: "CLARIFICATION_ANSWERED", metadata: { previousApprovalId: previous.id, approvalId: next.id, question: previous.decisionNote, answer, quantitiesUpdated: updates.some((item) => Number(item.line.quantity) !== item.quantity) } } });
  });
  redirect(`/requisitions/${request.id}?clarification=answered`);
 }
@@ -123,8 +123,9 @@ export async function createShoppingList(formData: FormData) {
   const { context, scope } = await ownedListContext();
   const name = String(formData.get("name") ?? "").trim();
   if (name.length < 3) throw new Error("Inserisci un nome di almeno 3 caratteri.");
-  const productId = String(formData.get("productId") ?? "");
-  const quantity = Math.max(1, Number(formData.get("quantity") ?? 1));
+  const rawProductId = formData.get("productId");
+  const productId = rawProductId ? actionId(rawProductId,"productId") : "";
+  const quantity = actionQuantity(formData.get("quantity") ?? 1);
   const list = await prisma.shoppingList.create({
     data: {
       userId: context.user.id,
@@ -134,15 +135,15 @@ export async function createShoppingList(formData: FormData) {
       items: productId ? { create: { canonicalProductId: productId, quantity } } : undefined,
     },
   });
-  await prisma.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "SHOPPING_LIST", entityId: list.id, action: "CREATED", metadata: { name } } });
+  await prisma.auditEvent.create({ data: { organizationId: context.organization.id, actorUserId: context.user.id, entityType: "SHOPPING_LIST", entityId: list.id, action: "CREATED", metadata: { name } } });
   redirect(`/liste/${list.id}?creata=1`);
 }
 
 export async function addProductToList(formData: FormData) {
   const { context, scope } = await ownedListContext();
-  const listId = String(formData.get("listId"));
-  const productId = String(formData.get("productId"));
-  const quantity = Math.max(1, Number(formData.get("quantity") ?? 1));
+  const listId = actionId(formData.get("listId"),"listId");
+  const productId = actionId(formData.get("productId"),"productId");
+  const quantity = actionQuantity(formData.get("quantity") ?? 1);
   await prisma.shoppingList.findFirstOrThrow({ where: { id: listId, userId: context.user.id, facilityId: scope.id } });
   await prisma.shoppingListItem.upsert({
     where: { shoppingListId_canonicalProductId: { shoppingListId: listId, canonicalProductId: productId } },
@@ -155,7 +156,7 @@ export async function addProductToList(formData: FormData) {
 
 export async function updateShoppingList(formData: FormData) {
   const { context, scope } = await ownedListContext();
-  const id = String(formData.get("listId"));
+  const id = actionId(formData.get("listId"),"listId");
   const intent = String(formData.get("intent") ?? "update");
   const list = await prisma.shoppingList.findFirstOrThrow({ where: { id, userId: context.user.id, facilityId: scope.id }, include: { items: true } });
   if (intent === "delete") {
@@ -174,10 +175,10 @@ export async function updateShoppingList(formData: FormData) {
 
 export async function updateShoppingListItem(formData: FormData) {
   const { context, scope } = await ownedListContext();
-  const itemId = String(formData.get("itemId"));
+  const itemId = actionId(formData.get("itemId"),"itemId");
   const item = await prisma.shoppingListItem.findFirstOrThrow({ where: { id: itemId, shoppingList: { userId: context.user.id, facilityId: scope.id } } });
   const quantities = formData.getAll("quantity");
-  const quantity = Number(quantities.at(-1) ?? 0);
+  const quantity = actionQuantity(quantities.at(-1) ?? 0,{removable:true});
   if (quantity <= 0) await prisma.shoppingListItem.delete({ where: { id: itemId } });
   else await prisma.shoppingListItem.update({ where: { id: itemId }, data: { quantity } });
   revalidatePath(`/liste/${item.shoppingListId}`);
@@ -185,8 +186,8 @@ export async function updateShoppingListItem(formData: FormData) {
 
 export async function moveShoppingListItem(formData: FormData) {
   const { context, scope } = await ownedListContext();
-  const itemId = String(formData.get("itemId"));
-  const direction = String(formData.get("direction")) === "up" ? -1 : 1;
+  const itemId = actionId(formData.get("itemId"),"itemId");
+  const direction = procurementActionSchemas.direction.parse(formData.get("direction")) === "up" ? -1 : 1;
   const item = await prisma.shoppingListItem.findFirstOrThrow({ where: { id: itemId, shoppingList: { userId: context.user.id, facilityId: scope.id } } });
   const items = await prisma.shoppingListItem.findMany({ where: { shoppingListId: item.shoppingListId }, orderBy: [{ position: "asc" }, { id: "asc" }] });
   const index = items.findIndex(({ id }) => id === itemId);
@@ -220,7 +221,7 @@ export async function saveCartAsList(formData: FormData) {
 
 export async function createListFromOrder(formData: FormData) {
   const { context, scope } = await ownedListContext();
-  const order = await prisma.purchaseOrder.findFirstOrThrow({ where: { id: String(formData.get("poId")), facilityId: scope.id }, include: { lines: true } });
+  const order = await prisma.purchaseOrder.findFirstOrThrow({ where: { id: actionId(formData.get("poId"),"poId"), facilityId: scope.id }, include: { lines: true } });
   const name = `Riordino ${order.poNumber}`;
   const existing = await prisma.shoppingList.findFirst({ where: { userId: context.user.id, facilityId: scope.id, name } });
   const list = await prisma.$transaction(async (tx) => {
@@ -230,13 +231,13 @@ export async function createListFromOrder(formData: FormData) {
     }
     return tx.shoppingList.create({ data: { userId: context.user.id, facilityId: scope.id, name, description: "Creata da un ordine precedente", items: { create: order.lines.map((line) => ({ canonicalProductId: line.canonicalProductId, quantity: line.quantity })) } } });
   });
-  await prisma.auditEvent.create({ data: { actorUserId: context.user.id, entityType: "SHOPPING_LIST", entityId: list.id, action: "CREATED_FROM_ORDER", metadata: { purchaseOrderId: order.id } } });
+  await prisma.auditEvent.create({ data: { organizationId: context.organization.id, actorUserId: context.user.id, entityType: "SHOPPING_LIST", entityId: list.id, action: "CREATED_FROM_ORDER", metadata: { purchaseOrderId: order.id } } });
   redirect(`/liste/${list.id}?daOrdine=1`);
 }
 
 export async function addSelectedFavoritesToCart(formData: FormData) {
   const { context, scope } = await ownedListContext();
-  const productIds = formData.getAll("productId").map(String);
+  const productIds = formData.getAll("productId").map((value)=>actionId(value,"productId"));
   const favorites = await prisma.favorite.findMany({ where: { userId: context.user.id, facilityId: scope.id, canonicalProductId: { in: productIds } }, include: { canonicalProduct: { include: { offers: { where: { active: true }, orderBy: [{ preferred: "desc" }, { normalizedUnitPrice: "asc" }], take: 1 } } } } });
   const cart = await prisma.cart.upsert({ where: { userId_facilityId: { userId: context.user.id, facilityId: scope.id } }, create: { userId: context.user.id, facilityId: scope.id }, update: {} });
   for (const favorite of favorites) {
@@ -248,8 +249,8 @@ export async function addSelectedFavoritesToCart(formData: FormData) {
 
 export async function addSelectedFavoritesToList(formData: FormData) {
   const { context, scope } = await ownedListContext();
-  const listId = String(formData.get("listId") ?? "");
-  const productIds = formData.getAll("productId").map(String);
+  const listId = actionId(formData.get("listId"),"listId");
+  const productIds = formData.getAll("productId").map((value)=>actionId(value,"productId"));
   await prisma.shoppingList.findFirstOrThrow({ where: { id: listId, userId: context.user.id, facilityId: scope.id } });
   const favorites = await prisma.favorite.findMany({ where: { userId: context.user.id, facilityId: scope.id, canonicalProductId: { in: productIds } }, select: { canonicalProductId: true } });
   for (const favorite of favorites) await prisma.shoppingListItem.upsert({ where: { shoppingListId_canonicalProductId: { shoppingListId: listId, canonicalProductId: favorite.canonicalProductId } }, create: { shoppingListId: listId, canonicalProductId: favorite.canonicalProductId, quantity: 1 }, update: {} });
@@ -258,15 +259,17 @@ export async function addSelectedFavoritesToList(formData: FormData) {
 
 export async function addOrderProductsToFavorites(formData: FormData) {
   const { context, scope } = await ownedListContext();
-  const order = await prisma.purchaseOrder.findFirstOrThrow({ where: { id: String(formData.get("poId")), facilityId: scope.id }, include: { lines: true } });
+  const order = await prisma.purchaseOrder.findFirstOrThrow({ where: { id: actionId(formData.get("poId"),"poId"), facilityId: scope.id }, include: { lines: true } });
   await prisma.favorite.createMany({ data: order.lines.map((line) => ({ userId: context.user.id, facilityId: scope.id, canonicalProductId: line.canonicalProductId })), skipDuplicates: true });
   redirect("/preferiti?daOrdine=1");
 }
 
 export async function receiveOrder(formData:FormData){
- const context=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(context.assignment),poId=String(formData.get("poId"));
+ const context=await requireRoles(["RSA_DIRECTOR"]),scope=await resolveScope(context.assignment),poId=actionId(formData.get("poId"),"poId");
  const po=await prisma.purchaseOrder.findFirstOrThrow({where:{id:poId,organizationId:context.organization.id,facilityId:scope.id,status:{in:["ISSUED","ACKNOWLEDGED","PARTIALLY_RECEIVED","ISSUE"]}},include:{lines:{include:{receiptLines:true}}}});
- const receivedNow=po.lines.map(line=>Number(formData.get(`received-${line.id}`)??0));
+ const receivedResults=po.lines.map(line=>procurementActionSchemas.removableQuantity.safeParse(formData.get(`received-${line.id}`)??0));
+ if(receivedResults.some(result=>!result.success))redirect(`/orders/${poId}/receive?error=invalid-quantity`);
+ const receivedNow=receivedResults.flatMap(result=>result.success?[result.data]:[]);
  const invalidQuantity=po.lines.some((line,index)=>{const already=line.receiptLines.reduce((sum,item)=>sum+Number(item.quantityReceived),0),remaining=Number(line.quantity)-already;return !validReceiptQuantity(receivedNow[index],remaining);});
  if(invalidQuantity)redirect(`/orders/${poId}/receive?error=invalid-quantity`);
  if(!receivedNow.some(quantity=>Number.isFinite(quantity)&&quantity>0))redirect(`/orders/${poId}/receive?error=empty-receipt`);
@@ -279,22 +282,22 @@ export async function receiveOrder(formData:FormData){
   for(const plan of issuePlans)issueUploads.set(plan.issueId,await uploadOperationalAttachments({files:plan.files,organizationId:context.organization.id,ownerType:"quality-issue",ownerId:plan.issueId}));
   await prisma.$transaction(async (tx) => {
    let hasIssue=false,allComplete=true;
-   const receipt=await tx.receipt.create({ data: { id:receiptId, receiptNumber:receiptNumberFromId(receiptId), purchaseOrderId:po.id, facilityId:po.facilityId, receivedById:context.user.id, status:"PARTIAL", notes:String(formData.get("notes")??"")||null, attachments:{create:receiptUploads.map((file)=>({...file,kind:"RECEIPT" as const,organizationId:context.organization.id,facilityId:po.facilityId,uploadedByUserId:context.user.id,immutableAt:new Date()}))} } });
-   for(const line of po.lines){
-    const already=line.receiptLines.reduce((s,r)=>s+Number(r.quantityReceived),0),remaining=Number(line.quantity)-already,rawReceived=Number(formData.get(`received-${line.id}`)??0);
+   const receiptNumber=await nextDocumentNumber(tx,"RECEIPT");const receipt=await tx.receipt.create({ data: { id:receiptId, receiptNumber, purchaseOrderId:po.id, facilityId:po.facilityId, receivedById:context.user.id, status:"PARTIAL", notes:String(formData.get("notes")??"")||null, attachments:{create:receiptUploads.map((file)=>({...file,kind:"RECEIPT" as const,organizationId:context.organization.id,facilityId:po.facilityId,uploadedByUserId:context.user.id,immutableAt:new Date()}))} } });
+   for(const [index,line] of po.lines.entries()){
+    const already=line.receiptLines.reduce((s,r)=>s+Number(r.quantityReceived),0),remaining=Number(line.quantity)-already,rawReceived=receivedNow[index]!;
     if(!Number.isFinite(rawReceived)||rawReceived<0||rawReceived>remaining)throw new Error(`Quantità ricevuta non valida per ${line.descriptionSnapshot}.`);
-    const received=rawReceived,plan=issuePlans.find(item=>item.line.id===line.id),affected=plan?Math.min(received,Math.max(0,Number(formData.get(`affected-${line.id}`)??0))):0,accepted=received-affected;
+    const received=rawReceived,plan=issuePlans.find(item=>item.line.id===line.id),affected=plan?Math.min(received,actionQuantity(formData.get(`affected-${line.id}`)??0,{removable:true})):0,accepted=received-affected;
     if(already+received<Number(line.quantity))allComplete=false;if(plan)hasIssue=true;
     const receiptLine=await tx.receiptLine.create({data:{receiptId:receipt.id,purchaseOrderLineId:line.id,quantityOrdered:line.quantity,quantityReceived:received,quantityAccepted:accepted,quantityRejected:affected}});
     if(plan){
      const evidence=issueUploads.get(plan.issueId)??[];
      const issue=await tx.qualityIssue.create({ data: { id:plan.issueId, receiptLineId:receiptLine.id, purchaseOrderLineId:line.id, issueType:plan.issueType as never, severity:String(formData.get(`severity-${line.id}`)||"MEDIUM") as never, affectedQuantity:affected, description:String(formData.get(`issueNote-${line.id}`)??"").trim()||"Difformità rilevata in ricezione", attachments:{create:evidence.map((file)=>({...file,kind:"QUALITY_ISSUE" as const,organizationId:context.organization.id,facilityId:po.facilityId,uploadedByUserId:context.user.id,immutableAt:new Date()}))} } });
-     await tx.auditEvent.create({data:{actorUserId:context.user.id,entityType:"QUALITY_ISSUE",entityId:issue.id,action:"ISSUE_OPENED",metadata:{receiptId:receipt.id,purchaseOrderId:po.id,attachmentIds:evidence.map(file=>file.id)}}});
+     await tx.auditEvent.create({data:{organizationId:context.organization.id,actorUserId:context.user.id,entityType:"QUALITY_ISSUE",entityId:issue.id,action:"ISSUE_OPENED",metadata:{receiptId:receipt.id,purchaseOrderId:po.id,attachmentIds:evidence.map(file=>file.id)}}});
     }
    }
    await tx.receipt.update({where:{id:receipt.id},data:{status:hasIssue?"WITH_ISSUES":allComplete?"COMPLETE":"PARTIAL"}});
    await tx.purchaseOrder.update({where:{id:po.id},data:{status:hasIssue?"ISSUE":allComplete?"RECEIVED":"PARTIALLY_RECEIVED"}});
-   await tx.auditEvent.create({data:{actorUserId:context.user.id,entityType:"PURCHASE_ORDER",entityId:po.id,action:"RECEIPT_CREATED",metadata:{receiptId:receipt.id,hasIssue,attachmentIds:receiptUploads.map(file=>file.id)}}});
+   await tx.auditEvent.create({data:{organizationId:context.organization.id,actorUserId:context.user.id,entityType:"PURCHASE_ORDER",entityId:po.id,action:"RECEIPT_CREATED",metadata:{receiptId:receipt.id,hasIssue,attachmentIds:receiptUploads.map(file=>file.id)}}});
   });
  }catch(error){await cleanupOperationalAttachments([...receiptUploads,...[...issueUploads.values()].flat()]);throw error;}
  redirect(`/orders/${po.id}?received=1`);

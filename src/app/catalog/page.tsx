@@ -19,10 +19,10 @@ export default async function Catalogo({ searchParams }: Props) {
   const page = Math.max(1, Number.parseInt(filters.page ?? "1", 10) || 1);
   const searchTerms = (filters.q ?? "").trim().split(/\s+/).filter(Boolean);
   const searchClauses = searchTerms.map((term) => ({ OR: (term.toLocaleLowerCase("it-IT") === "guanti" ? [term, "guanto"] : [term]).flatMap((value) => [{ name: { contains: value, mode: "insensitive" as const } }, { brand: { contains: value, mode: "insensitive" as const } }, { category: { name: { contains: value, mode: "insensitive" as const } } }, { manufacturerSku: { contains: value, mode: "insensitive" as const } }]) }));
-  const where = { active: true, AND: [...searchClauses, filters.category ? { categoryId: filters.category } : {}, filters.supplier ? { offers: { some: { supplierId: filters.supplier, active: true } } } : {}, filters.preferred === "true" ? { offers: { some: { preferred: true, active: true } } } : {}, filters.favorite === "true" ? { favorites: { some: { userId: context.user.id, facilityId: scope.id } } } : {}] };
+  const where = { organizationId: context.organization.id, active: true, AND: [...searchClauses, filters.category ? { categoryId: filters.category } : {}, filters.supplier ? { offers: { some: { supplierId: filters.supplier, active: true } } } : {}, filters.preferred === "true" ? { offers: { some: { preferred: true, active: true } } } : {}, filters.favorite === "true" ? { favorites: { some: { userId: context.user.id, facilityId: scope.id } } } : {}] };
   const [categories, suppliers, favorites, lists, totalCount, products] = await Promise.all([
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
-    prisma.supplier.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    prisma.category.findMany({ where: { organizationId: context.organization.id }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: { organizationId: context.organization.id, active: true }, orderBy: { name: "asc" } }),
     context.roleCode === "RSA_DIRECTOR" ? prisma.favorite.findMany({ where: { userId: context.user.id, facilityId: scope.id }, select: { canonicalProductId: true } }) : [],
     context.roleCode === "RSA_DIRECTOR" ? prisma.shoppingList.findMany({ where: { userId: context.user.id, facilityId: scope.id }, orderBy: { updatedAt: "desc" } }) : [],
     prisma.canonicalProduct.count({ where }),

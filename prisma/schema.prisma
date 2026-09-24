@@ -237,6 +237,10 @@ enum SavingOpportunityType {
 }
 
 enum SavingOpportunityStatus {
+  IDENTIFIED
+  NEGOTIATED
+  CONTRACTED
+  REALIZED
   OPEN
   REVIEW_REQUIRED
   ACCEPTED
@@ -247,6 +251,7 @@ enum SavingOpportunityStatus {
 model Organization {
   id                            String                         @id @default(cuid())
   name                          String
+  vatDeductibilityPercent       Decimal                        @default(100) @db.Decimal(5, 2)
   createdAt                     DateTime                       @default(now())
   updatedAt                     DateTime                       @updatedAt
   legalEntities                 LegalEntity[]
@@ -261,6 +266,12 @@ model Organization {
   procurementAICalls            ProcurementAICall[]
   technicalDocumentBatches      TechnicalDocumentBatch[]
   technicalDocuments            TechnicalDocument[]
+  suppliers                     Supplier[]
+  categories                    Category[]
+  canonicalProducts             CanonicalProduct[]
+  priceLists                    PriceList[]
+  supplierOffers                SupplierOffer[]
+  auditEvents                   AuditEvent[]
   technicalProductAttributes    TechnicalProductAttribute[]
   technicalEvidenceRequirements TechnicalEvidenceRequirement[]
   productTechnicalStates        ProductTechnicalState[]
@@ -388,8 +399,9 @@ model UserAssignment {
 
 model Supplier {
   id                        String              @id @default(cuid())
+  organizationId            String
   name                      String
-  vatNumber                 String?             @unique
+  vatNumber                 String?
   contactEmail              String?
   contactPhone              String?
   address                   String?
@@ -415,22 +427,33 @@ model Supplier {
   sourceDocuments           SourceDocument[]
   procurementMemories       ProcurementMemory[]
   technicalDocuments        TechnicalDocument[]
+  organization              Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, vatNumber])
+  @@unique([id, organizationId])
+  @@index([organizationId, active])
 }
 
 model Category {
   id                            String                         @id @default(cuid())
+  organizationId                String
   name                          String
-  code                          String                         @unique
+  code                          String
   createdAt                     DateTime                       @default(now())
   updatedAt                     DateTime                       @updatedAt
   products                      CanonicalProduct[]
   budgets                       Budget[]
   procurementLimits             ProcurementLimit[]
   technicalEvidenceRequirements TechnicalEvidenceRequirement[]
+  organization                  Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
+  @@unique([id, organizationId])
 }
 
 model CanonicalProduct {
   id                            String                                @id @default(cuid())
+  organizationId                String
   name                          String
   description                   String?
   shortDescription              String?
@@ -456,7 +479,8 @@ model CanonicalProduct {
   active                        Boolean                               @default(true)
   createdAt                     DateTime                              @default(now())
   updatedAt                     DateTime                              @updatedAt
-  category                      Category                              @relation(fields: [categoryId], references: [id])
+  category                      Category                              @relation(fields: [categoryId, organizationId], references: [id, organizationId])
+  organization                  Organization                          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   offers                        SupplierOffer[]
   cartLines                     CartLine[]
   requisitionLines              PurchaseRequisitionLine[]
@@ -477,11 +501,14 @@ model CanonicalProduct {
   savingOpportunitiesCandidate  TechnicalSavingOpportunity[]          @relation("TechnicalSavingCandidateProduct")
 
   @@index([ean])
+  @@unique([id, organizationId])
+  @@index([organizationId, active])
   @@index([categoryId, subcategory])
 }
 
 model PriceList {
   id                   String                         @id @default(cuid())
+  organizationId       String
   name                 String
   supplierId           String
   validFrom            DateTime?
@@ -496,7 +523,8 @@ model PriceList {
   publishedAt          DateTime?
   createdAt            DateTime                       @default(now())
   updatedAt            DateTime                       @updatedAt
-  supplier             Supplier                       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplier             Supplier                       @relation(fields: [supplierId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization         Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   offers               SupplierOffer[]
   previousVersion      PriceList?                     @relation("PriceListVersions", fields: [previousVersionId], references: [id])
   nextVersions         PriceList[]                    @relation("PriceListVersions")
@@ -506,6 +534,8 @@ model PriceList {
   commercialConditions PriceListCommercialCondition[]
 
   @@index([supplierId, version])
+  @@unique([id, organizationId])
+  @@index([organizationId, active])
   @@index([sourceDocumentId])
 }
 
@@ -576,6 +606,7 @@ model ProcurementAICall {
 
 model SupplierOffer {
   id                  String                       @id @default(cuid())
+  organizationId      String
   supplierId          String
   canonicalProductId  String
   priceListId         String
@@ -598,9 +629,10 @@ model SupplierOffer {
   importedRecordId    String?                      @unique
   createdAt           DateTime                     @default(now())
   updatedAt           DateTime                     @updatedAt
-  supplier            Supplier                     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  canonicalProduct    CanonicalProduct             @relation(fields: [canonicalProductId], references: [id], onDelete: Cascade)
-  priceList           PriceList                    @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  supplier            Supplier                     @relation(fields: [supplierId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  canonicalProduct    CanonicalProduct             @relation(fields: [canonicalProductId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  priceList           PriceList                    @relation(fields: [priceListId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization        Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   cartLines           CartLine[]
   requisitionLines    PurchaseRequisitionLine[]
   priceHistory        OfferPriceHistory[]
@@ -610,6 +642,7 @@ model SupplierOffer {
   savingCandidates    TechnicalSavingOpportunity[] @relation("TechnicalSavingCandidateOffer")
 
   @@index([canonicalProductId])
+  @@index([organizationId, active])
   @@index([supplierId])
   @@index([sourceDocumentId])
 }
@@ -1270,7 +1303,7 @@ model TechnicalSavingOpportunity {
   estimatedAnnualSaving Decimal?                      @db.Decimal(18, 2)
   evidenceComplete      Boolean                       @default(false)
   confidence            Decimal                       @db.Decimal(5, 4)
-  status                SavingOpportunityStatus       @default(OPEN)
+  status                SavingOpportunityStatus       @default(IDENTIFIED)
   reason                String
   provenance            Json
   fingerprint           String
@@ -1468,6 +1501,7 @@ model ImportFieldCorrection {
 
 model AuditEvent {
   id            String   @id @default(cuid())
+  organizationId String
   actorUserId   String?
   entityType    String
   entityId      String
@@ -1477,6 +1511,19 @@ model AuditEvent {
   metadata      Json
   createdAt     DateTime @default(now())
   actor         User?    @relation(fields: [actorUserId], references: [id])
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@index([organizationId, createdAt])
   @@index([entityType, entityId, createdAt])
+}
+
+model DocumentSequence {
+  id           String   @id @default(cuid())
+  documentType String
+  year         Int
+  value        Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([documentType, year])
 }

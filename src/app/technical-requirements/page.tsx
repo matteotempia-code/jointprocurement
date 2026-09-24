@@ -9,7 +9,7 @@ export default async function TechnicalRequirements() {
   const context = await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
   const [requirements, categories] = await Promise.all([
     prisma.technicalEvidenceRequirement.findMany({ where: { organizationId: context.organization.id }, include: { category: true }, orderBy: [{ category: { name: "asc" } }, { label: "asc" }] }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+    prisma.category.findMany({ where: { organizationId: context.organization.id }, orderBy: { name: "asc" } }),
   ]);
   return <main className="phase2-page">
     <PageHeader eyebrow="Product Intelligence" title="Requisiti tecnici per categoria" description="Regole documentali e attributi critici configurabili per organizzazione." />

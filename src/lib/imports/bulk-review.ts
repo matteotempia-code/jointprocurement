@@ -9,12 +9,12 @@ export class BulkReviewValidationError extends Error {
   }
 }
 
-export async function applyBulkReview(db: PrismaClient, input: { jobId: string; recordIds: string[]; action: BulkReviewAction; actorUserId: string; categoryId?: string }) {
+export async function applyBulkReview(db: PrismaClient, input: { jobId: string; recordIds: string[]; action: BulkReviewAction; actorUserId: string; organizationId: string; categoryId?: string }) {
   const recordIds = [...new Set(input.recordIds)].slice(0, 100);
   if (!recordIds.length) throw new BulkReviewValidationError("Seleziona almeno una riga.");
-  const records = await db.importedRecord.findMany({ where: { id: { in: recordIds }, importJobId: input.jobId }, include: { matchCandidates: { where: { recommended: true }, take: 1 } } });
+  const records = await db.importedRecord.findMany({ where: { id: { in: recordIds }, importJobId: input.jobId, importJob: { sourceDocument: { organizationId: input.organizationId } } }, include: { matchCandidates: { where: { recommended: true }, take: 1 } } });
   if (records.length !== recordIds.length) throw new BulkReviewValidationError("Una o più righe non appartengono più a questa importazione. Ricarica la pagina.");
-  const category = input.action === "ASSIGN_CATEGORY" && input.categoryId ? await db.category.findUnique({ where: { id: input.categoryId } }) : null;
+  const category = input.action === "ASSIGN_CATEGORY" && input.categoryId ? await db.category.findFirst({ where: { id: input.categoryId, organizationId: input.organizationId } }) : null;
   if (input.action === "ASSIGN_CATEGORY" && !category) throw new BulkReviewValidationError("Seleziona una categoria valida.");
   const compatible = (record: typeof records[number]) => {
     const candidate = record.matchCandidates[0];
@@ -52,8 +52,8 @@ export async function applyBulkReview(db: PrismaClient, input: { jobId: string; 
     }
     if (changed) {
       const action = input.action === "ACCEPT_RECOMMENDED" ? "MATCH_ACCEPTED" : input.action === "ASSIGN_CATEGORY" ? "FIELD_CORRECTED" : input.action === "IGNORE" ? "RECORD_IGNORED" : "RECORD_NOT_COMPARABLE";
-      await tx.auditEvent.createMany({ data: changedIds.map((recordId) => ({ actorUserId: input.actorUserId, entityType: "IMPORTED_RECORD", entityId: recordId, action, metadata: { bulk: true, importJobId: input.jobId } })) });
-      await tx.auditEvent.create({ data: { actorUserId: input.actorUserId, entityType: "IMPORT_JOB", entityId: input.jobId, action, metadata: { bulk: true, selected: recordIds.length, changed } } });
+      await tx.auditEvent.createMany({ data: changedIds.map((recordId) => ({ organizationId: input.organizationId, actorUserId: input.actorUserId, entityType: "IMPORTED_RECORD", entityId: recordId, action, metadata: { bulk: true, importJobId: input.jobId } })) });
+      await tx.auditEvent.create({ data: { organizationId: input.organizationId, actorUserId: input.actorUserId, entityType: "IMPORT_JOB", entityId: input.jobId, action, metadata: { bulk: true, selected: recordIds.length, changed } } });
     }
   });
   return { selected: recordIds.length, changed };

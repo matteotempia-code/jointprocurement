@@ -50,3 +50,26 @@ export function compareTechnicalProfiles(a: Record<string,string>, b: Record<str
   const result=missing.length?"INSUFFICIENT_EVIDENCE":blocking.length?"NOT_EQUIVALENT":matched.length?"FUNCTIONALLY_EQUIVALENT":"INSUFFICIENT_EVIDENCE";
   return {result:result as "FUNCTIONALLY_EQUIVALENT"|"NOT_EQUIVALENT"|"INSUFFICIENT_EVIDENCE",confidence:result==="FUNCTIONALLY_EQUIVALENT"?Math.min(.97,.75+matched.length*.04):result==="NOT_EQUIVALENT"?.98:.35,matched,differing,blocking,missing};
 }
+
+export function compareTechnicalProfilesWithRules(
+  a: Record<string, string>,
+  b: Record<string, string>,
+  criticalKeys: string[],
+  hasCategoryRules: boolean,
+) {
+  if (!hasCategoryRules) {
+    return {
+      result: "INSUFFICIENT_EVIDENCE" as const,
+      confidence: 0,
+      matched: [],
+      differing: [],
+      blocking: [],
+      missing: ["category_specific_equivalence_rules"],
+    };
+  }
+  return compareTechnicalProfiles(a, b, criticalKeys);
+}
+
+export function isTechnicallyApproved(state: { status: string } | null | undefined) {
+  return state?.status === "COMPLETE";
+}

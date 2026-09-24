@@ -42,7 +42,7 @@ export default async function ImportsPage({ searchParams }: { searchParams: Prom
   const [workQueue, recent, suppliers] = await Promise.all([
     prisma.importJob.findMany({ where: { sourceDocument: sourceWhere, status: { in: [...actionable] } }, include: { sourceDocument: { include: { supplier: true, uploadedBy: true } } }, orderBy: [{ reviewRequiredRecords: "desc" }, { createdAt: "asc" }], take: 12 }),
     prisma.importJob.findMany({ where: { sourceDocument: sourceWhere, ...stateWhere(filters.stato) }, include: { sourceDocument: { include: { supplier: true, uploadedBy: true } } }, orderBy: { createdAt: "desc" }, take: 40 }),
-    prisma.supplier.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: { organizationId: context.organization.id, active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
   return <main>
     <PageHeader eyebrow="Dati commerciali" title="Importazioni" description="Lavora prima sulle eccezioni. Le righe affidabili restano nello staging finché una persona non conferma la pubblicazione." action={<Link className="primary-cta" href="/imports/new">Importa un documento</Link>} />

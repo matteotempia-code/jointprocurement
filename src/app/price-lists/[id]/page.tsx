@@ -10,13 +10,13 @@ import { confirmPriceListCondition } from "../actions";
 const PAGE_SIZE = 25;
 
 export default async function ListinoDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string; pagina?: string }> }) {
-  await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
+  const context = await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
   const id = (await params).id;
   const query = await searchParams;
   const page = Math.max(1, Number.parseInt(query.pagina ?? "1", 10) || 1);
-  const offerWhere = { priceListId: id, ...(query.q ? { OR: [{ canonicalProduct: { name: { contains: query.q, mode: "insensitive" as const } } }, { supplierSku: { contains: query.q, mode: "insensitive" as const } }] } : {}) };
+  const offerWhere = { organizationId: context.organization.id, priceListId: id, ...(query.q ? { OR: [{ canonicalProduct: { name: { contains: query.q, mode: "insensitive" as const } } }, { supplierSku: { contains: query.q, mode: "insensitive" as const } }] } : {}) };
   const [list, total, offers] = await Promise.all([
-    prisma.priceList.findUnique({ where: { id }, include: { supplier: true, sourceDocument: { include: { uploadedBy: true } }, publishedBy: true, previousVersion: true, importJob: true, commercialConditions: { orderBy: { confidence: "desc" } } } }),
+    prisma.priceList.findFirst({ where: { id, organizationId: context.organization.id }, include: { supplier: true, sourceDocument: { include: { uploadedBy: true } }, publishedBy: true, previousVersion: true, importJob: true, commercialConditions: { orderBy: { confidence: "desc" } } } }),
     prisma.supplierOffer.count({ where: offerWhere }),
     prisma.supplierOffer.findMany({ where: offerWhere, include: { canonicalProduct: true }, orderBy: { canonicalProduct: { name: "asc" } }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
   ]);
