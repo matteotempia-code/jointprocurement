@@ -9,6 +9,14 @@ export type ProcurementLimitConfiguration = {
   quantityUom?: string | null;
 };
 
+export function requireFiniteProcurementLimitMaximum(input: Pick<ProcurementLimitConfiguration, "limitType" | "maximumAmount" | "maximumQuantity">) {
+  const maximum = Number(input.limitType === "MONETARY" ? input.maximumAmount : input.maximumQuantity);
+  if (!Number.isFinite(maximum)) {
+    throw new Error("La configurazione del limite non è valida: il massimo deve essere finito.");
+  }
+  return maximum;
+}
+
 function positiveNumber(value: unknown, field: string) {
   if (value === null || value === undefined || value === "") {
     throw new Error(`${field} è obbligatorio.`);
