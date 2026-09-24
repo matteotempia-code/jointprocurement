@@ -42,6 +42,33 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | M15 | Supplier Performance & Continuous Improvement | concept approvato, da progettare/sviluppare |
 | Post-M15 | Enterprise, Finance, ERP, Production hardening | backlog |
 
+### Stato del ciclo P0 — chiuso il 24/09/2026
+
+Il ciclo di correzione aperto dall'audit del 21/09/2026 è **chiuso**, certificato sul cloud
+dalla pipeline `35972299654` allo SHA `58bc04e`.
+
+| Area | Esito |
+|---|---|
+| Autenticazione · isolamento multi-tenant · TLS | PASS |
+| Equivalenza fail-closed · limiti procurement | PASS |
+| IVA e costo effettivo · baseline e ciclo del risparmio | PASS |
+| Numerazione documenti · validazione input · null-merge IA | PASS |
+| Lifecycle, external-demo, Procurement AI, M12, critical smoke | PASS |
+| **Smart Import** | **FAIL — atteso, limite architetturale P2** |
+
+Lo Smart Import fallisce per la ragione documentata in `IMP-12`: architettura sincrona con
+matching O(righe × prodotti) e transazioni da 30-60 secondi. Il job persiste correttamente
+36 record ma non completa il flusso: **non è un difetto di questo ciclo**, è il lavoro P2.
+
+La pipeline è stata nel frattempo riorganizzata in una preparazione condivisa più sei
+certificazioni indipendenti in parallelo: un fallimento non annulla più gli altri, che è il
+motivo per cui questo limite è ora visibile invece di restare nascosto dietro una cascata
+di step saltati.
+
+**Sequenza successiva concordata:** riformattazione → design system «Quadro» → motore di
+policy e workflow → P2 Smart Import asincrono. P1 resta non avviato per scelta: diversi suoi
+interventi (stati di attesa, `SubmitButton`) fanno parte del design system e conviene farli lì.
+
 ---
 
 ## A. Piattaforma, organizzazione e sicurezza
@@ -99,7 +126,7 @@ Una feature **non può essere portata al 100% solo perché il codice esiste**.
 | REQ-11 | SLA approvazioni | Evidenza delle richieste in ritardo. | Core | 80% | Segnali presenti; escalation/notification complete future. |
 | REQ-12 | Approval escalation | Escalation automatica al superamento degli SLA. | Future | 20% | Logica non completa. |
 | POL-01 | Policy Engine | Valutazione automatica delle regole applicabili alla richiesta. | Core | **60%** | Funzionale e ben testato, ma **le soglie sono codice**: `areaManagerLimit: 20000` è cablato in `buying-actions.ts`, dentro `submitRequisition`. Cambiare una soglia richiede un rilascio, e due clienti con catene di delega diverse richiederebbero di duplicare la logica. Specifica di migrazione a regole-come-dati approvata il 22/09/2026. — *audit 21/09/2026* |
-| POL-02 | Limiti procurement | Soglie operative per ruolo/importo. | M11.5 | **85%** | Il buco del `NaN` è chiuso **a livello di database**: la migrazione `20260922130000_procurement_limit_validation` impone che il campo corrispondente al `limitType` sia valorizzato, e verifica esplicitamente `<> 'NaN'::numeric` — Postgres ammette davvero `NaN` in una colonna `numeric`. **Non al 100%**: manca la guardia applicativa. `limits.ts:42` fa ancora `Number(...)` senza controllo di finitezza, e regge solo perché il vincolo database rende irraggiungibile il caso. Difesa a un livello solo: se il constraint viene modificato o rimosso, il limite torna a non scattare in silenzio. — *verificato 24/09/2026* |
+| POL-02 | Limiti procurement | Soglie operative per ruolo/importo. | M11.5 | **90%** | Il buco del `NaN` è chiuso su **due livelli**. Database: la migrazione `20260922130000_procurement_limit_validation` impone che il campo corrispondente al `limitType` sia valorizzato e verifica `<> 'NaN'::numeric` — Postgres ammette davvero `NaN` in una colonna `numeric`. Applicazione: `limit-validation.ts` espone `requireFiniteProcurementLimitMaximum()`, che **lancia un errore esplicito** su valore non finito invece di proseguire, con test di regressione che asserisce il throw. Un limite mal configurato ora fallisce in modo visibile. **Non al 100%**: resta da completare l'amministrazione dei limiti dall'interfaccia. — *verificato 24/09/2026* |
 | POL-03 | Budget blocking | Blocco quando il budget non consente l'acquisto. | M11.5 | 100% | — |
 | POL-04 | Budget warning | Avviso di soglia senza bloccare la richiesta. | M11.6 | 80% | Esiste, ma il caso warning distinto deve essere certificato. |
 | POL-05 | Policy explanation | Spiegazione del motivo di blocco/routing. | Core / Future | 70% | Presente parzialmente; explainability evoluta futura. |
@@ -397,7 +424,7 @@ fattura, SDI, DDT, lotto, scadenza, CIG, MDR, HACCP.
 | ID | Feature | Descrizione | Milestone | % | Perché non è al 100% |
 |---|---|---|---|---:|---|
 | ECO-01 | **IVA indetraibile e costo effettivo** | Percentuale di detraibilità IVA per organizzazione; confronti e risparmi calcolati sul costo realmente sostenuto. | P0 | **80%** | Implementata e certificata sul cloud. `Organization.vatDeductibilityPercent` (`Decimal(5,2)`, default 100) e la funzione `effectiveCost()` usata in `pricing.ts`, `savings-baseline.ts` e nel percorso di import. **Non al 100%**: manca l'override per categoria previsto dal brief, e la correttezza per i due clienti pilota va confermata con i loro dati reali, non solo con le fixture. — *verificato 24/09/2026* |
-| ECO-02 | **Baseline del risparmio** | Riferimento corretto per il calcolo del saving. | P0 | **60%** | La baseline non è più l'offerta più cara: `selectHistoricalBaseline()` in `savings-baseline.ts` usa il **prezzo storicamente pagato**, già convertito in costo effettivo tramite `effectiveCost()`. **Non al 100%**: i quattro stati del ciclo del risparmio — `IDENTIFIED`, `NEGOTIATED`, `CONTRACTED`, `REALIZED` — **non esistono nello schema** (zero occorrenze). Senza, non si distingue un risparmio individuato da uno realmente ottenuto, che è la distinzione su cui si dimostra il ROI al cliente. — *verificato 24/09/2026* |
+| ECO-02 | **Baseline del risparmio** | Riferimento corretto per il calcolo del saving, con ciclo di vita esplicito. | P0 | **85%** | La baseline non è più l'offerta più cara: `selectHistoricalBaseline()` usa il **prezzo storicamente pagato**, convertito in costo effettivo tramite `effectiveCost()`. Le transizioni del ciclo sono ora centralizzate in `savings-lifecycle.ts`: `IDENTIFIED → NEGOTIATED → CONTRACTED → REALIZED`, con salti e inversioni vietati e test di regressione. **Non al 100%**: il meccanismo è in piedi e certificato, ma la correttezza degli importi va confermata sui dati reali dei due clienti pilota, non solo sulle fixture. **Rettifica:** la revisione del 24/09 segnalava gli stati come inesistenti. Era un errore di verifica — l'enum `SavingOpportunityStatus` esisteva dal commit `861d993`; la ricerca era stata fatta sul nome sbagliato. Nuove del 24/09 sono le transizioni, non gli stati. — *verificato 24/09/2026, rettificato in pari data* |
 | ECO-03 | KPI acquisti convenzionati | Quota di **spesa** su fornitori convenzionati. | Core | **30%** | Misura la percentuale di offerte marcate `preferred`, non la quota di spesa: sono grandezze diverse. **La funzione corretta esiste già in `kpis.ts:21-26` e non viene chiamata.** — *audit 21/09/2026* |
 | CMP-01 | **Tracciabilità lotto e scadenza** | Lotto e scadenza registrati in ricezione, con risalita struttura → ricevimento → lotto. | P0 | **0%** | `ReceiptLine` contiene solo le quantità. In caso di richiamo di un lotto **è impossibile sapere in quale struttura è finito**. Obbligo di legge: MDR per i dispositivi medici, Reg. CE 178/2002 per gli alimentari. — *audit 21/09/2026* |
 | CMP-02 | **DDT** | Documento di trasporto nel flusso di ricezione. | P0 | **0%** | Assente. È il documento su cui si basa la verifica fisica della consegna. — *audit 21/09/2026* |
