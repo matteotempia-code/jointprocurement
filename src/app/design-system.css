@@ -105,22 +105,6 @@
   --elev-3: 0 12px 24px rgb(22 24 29 / 10%), 0 24px 48px rgb(22 24 29 / 12%);
 
   color-scheme: light;
-
-  /* Alias temporanei: verranno rimossi nel passo 2. */
-  --state-danger: var(--danger);
-  --state-warn: var(--warn);
-  --state-ok: var(--ok);
-  --ink: var(--text);
-  --muted: var(--text-secondary);
-  --line: var(--border);
-  --soft: var(--bg);
-  --accent-dark: var(--accent);
-  --paper: var(--surface);
-  --warm: var(--surface-alt);
-  --surface-soft: var(--surface);
-  --positive: var(--ok);
-  --warning: var(--warn);
-  --negative: var(--danger);
 }
 
 :root[data-theme="dark"] {
@@ -211,7 +195,7 @@
 }
 .technical-summary span,
 .technical-document-hero span {
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.82rem;
 }
 .technical-upload,
@@ -233,7 +217,7 @@
   font-weight: 650;
 }
 .technical-upload p {
-  color: var(--muted);
+  color: var(--text-secondary);
   max-width: 52ch;
   margin: 0;
 }
@@ -262,7 +246,7 @@
   padding: 8px 0;
 }
 .technical-metadata dt {
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.78rem;
 }
 .technical-metadata dd {
@@ -281,7 +265,7 @@
 .association-candidate span,
 .technical-missing span {
   display: block;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.8rem;
 }
 .association-candidate form {
@@ -307,7 +291,7 @@
   flex-direction: column;
 }
 .technical-missing {
-  border-left: 3px solid var(--warning);
+  border-left: 3px solid var(--warn);
   padding-left: 14px;
   margin: 12px 0;
 }
@@ -355,7 +339,7 @@
 }
 .inline-meta i {
   font-style: normal;
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 .status-chip {
   display: inline-flex;
@@ -372,13 +356,13 @@
   color: var(--text-secondary);
 }
 .status-chip-ok {
-  color: var(--state-ok);
+  color: var(--ok);
 }
 .status-chip-warn {
-  color: var(--state-warn);
+  color: var(--warn);
 }
 .status-chip-danger {
-  color: var(--state-danger);
+  color: var(--danger);
 }
 .num {
   font-variant-numeric: tabular-nums;
@@ -394,7 +378,7 @@
   font-variant-numeric: tabular-nums;
 }
 .price-block small {
-  color: var(--muted);
+  color: var(--text-secondary);
   font-weight: 400;
 }
 .price-block-table strong,
@@ -428,7 +412,7 @@
 }
 .empty-row {
   text-align: center !important;
-  color: var(--muted);
+  color: var(--text-secondary);
   padding: 1rem !important;
 }
 .table-wrap th {
@@ -2894,10 +2878,10 @@ tbody tr:hover {
   background: var(--surface);
 }
 .phase1-supplier-group.state-warn {
-  border-left-color: var(--state-warn);
+  border-left-color: var(--warn);
 }
 .phase1-supplier-group.state-danger {
-  border-left-color: var(--state-danger);
+  border-left-color: var(--danger);
 }
 .phase1-supplier-group[open] {
   box-shadow: var(--elev-1);
@@ -3209,7 +3193,7 @@ tbody tr:hover {
   margin: 10px 0 16px;
   padding: 12px 15px;
   border: 1px solid var(--border);
-  border-left: 3px solid var(--state-warn);
+  border-left: 3px solid var(--warn);
   background: var(--warn-soft);
   display: flex;
   align-items: center;
@@ -3276,11 +3260,11 @@ tbody tr:hover {
 .supplier-threshold i b {
   display: block;
   height: 100%;
-  background: var(--state-ok);
+  background: var(--ok);
 }
 .state-warn .supplier-threshold i b,
 .state-danger .supplier-threshold i b {
-  background: var(--state-warn);
+  background: var(--warn);
 }
 .phase1-threshold-detail {
   padding: 7px 12px;
@@ -3474,7 +3458,7 @@ tbody tr:hover {
 }
 .sla-overdue .sla-cell strong,
 .phase1-cockpit-metrics .sla-overdue strong {
-  color: var(--state-danger);
+  color: var(--danger);
 }
 .phase1-archive {
   margin-top: 18px;
@@ -3498,14 +3482,14 @@ tbody tr:hover {
 .phase1-decision-reason {
   margin-bottom: 18px;
   padding: 13px 16px;
-  border-left: 3px solid var(--state-warn);
+  border-left: 3px solid var(--warn);
   background: var(--warn-soft);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .phase1-decision-reason.is-ok {
-  border-color: var(--state-ok);
+  border-color: var(--ok);
   background: var(--ok-soft);
 }
 .phase1-decision-reason span {
@@ -3558,7 +3542,7 @@ tbody tr:hover {
 .phase1-budget-impact > i b {
   display: block;
   height: 100%;
-  background: var(--state-warn);
+  background: var(--warn);
 }
 .phase1-evidence-band {
   justify-content: flex-start;
@@ -6850,7 +6834,7 @@ tbody tr:hover {
   font-weight: 600;
 }
 .phase2-product-comparison .comparison-row.has-difference {
-  border-left: 3px solid var(--state-warn);
+  border-left: 3px solid var(--warn);
 }
 @media (max-width: 700px) {
   .phase2-po-overview,
@@ -6936,10 +6920,10 @@ tbody tr:hover {
   background: var(--surface);
 }
 .phase1-supplier-group.state-warn {
-  border-left-color: var(--state-warn);
+  border-left-color: var(--warn);
 }
 .phase1-supplier-group.state-danger {
-  border-left-color: var(--state-danger);
+  border-left-color: var(--danger);
 }
 .phase1-supplier-group > summary {
   min-height: 64px;
@@ -7167,17 +7151,17 @@ tbody tr:hover {
 .admin-feedback {
   margin: 10px 0;
   padding: 9px 12px;
-  border-left: 3px solid var(--state-ok);
+  border-left: 3px solid var(--ok);
   background: var(--surface-alt);
   font-size: 11px;
 }
 .admin-feedback.is-error {
-  border-color: var(--state-danger);
-  color: var(--state-danger);
+  border-color: var(--danger);
+  color: var(--danger);
 }
 .danger-secondary {
-  color: var(--state-danger);
-  border-color: color-mix(in srgb, var(--state-danger) 35%, transparent);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
   background: transparent;
 }
 @media (max-width: 700px) {
