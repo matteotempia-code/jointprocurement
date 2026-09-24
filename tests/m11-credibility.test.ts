@@ -15,9 +15,19 @@ test("GTIN valida EAN-13/GTIN-14 e rifiuta placeholder", () => {
 });
 
 test("condizioni commerciali distinguono minimo, franco e costo totale", () => {
-  const result = evaluateCommercialConditions(214, { minimumOrderValue: 350, freeShippingThreshold: 750, shippingFeeBelowThreshold: 24, surchargeBelowMinimum: 12 });
-  assert.equal(result.minimumGap, 136); assert.equal(result.freeShippingGap, 536); assert.equal(result.totalCost, 250);
-  assert.deepEqual(result.signals.map(({ code }) => code), ["BELOW_MINIMUM_ORDER", "BELOW_FREE_SHIPPING", "SHIPPING_SURCHARGE_EXPECTED"]);
+  const result = evaluateCommercialConditions(214, {
+    minimumOrderValue: 350,
+    freeShippingThreshold: 750,
+    shippingFeeBelowThreshold: 24,
+    surchargeBelowMinimum: 12,
+  });
+  assert.equal(result.minimumGap, 136);
+  assert.equal(result.freeShippingGap, 536);
+  assert.equal(result.totalCost, 250);
+  assert.deepEqual(
+    result.signals.map(({ code }) => code),
+    ["BELOW_MINIMUM_ORDER", "BELOW_FREE_SHIPPING", "SHIPPING_SURCHARGE_EXPECTED"],
+  );
 });
 
 test("metriche fornitore non mostrano percentuali con campione insufficiente", () => {

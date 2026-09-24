@@ -10,18 +10,246 @@ import { resolveScope } from "@/lib/scope";
 
 const PAGE_SIZE = 20;
 
-export default async function Richieste({ searchParams }: { searchParams: Promise<{ stato?: string; pagina?: string; vista?: string }> }) {
-  const context = await requireRoles(["RSA_DIRECTOR"]), scope = await resolveScope(context.assignment), query = await searchParams;
+export default async function Richieste({
+  searchParams,
+}: {
+  searchParams: Promise<{ stato?: string; pagina?: string; vista?: string }>;
+}) {
+  const context = await requireRoles(["RSA_DIRECTOR"]),
+    scope = await resolveScope(context.assignment),
+    query = await searchParams;
   const page = Math.max(1, Number(query.pagina ?? 1));
-  const where: Prisma.PurchaseRequisitionWhereInput = { facilityId: scope.id, ...(query.stato ? { status: query.stato as never } : {}) };
+  const where: Prisma.PurchaseRequisitionWhereInput = {
+    facilityId: scope.id,
+    ...(query.stato ? { status: query.stato as never } : {}),
+  };
   const [total, requests, exceptions, categories] = await Promise.all([
-    prisma.purchaseRequisition.count({ where }), prisma.purchaseRequisition.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
-    prisma.outOfCatalogRequest.findMany({ where: { facilityId: scope.id }, include: { attachments: true }, orderBy: { createdAt: "desc" }, take: 12 }), prisma.category.findMany({ where: { organizationId: context.organization.id }, orderBy: { name: "asc" } }),
+    prisma.purchaseRequisition.count({ where }),
+    prisma.purchaseRequisition.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.outOfCatalogRequest.findMany({
+      where: { facilityId: scope.id },
+      include: { attachments: true },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+    }),
+    prisma.category.findMany({
+      where: { organizationId: context.organization.id },
+      orderBy: { name: "asc" },
+    }),
   ]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  return <main className="phase2-page phase2-requests"><PageHeader eyebrow="Acquisti" title="Richieste d’acquisto" description="Segui lo stato, comprendi il prossimo passaggio e intervieni sulle eccezioni." action={<details className="phase2-create-popover"><summary className="primary-cta">Richiesta fuori catalogo</summary><form action={createOutOfCatalogRequest} className="phase2-guided-form"><label>Di cosa hai bisogno?<textarea name="description" required minLength={8} /></label><div><label>Categoria<select name="categoryId"><option value="">Da classificare</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></label><label>Quantità<input type="number" name="quantity" min="1" defaultValue="1" /></label></div><div><label>Importo indicativo<input name="estimatedAmount" type="number" min="0" step="0.01" /></label><label>Fornitore, se noto<input name="supplier" /></label></div><label>Perché non è disponibile a catalogo?<textarea name="justification" required minLength={8} /></label><label className="phase2-upload">Preventivi, specifiche o fotografie<input type="file" name="attachments" multiple accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx" /><small>Storage privato · massimo 8 MB per file</small></label><button className="primary-cta">Invia a Procurement</button></form></details>} />
-    <nav className="state-tabs" aria-label="Stato richieste">{[["", "Tutte"], ["PENDING_APPROVAL", "In approvazione"], ["CLARIFICATION_REQUESTED", "Chiarimenti"], ["APPROVED", "Approvate"], ["REJECTED", "Respinte"]].map(([value, label]) => <Link className={(query.stato ?? "") === value ? "active" : ""} href={`/richieste${value ? `?stato=${value}` : ""}`} key={value}>{label}</Link>)}</nav>
-    <section className="phase2-queue"><div className="section-heading"><div><h2>Stato operativo</h2><p>Le richieste che richiedono risposta o approvazione restano riconoscibili.</p></div><span>{requests.length} mostrate su {total}</span></div><DataTable label="Richieste"><thead><tr><th>Richiesta</th><th>Stato / prossimo passo</th><th>Policy</th><th className="num-cell">Totale</th><th aria-label="Apri" /></tr></thead><tbody>{requests.length ? requests.map((request) => <tr className={["CLARIFICATION_REQUESTED", "REJECTED"].includes(request.status) ? "is-priority" : ""} key={request.id}><td><Link className="table-link" href={`/requisitions/${request.id}`}>{request.requisitionNumber}</Link><small className="cell-detail">{formatDate(request.createdAt)} · {scope.label}</small></td><td><StatusChip variant={request.status === "APPROVED" ? "ok" : request.status === "REJECTED" ? "danger" : request.status === "CLARIFICATION_REQUESTED" ? "warn" : "neutral"}>{statusLabel(request.status)}</StatusChip><small className="cell-detail">{request.status === "CLARIFICATION_REQUESTED" ? "Rispondi e reinvia" : request.status === "PENDING_APPROVAL" ? "In attesa del responsabile" : request.status === "APPROVED" ? "Ordine disponibile" : "Apri dettaglio"}</small></td><td>{policyExplanationLabel(request.policyExplanation)}</td><td className="num-cell"><Num value={Number(request.total)} kind="currency" /></td><td><Link className="row-disclosure" aria-label={`Apri ${request.requisitionNumber}`} href={`/requisitions/${request.id}`}>→</Link></td></tr>) : <EmptyRow colSpan={5}>Nessuna richiesta nel filtro.</EmptyRow>}</tbody></DataTable><Pagination page={Math.min(page, pages)} pages={pages} pathname="/richieste" params={{ stato: query.stato }} /></section>
-    <details className="phase2-secondary-section" open={query.vista === "fuori-catalogo"}><summary>Richieste fuori catalogo <span>{exceptions.length}</span></summary><div className="phase2-exception-list">{exceptions.length ? exceptions.map((request) => <article key={request.id}><div><strong>{request.requestNumber}</strong><span>{request.needDescription}</span><small>{formatDate(request.createdAt)} · {request.attachments.length} allegati</small></div><StatusChip variant={request.status === "REJECTED" ? "danger" : request.status === "APPROVED" ? "ok" : "warn"}>{statusLabel(request.status)}</StatusChip><div>{request.attachments.map((attachment) => <Link key={attachment.id} href={`/attachments/${attachment.id}`}>{attachment.originalFilename}</Link>)}</div></article>) : <p className="quiet-empty">Nessuna richiesta fuori catalogo.</p>}</div></details>
-  </main>;
+  return (
+    <main className="phase2-page phase2-requests">
+      <PageHeader
+        eyebrow="Acquisti"
+        title="Richieste d’acquisto"
+        description="Segui lo stato, comprendi il prossimo passaggio e intervieni sulle eccezioni."
+        action={
+          <details className="phase2-create-popover">
+            <summary className="primary-cta">Richiesta fuori catalogo</summary>
+            <form action={createOutOfCatalogRequest} className="phase2-guided-form">
+              <label>
+                Di cosa hai bisogno?
+                <textarea name="description" required minLength={8} />
+              </label>
+              <div>
+                <label>
+                  Categoria
+                  <select name="categoryId">
+                    <option value="">Da classificare</option>
+                    {categories.map((category) => (
+                      <option value={category.id} key={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Quantità
+                  <input type="number" name="quantity" min="1" defaultValue="1" />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Importo indicativo
+                  <input name="estimatedAmount" type="number" min="0" step="0.01" />
+                </label>
+                <label>
+                  Fornitore, se noto
+                  <input name="supplier" />
+                </label>
+              </div>
+              <label>
+                Perché non è disponibile a catalogo?
+                <textarea name="justification" required minLength={8} />
+              </label>
+              <label className="phase2-upload">
+                Preventivi, specifiche o fotografie
+                <input
+                  type="file"
+                  name="attachments"
+                  multiple
+                  accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"
+                />
+                <small>Storage privato · massimo 8 MB per file</small>
+              </label>
+              <button className="primary-cta">Invia a Procurement</button>
+            </form>
+          </details>
+        }
+      />
+      <nav className="state-tabs" aria-label="Stato richieste">
+        {[
+          ["", "Tutte"],
+          ["PENDING_APPROVAL", "In approvazione"],
+          ["CLARIFICATION_REQUESTED", "Chiarimenti"],
+          ["APPROVED", "Approvate"],
+          ["REJECTED", "Respinte"],
+        ].map(([value, label]) => (
+          <Link
+            className={(query.stato ?? "") === value ? "active" : ""}
+            href={`/richieste${value ? `?stato=${value}` : ""}`}
+            key={value}
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
+      <section className="phase2-queue">
+        <div className="section-heading">
+          <div>
+            <h2>Stato operativo</h2>
+            <p>Le richieste che richiedono risposta o approvazione restano riconoscibili.</p>
+          </div>
+          <span>
+            {requests.length} mostrate su {total}
+          </span>
+        </div>
+        <DataTable label="Richieste">
+          <thead>
+            <tr>
+              <th>Richiesta</th>
+              <th>Stato / prossimo passo</th>
+              <th>Policy</th>
+              <th className="num-cell">Totale</th>
+              <th aria-label="Apri" />
+            </tr>
+          </thead>
+          <tbody>
+            {requests.length ? (
+              requests.map((request) => (
+                <tr
+                  className={
+                    ["CLARIFICATION_REQUESTED", "REJECTED"].includes(request.status)
+                      ? "is-priority"
+                      : ""
+                  }
+                  key={request.id}
+                >
+                  <td>
+                    <Link className="table-link" href={`/requisitions/${request.id}`}>
+                      {request.requisitionNumber}
+                    </Link>
+                    <small className="cell-detail">
+                      {formatDate(request.createdAt)} · {scope.label}
+                    </small>
+                  </td>
+                  <td>
+                    <StatusChip
+                      variant={
+                        request.status === "APPROVED"
+                          ? "ok"
+                          : request.status === "REJECTED"
+                            ? "danger"
+                            : request.status === "CLARIFICATION_REQUESTED"
+                              ? "warn"
+                              : "neutral"
+                      }
+                    >
+                      {statusLabel(request.status)}
+                    </StatusChip>
+                    <small className="cell-detail">
+                      {request.status === "CLARIFICATION_REQUESTED"
+                        ? "Rispondi e reinvia"
+                        : request.status === "PENDING_APPROVAL"
+                          ? "In attesa del responsabile"
+                          : request.status === "APPROVED"
+                            ? "Ordine disponibile"
+                            : "Apri dettaglio"}
+                    </small>
+                  </td>
+                  <td>{policyExplanationLabel(request.policyExplanation)}</td>
+                  <td className="num-cell">
+                    <Num value={Number(request.total)} kind="currency" />
+                  </td>
+                  <td>
+                    <Link
+                      className="row-disclosure"
+                      aria-label={`Apri ${request.requisitionNumber}`}
+                      href={`/requisitions/${request.id}`}
+                    >
+                      →
+                    </Link>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <EmptyRow colSpan={5}>Nessuna richiesta nel filtro.</EmptyRow>
+            )}
+          </tbody>
+        </DataTable>
+        <Pagination
+          page={Math.min(page, pages)}
+          pages={pages}
+          pathname="/richieste"
+          params={{ stato: query.stato }}
+        />
+      </section>
+      <details className="phase2-secondary-section" open={query.vista === "fuori-catalogo"}>
+        <summary>
+          Richieste fuori catalogo <span>{exceptions.length}</span>
+        </summary>
+        <div className="phase2-exception-list">
+          {exceptions.length ? (
+            exceptions.map((request) => (
+              <article key={request.id}>
+                <div>
+                  <strong>{request.requestNumber}</strong>
+                  <span>{request.needDescription}</span>
+                  <small>
+                    {formatDate(request.createdAt)} · {request.attachments.length} allegati
+                  </small>
+                </div>
+                <StatusChip
+                  variant={
+                    request.status === "REJECTED"
+                      ? "danger"
+                      : request.status === "APPROVED"
+                        ? "ok"
+                        : "warn"
+                  }
+                >
+                  {statusLabel(request.status)}
+                </StatusChip>
+                <div>
+                  {request.attachments.map((attachment) => (
+                    <Link key={attachment.id} href={`/attachments/${attachment.id}`}>
+                      {attachment.originalFilename}
+                    </Link>
+                  ))}
+                </div>
+              </article>
+            ))
+          ) : (
+            <p className="quiet-empty">Nessuna richiesta fuori catalogo.</p>
+          )}
+        </div>
+      </details>
+    </main>
+  );
 }

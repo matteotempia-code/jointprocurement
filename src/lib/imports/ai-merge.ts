@@ -2,14 +2,27 @@ import { z } from "zod";
 import { importFields, type ImportField, type InterpretedFields } from "./types";
 
 const numericFields = new Set<ImportField>([
-  "unitsPerPackage", "grossPrice", "discount", "netPrice", "taxRate", "moq", "leadTimeDays",
+  "unitsPerPackage",
+  "grossPrice",
+  "discount",
+  "netPrice",
+  "taxRate",
+  "moq",
+  "leadTimeDays",
 ]);
 const textValue = z.string().trim().min(1);
 const numericValue = z.union([
   z.number().finite(),
-  z.string().trim().min(1).refine((value) => Number.isFinite(Number(value.replace(",", ".")))),
+  z
+    .string()
+    .trim()
+    .min(1)
+    .refine((value) => Number.isFinite(Number(value.replace(",", ".")))),
 ]);
-const eanValue = z.union([z.string(), z.number()]).transform(String).pipe(z.string().regex(/^\d{8,14}$/));
+const eanValue = z
+  .union([z.string(), z.number()])
+  .transform(String)
+  .pipe(z.string().regex(/^\d{8,14}$/));
 
 export function mergeAiInterpretedFields(
   deterministic: InterpretedFields,

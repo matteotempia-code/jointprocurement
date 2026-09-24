@@ -12,39 +12,154 @@ import { presentTechnicalAttributes } from "@/lib/presentation/technical-attribu
 import { statusLabel } from "@/lib/presentation/status";
 import { resolveScope } from "@/lib/scope";
 
-export default async function Product360({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
-  const context = await requireRoles(["RSA_DIRECTOR", "AREA_MANAGER", "PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
+export default async function Product360({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const context = await requireRoles([
+    "RSA_DIRECTOR",
+    "AREA_MANAGER",
+    "PROCUREMENT_MANAGER",
+    "PROCUREMENT_ADMIN",
+  ]);
   const query = await searchParams;
   const scope = await resolveScope(context.assignment);
-  const product = await prisma.canonicalProduct.findFirst({ where: { id: (await params).id, organizationId: context.organization.id }, include: { category: true, offers: { where: { active: true }, include: { supplier: true, priceList: { include: { commercialConditions: { where: { humanConfirmationState: "CONFIRMED" } } } }, sourceDocument: true, importedRecord: { select: { importJobId: true, sourceLocator: true } }, priceHistory: { orderBy: { effectiveAt: "asc" } } } } } });
+  const product = await prisma.canonicalProduct.findFirst({
+    where: { id: (await params).id, organizationId: context.organization.id },
+    include: {
+      category: true,
+      offers: {
+        where: { active: true },
+        include: {
+          supplier: true,
+          priceList: {
+            include: { commercialConditions: { where: { humanConfirmationState: "CONFIRMED" } } },
+          },
+          sourceDocument: true,
+          importedRecord: { select: { importJobId: true, sourceLocator: true } },
+          priceHistory: { orderBy: { effectiveAt: "asc" } },
+        },
+      },
+    },
+  });
   if (!product) notFound();
   const preferred = getPreferredOffer(product.offers);
   const comparison = compareOffers(product.offers, context.organization.vatDeductibilityPercent);
   const selectedOffer = preferred ?? comparison.lowest ?? product.offers[0];
   const [usage, alternatives, favorite, lists] = await Promise.all([
-    prisma.purchaseOrderLine.findMany({ where: { canonicalProductId: product.id, purchaseOrder: { facilityId: { in: scope.facilityIds } } }, include: { purchaseOrder: { include: { facility: true } } } }),
-    prisma.canonicalProduct.findMany({ where: { organizationId: context.organization.id, subcategory: product.subcategory, id: { not: product.id }, active: true }, take: 4, include: { category: true, offers: { where: { active: true }, include: { supplier: true }, orderBy: { preferred: "desc" } } } }),
-    context.roleCode === "RSA_DIRECTOR" ? prisma.favorite.findFirst({ where: { userId: context.user.id, facilityId: scope.id, canonicalProductId: product.id } }) : null,
-    context.roleCode === "RSA_DIRECTOR" ? prisma.shoppingList.findMany({ where: { userId: context.user.id, facilityId: scope.id }, orderBy: { updatedAt: "desc" } }) : [],
+    prisma.purchaseOrderLine.findMany({
+      where: {
+        canonicalProductId: product.id,
+        purchaseOrder: { facilityId: { in: scope.facilityIds } },
+      },
+      include: { purchaseOrder: { include: { facility: true } } },
+    }),
+    prisma.canonicalProduct.findMany({
+      where: {
+        organizationId: context.organization.id,
+        subcategory: product.subcategory,
+        id: { not: product.id },
+        active: true,
+      },
+      take: 4,
+      include: {
+        category: true,
+        offers: {
+          where: { active: true },
+          include: { supplier: true },
+          orderBy: { preferred: "desc" },
+        },
+      },
+    }),
+    context.roleCode === "RSA_DIRECTOR"
+      ? prisma.favorite.findFirst({
+          where: { userId: context.user.id, facilityId: scope.id, canonicalProductId: product.id },
+        })
+      : null,
+    context.roleCode === "RSA_DIRECTOR"
+      ? prisma.shoppingList.findMany({
+          where: { userId: context.user.id, facilityId: scope.id },
+          orderBy: { updatedAt: "desc" },
+        })
+      : [],
   ]);
   // M12 enrichment is optional for legacy products. A technical-data outage must
   // not take the certified M11 buying surface down with it.
   const technicalData = await (async () => {
-    const technicalState = await prisma.productTechnicalState.findUnique({ where: { organizationId_canonicalProductId: { organizationId: context.organization.id, canonicalProductId: product.id } } });
-    const technicalAssociations = await prisma.technicalDocumentProductAssociation.findMany({ where: { canonicalProductId: product.id, status: { in: ["AUTO_CONFIRMED", "MANUALLY_CONFIRMED"] }, technicalDocument: { organizationId: context.organization.id } }, include: { technicalDocument: { include: { currentVersion: { include: { sourceDocument: true } }, versions: true } } }, orderBy: { updatedAt: "desc" } });
-    const technicalAttributes = await prisma.technicalProductAttribute.findMany({ where: { organizationId: context.organization.id, canonicalProductId: product.id, reviewState: { in: ["EXTRACTED", "CONFIRMED", "CONFLICTED"] }, technicalDocumentVersion: { status: "READY" } }, include: { technicalDocumentVersion: { include: { technicalDocument: true } } }, orderBy: [{ attributeKey: "asc" }, { confidence: "desc" }] });
-    const missingEvidence = await prisma.missingEvidenceItem.findMany({ where: { organizationId: context.organization.id, canonicalProductId: product.id, status: "OPEN" }, orderBy: { createdAt: "asc" } });
-    const equivalence = await prisma.productEquivalenceAssessment.findMany({ where: { organizationId: context.organization.id, OR: [{ productAId: product.id }, { productBId: product.id }] }, include: { productA: true, productB: true, missingEvidence: true }, orderBy: { updatedAt: "desc" } });
-    return { technicalState, technicalAssociations, technicalAttributes, missingEvidence, equivalence };
+    const technicalState = await prisma.productTechnicalState.findUnique({
+      where: {
+        organizationId_canonicalProductId: {
+          organizationId: context.organization.id,
+          canonicalProductId: product.id,
+        },
+      },
+    });
+    const technicalAssociations = await prisma.technicalDocumentProductAssociation.findMany({
+      where: {
+        canonicalProductId: product.id,
+        status: { in: ["AUTO_CONFIRMED", "MANUALLY_CONFIRMED"] },
+        technicalDocument: { organizationId: context.organization.id },
+      },
+      include: {
+        technicalDocument: {
+          include: { currentVersion: { include: { sourceDocument: true } }, versions: true },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+    const technicalAttributes = await prisma.technicalProductAttribute.findMany({
+      where: {
+        organizationId: context.organization.id,
+        canonicalProductId: product.id,
+        reviewState: { in: ["EXTRACTED", "CONFIRMED", "CONFLICTED"] },
+        technicalDocumentVersion: { status: "READY" },
+      },
+      include: { technicalDocumentVersion: { include: { technicalDocument: true } } },
+      orderBy: [{ attributeKey: "asc" }, { confidence: "desc" }],
+    });
+    const missingEvidence = await prisma.missingEvidenceItem.findMany({
+      where: {
+        organizationId: context.organization.id,
+        canonicalProductId: product.id,
+        status: "OPEN",
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    const equivalence = await prisma.productEquivalenceAssessment.findMany({
+      where: {
+        organizationId: context.organization.id,
+        OR: [{ productAId: product.id }, { productBId: product.id }],
+      },
+      include: { productA: true, productB: true, missingEvidence: true },
+      orderBy: { updatedAt: "desc" },
+    });
+    return {
+      technicalState,
+      technicalAssociations,
+      technicalAttributes,
+      missingEvidence,
+      equivalence,
+    };
   })().catch((error: unknown) => {
-    const code = typeof error === "object" && error && "code" in error && typeof error.code === "string" ? error.code : "UNAVAILABLE";
-    console.error("PRODUCT360_TECHNICAL_ENRICHMENT_FAILED", { code, name: error instanceof Error ? error.name : "UnknownError" });
+    const code =
+      typeof error === "object" && error && "code" in error && typeof error.code === "string"
+        ? error.code
+        : "UNAVAILABLE";
+    console.error("PRODUCT360_TECHNICAL_ENRICHMENT_FAILED", {
+      code,
+      name: error instanceof Error ? error.name : "UnknownError",
+    });
     return { errorCode: code } as const;
   });
   const technicalLoadError = "errorCode" in technicalData ? technicalData.errorCode : null;
   const technicalState = "technicalState" in technicalData ? technicalData.technicalState : null;
-  const technicalAssociations = "technicalAssociations" in technicalData ? technicalData.technicalAssociations : [];
-  const technicalAttributes = "technicalAttributes" in technicalData ? technicalData.technicalAttributes : [];
+  const technicalAssociations =
+    "technicalAssociations" in technicalData ? technicalData.technicalAssociations : [];
+  const technicalAttributes =
+    "technicalAttributes" in technicalData ? technicalData.technicalAttributes : [];
   const missingEvidence = "missingEvidence" in technicalData ? technicalData.missingEvidence : [];
   const equivalence = "equivalence" in technicalData ? technicalData.equivalence : [];
   const preferredPrice = selectedOffer ? normalizeOfferPrice(product, selectedOffer) : null;
@@ -52,33 +167,542 @@ export default async function Product360({ params, searchParams }: { params: Pro
   const attributes = presentTechnicalAttributes(product.category.code, product.technicalAttributes);
   const quantity = usage.reduce((sum, line) => sum + Number(line.quantity), 0);
   const spend = usage.reduce((sum, line) => sum + Number(line.lineTotal), 0);
-  const last = [...usage].sort((a, b) => b.purchaseOrder.issuedAt.getTime() - a.purchaseOrder.issuedAt.getTime())[0];
+  const last = [...usage].sort(
+    (a, b) => b.purchaseOrder.issuedAt.getTime() - a.purchaseOrder.issuedAt.getTime(),
+  )[0];
   const history = selectedOffer?.priceHistory ?? [];
   const historyValues = history.map((point) => Number(point.normalizedPrice));
   const min = historyValues.length ? Math.min(...historyValues) : 0;
   const max = historyValues.length ? Math.max(...historyValues) : 0;
-  return <main className="phase2-page phase2-product-detail">
-    {query.error === "technical-evidence" && <p role="alert" className="warning">Il prodotto non Ã¨ approvato per nuovi acquisti: completa o verifica le evidenze tecniche obbligatorie.</p>}
-    <PageHeader eyebrow="Prodotto 360" title={product.name} description={product.shortDescription ?? "Informazioni tecniche, condizioni commerciali e utilizzo osservato."} />
-    <section className="product-hero refined">
-      <ProductImage name={product.name} categoryCode={product.category.code} className="product-packshot-large" />
-      <div className="hero-copy"><span>{product.category.name} Â· {product.subcategory}</span><h2>{product.brand} <small>di {product.manufacturer}</small></h2><p>{product.longDescription}</p><dl><div><dt>Codice produttore</dt><dd>{product.manufacturerSku}</dd></div><div><dt>EAN / GTIN</dt><dd>{product.ean}</dd></div><div><dt>UnitÃ  dâ€™acquisto</dt><dd>{product.purchaseUom}</dd></div><div><dt>Contenuto</dt><dd>{product.packageDescription}</dd></div></dl></div>
-      <aside className="buy-box"><p className="eyebrow">{preferred ? "Offerta convenzionata" : "Migliore offerta disponibile"}</p><h3>{selectedOffer?.supplier.name ?? "Non disponibile"}</h3><strong>{preferredPrice ? formatMoney(preferredPrice.purchasePrice) : "â€”"}</strong><span>per {preferredPrice?.purchaseLabel}</span><small>{preferredPrice?.contentLabel}</small><b>{preferredPrice?.normalizedPrice != null ? `${formatCurrency(preferredPrice.normalizedPrice, 4)} / ${preferredPrice.consumptionLabel}` : preferredPrice?.normalizedLabel}</b><small>Consegna stimata: {selectedOffer?.leadTimeDays ?? "â€”"} giorni</small>
-        {context.roleCode === "RSA_DIRECTOR" && selectedOffer && <div className="buy-actions">
-          <form action={addToCart}><input type="hidden" name="offerId" value={selectedOffer.id} /><label>QuantitÃ <input name="quantity" type="number" min={Number(selectedOffer.moq)} defaultValue={Number(selectedOffer.moq)} /></label><button className="primary-cta">Aggiungi al carrello</button></form>
-          <div className="buy-secondary-actions"><form action={toggleFavorite}><input type="hidden" name="productId" value={product.id} /><button className="secondary-cta">{favorite ? "Salvato nei preferiti" : "Salva nei preferiti"}</button></form><ProductActionsMenu productId={product.id} productName={product.name} lists={lists} detailHref={`/products/${product.id}`} compareHref={`/compare-products?ids=${[product.id, ...alternatives.slice(0, 2).map((item) => item.id)].join(",")}`} /></div>
-        </div>}
-      </aside>
-    </section>
-    <section className="commercial-summary"><div><span>DisponibilitÃ </span><strong>{statusLabel(selectedOffer?.availabilityStatus ?? "UNAVAILABLE")}</strong><small>Consegna in {selectedOffer?.leadTimeDays ?? "â€”"} giorni</small></div><div><span>Migliore disponibile</span><strong>{bestPrice?.normalizedPrice != null ? formatCurrency(bestPrice.normalizedPrice, 4) : "â€”"}</strong><small>{comparison.lowest?.supplier.name}</small></div><div><span>{preferred ? "Posizione convenzionato" : "Stato offerta"}</span><strong>{preferred ? comparison.preferredDelta === 0 ? "Miglior prezzo" : `+${comparison.preferredDelta.toFixed(1)}%` : "Non convenzionata"}</strong><small>{preferred ? comparison.preferredDelta === 0 ? "Nessun differenziale" : "Da valutare" : "Verificare la policy prima dellâ€™acquisto"}</small></div></section>
-    <details id="specifiche" className="disclosure-section"><summary><span>Specifiche tecniche</span><small>{attributes.length} caratteristiche</small></summary><div className="spec-grid">{attributes.map((attribute) => <div key={attribute.key}><span>{attribute.label}</span><strong>{attribute.value}</strong></div>)}</div></details>
-    {technicalLoadError && <p role="alert" className="warning">Le evidenze tecniche non sono temporaneamente disponibili. Codice: {technicalLoadError}</p>}
-    <details id="evidenze-tecniche" className="disclosure-section" open={technicalState?.status !== "COMPLETE"}><summary><span>Evidenze tecniche</span><small>{technicalState ? `${technicalState.completenessPercent}% Â· ${technicalState.status}` : "Profilo non valutato"}</small></summary><div className="technical-product-status"><div><strong>{technicalState?.status ?? "INCOMPLETE"}</strong><span>{technicalState?.missingCount ?? 0} evidenze mancanti Â· {technicalState?.conflictCount ?? 0} conflitti Â· {technicalState?.expiredCount ?? 0} scadute</span></div>{["PROCUREMENT_MANAGER","PROCUREMENT_ADMIN"].includes(context.roleCode) && <Link className="secondary-cta" href="/technical-documents">Gestisci evidenze</Link>}</div>{missingEvidence.length>0&&<div className="technical-missing"><h3>Evidenza necessaria</h3>{missingEvidence.map(item=><p key={item.id}><strong>{item.requiredField??item.requiredDocumentType??"Evidenza tecnica"}</strong> â€” {item.reason}<span>{item.suggestedEvidence}</span></p>)}</div>}<div className="document-list">{technicalAssociations.map(association=><Link href={`/imports/documents/${association.technicalDocument.currentVersion?.sourceDocumentId}`} key={association.id}><strong>{association.technicalDocument.title}</strong><span>{association.technicalDocument.documentType} Â· v{association.technicalDocument.currentVersion?.versionNumber} Â· {Math.round(Number(association.confidence)*100)}%</span></Link>)}</div>{technicalAttributes.length>0&&<DataTable label="Profilo tecnico normalizzato"><thead><tr><th>Attributo</th><th>Valore</th><th>Fonte</th><th>Stato</th></tr></thead><tbody>{technicalAttributes.map(attribute=><tr key={attribute.id}><td>{attribute.label}</td><td>{attribute.valueText} {attribute.unit}</td><td>{attribute.technicalDocumentVersion.technicalDocument.title}</td><td>{attribute.reviewState}</td></tr>)}</tbody></DataTable>}</details>
-    <details id="equivalenti" className="disclosure-section"><summary><span>Prodotti equivalenti</span><small>{equivalence.length} valutazioni basate su evidenze</small></summary>{equivalence.length?<DataTable label="Valutazioni di equivalenza"><thead><tr><th>Prodotto</th><th>Esito</th><th>Confidenza</th><th>Spiegazione</th><th/></tr></thead><tbody>{equivalence.map(item=>{const other=item.productAId===product.id?item.productB:item.productA;return <tr key={item.id}><td><Link href={`/products/${other.id}`}>{other.name}</Link></td><td>{item.result}</td><td>{Math.round(Number(item.confidence)*100)}%</td><td>{item.explanation}{item.missingEvidence.length>0&&<span className="cell-detail">Manca: {item.missingEvidence.map(value=>value.requiredField??value.requiredDocumentType).join(", ")}</span>}</td><td><Link href={`/technical-compare?ids=${product.id},${other.id}`}>Confronta</Link></td></tr>})}</tbody></DataTable>:<p className="muted">Nessuna equivalenza tecnica valutata. Le alternative commerciali restano separate finchÃ© le evidenze non sono sufficienti.</p>}</details>
-    <details id="offerte" className="disclosure-section" open><summary><span>Confronto offerte dello stesso prodotto</span><small>{comparison.sorted.length} offerte Â· spread {comparison.spread.toFixed(1)}%</small></summary><p className="muted">Il confronto riguarda lo stesso prodotto canonico. Prezzi non normalizzabili o unitÃ  incompatibili non vengono ordinati come equivalenti.</p><DataTable label="Confronto offerte fornitori"><thead><tr><th>Fornitore / SKU</th><th>Confezione</th><th>Economia</th><th>Condizioni commerciali</th><th>Pagamento / consegna</th><th>ValiditÃ </th><th>Fonte</th></tr></thead><tbody>{comparison.sorted.map((offer, index) => { const price = normalizeOfferPrice(product, offer); const comparable = price.normalizedPrice != null; return <tr className={index === 0 && comparable ? "best-offer-row" : ""} key={offer.id}><td><strong>{offer.supplier.name}</strong><span className="cell-detail mono">{offer.supplierSku ?? "SKU n.d."}</span>{offer.preferred && <span className="cell-detail">Convenzionato</span>}</td><td>{product.packageDescription}<span className="cell-detail">{Number(offer.packageSize ?? product.unitsPerPackage).toLocaleString("it-IT")} {offer.packageUnit ?? product.purchaseUom}</span></td><td><strong>{comparable ? `${formatCurrency(price.normalizedPrice!, 4)} / ${price.consumptionLabel}` : "Non confrontabile"}</strong><span className="cell-detail">{formatMoney(Number(offer.unitPrice))} / confezione</span><span className="cell-detail">{comparable ? index === 0 ? "Migliore" : `+${((price.normalizedPrice! / Number(comparison.lowest?.normalizedUnitPrice) - 1) * 100).toFixed(1)}%` : "UOM da verificare"}</span></td><td><span className="cell-detail">MOQ {Number(offer.moq).toLocaleString("it-IT")}</span><span className="cell-detail">Franco {offer.supplier.freeShippingThreshold ? formatMoney(Number(offer.supplier.freeShippingThreshold)) : "n.d."}</span><span className="cell-detail">Trasporto {offer.supplier.shippingFeeBelowThreshold ? formatMoney(Number(offer.supplier.shippingFeeBelowThreshold)) : "n.d."}</span><span className="cell-detail">Maggiorazione {offer.supplier.surchargeBelowMinimum ? formatMoney(Number(offer.supplier.surchargeBelowMinimum)) : "n.d."}</span></td><td>{offer.supplier.paymentTerms ?? "n.d."}<span className="cell-detail">{offer.leadTimeDays != null ? `${offer.leadTimeDays} giorni` : offer.supplier.deliveryTerms ?? "n.d."}</span></td><td>{offer.validFrom ? formatDate(offer.validFrom) : "n.d."}<span className="cell-detail">fino al {offer.validUntil ? formatDate(offer.validUntil) : "n.d."}</span></td><td>{offer.sourceDocument && offer.importedRecord ? ["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"].includes(context.roleCode) ? <Link className="text-link" href={`/imports/${offer.importedRecord.importJobId}`}>{offer.sourceDocument.originalFilename}</Link> : <span className="muted">{offer.sourceDocument.originalFilename}</span> : <span className="muted">{offer.priceList?.name ?? "Listino demo"}</span>}<span className="cell-detail">{offer.priceList ? `v${offer.priceList.version}` : "Versione n.d."}</span></td></tr>; })}</tbody></DataTable></details>
-    <details id="storico" className="disclosure-section"><summary><span>{history.length >= 12 ? "Andamento del prezzo negli ultimi 12 mesi" : "Ultime variazioni di prezzo"}</span><small>{history.length ? `Min ${formatCurrency(min, 4)} Â· Max ${formatCurrency(max, 4)}` : "Nessuno storico disponibile"}</small></summary>{history.length > 1 && <><svg className="line-chart" viewBox="0 0 1000 220" preserveAspectRatio="none" aria-label="Andamento mensile del prezzo"><polyline points={historyValues.map((value, index) => `${index / Math.max(1, historyValues.length - 1) * 1000},${190 - (value - min) / Math.max(.0001, max - min) * 150}`).join(" ")} />{historyValues.map((value, index) => <circle key={index} cx={index / Math.max(1, historyValues.length - 1) * 1000} cy={190 - (value - min) / Math.max(.0001, max - min) * 150} r="5" />)}</svg><div className="chart-labels">{history.map((point) => <span key={point.id}>{new Intl.DateTimeFormat("it-IT", { month: "short" }).format(point.effectiveAt)}</span>)}</div></>}</details>
-    <details id="utilizzo" className="disclosure-section"><summary><span>Utilizzo nel perimetro</span><small>{quantity} unitÃ  osservate</small></summary><div className="metrics-grid four"><Metric label="QuantitÃ  acquistata" value={quantity} /><Metric label="Spesa da inizio anno" value={formatMoney(spend)} /><Metric label="Ultimo acquisto" value={last ? formatDate(last.purchaseOrder.issuedAt) : "Nessuno"} /><Metric label="Strutture acquirenti" value={new Set(usage.map((line) => line.purchaseOrder.facilityId)).size} /></div></details>
-    <details id="documenti" className="disclosure-section"><summary><span>Documenti verificabili</span><small>Schede e certificazioni</small></summary><div className="document-list">{[["Scheda tecnica", product.datasheetPath], ["Scheda di sicurezza", product.safetySheetPath], ["Certificazione", product.certificationPath], ["Dichiarazione di conformitÃ ", product.declarationPath]].filter(([, path]) => path).map(([label, path]) => <Link href={path!} key={label}><strong>{label}</strong><span>Apri PDF demo</span></Link>)}</div></details>
-    <details id="alternative" className="disclosure-section"><summary><span>Alternative commerciali</span><small>{alternatives.length} prodotti da valutare</small></summary><div className="disclosure-actions"><Link className="secondary-cta" href={`/compare-products?ids=${[product.id, ...alternatives.slice(0, 2).map((item) => item.id)].join(",")}`}>Confronta prodotti</Link></div><div className="alternative-grid">{alternatives.map((alternative, index) => { const offer = getPreferredOffer(alternative.offers) ?? alternative.offers[0]; const price = offer ? normalizeOfferPrice(alternative, offer) : null; return <Link href={`/products/${alternative.id}`} key={alternative.id}><ProductImage name={alternative.name} categoryCode={alternative.category.code} /><b>{index % 3 === 0 ? "Variante" : index % 3 === 1 ? "Alternativa commerciale" : "Alternativa funzionale da verificare"}</b><strong>{alternative.name}</strong><span>{offer?.supplier.name} Â· {price?.normalizedLabel}</span><small>{statusLabel(offer?.availabilityStatus ?? "UNAVAILABLE")}</small></Link>; })}</div></details>
-  </main>;
+  return (
+    <main className="phase2-page phase2-product-detail">
+      {query.error === "technical-evidence" && (
+        <p role="alert" className="warning">
+          Il prodotto non Ã¨ approvato per nuovi acquisti: completa o verifica le evidenze tecniche
+          obbligatorie.
+        </p>
+      )}
+      <PageHeader
+        eyebrow="Prodotto 360"
+        title={product.name}
+        description={
+          product.shortDescription ??
+          "Informazioni tecniche, condizioni commerciali e utilizzo osservato."
+        }
+      />
+      <section className="product-hero refined">
+        <ProductImage
+          name={product.name}
+          categoryCode={product.category.code}
+          className="product-packshot-large"
+        />
+        <div className="hero-copy">
+          <span>
+            {product.category.name} Â· {product.subcategory}
+          </span>
+          <h2>
+            {product.brand} <small>di {product.manufacturer}</small>
+          </h2>
+          <p>{product.longDescription}</p>
+          <dl>
+            <div>
+              <dt>Codice produttore</dt>
+              <dd>{product.manufacturerSku}</dd>
+            </div>
+            <div>
+              <dt>EAN / GTIN</dt>
+              <dd>{product.ean}</dd>
+            </div>
+            <div>
+              <dt>UnitÃ  dâ€™acquisto</dt>
+              <dd>{product.purchaseUom}</dd>
+            </div>
+            <div>
+              <dt>Contenuto</dt>
+              <dd>{product.packageDescription}</dd>
+            </div>
+          </dl>
+        </div>
+        <aside className="buy-box">
+          <p className="eyebrow">
+            {preferred ? "Offerta convenzionata" : "Migliore offerta disponibile"}
+          </p>
+          <h3>{selectedOffer?.supplier.name ?? "Non disponibile"}</h3>
+          <strong>{preferredPrice ? formatMoney(preferredPrice.purchasePrice) : "â€”"}</strong>
+          <span>per {preferredPrice?.purchaseLabel}</span>
+          <small>{preferredPrice?.contentLabel}</small>
+          <b>
+            {preferredPrice?.normalizedPrice != null
+              ? `${formatCurrency(preferredPrice.normalizedPrice, 4)} / ${preferredPrice.consumptionLabel}`
+              : preferredPrice?.normalizedLabel}
+          </b>
+          <small>Consegna stimata: {selectedOffer?.leadTimeDays ?? "â€”"} giorni</small>
+          {context.roleCode === "RSA_DIRECTOR" && selectedOffer && (
+            <div className="buy-actions">
+              <form action={addToCart}>
+                <input type="hidden" name="offerId" value={selectedOffer.id} />
+                <label>
+                  QuantitÃ 
+                  <input
+                    name="quantity"
+                    type="number"
+                    min={Number(selectedOffer.moq)}
+                    defaultValue={Number(selectedOffer.moq)}
+                  />
+                </label>
+                <button className="primary-cta">Aggiungi al carrello</button>
+              </form>
+              <div className="buy-secondary-actions">
+                <form action={toggleFavorite}>
+                  <input type="hidden" name="productId" value={product.id} />
+                  <button className="secondary-cta">
+                    {favorite ? "Salvato nei preferiti" : "Salva nei preferiti"}
+                  </button>
+                </form>
+                <ProductActionsMenu
+                  productId={product.id}
+                  productName={product.name}
+                  lists={lists}
+                  detailHref={`/products/${product.id}`}
+                  compareHref={`/compare-products?ids=${[product.id, ...alternatives.slice(0, 2).map((item) => item.id)].join(",")}`}
+                />
+              </div>
+            </div>
+          )}
+        </aside>
+      </section>
+      <section className="commercial-summary">
+        <div>
+          <span>DisponibilitÃ </span>
+          <strong>{statusLabel(selectedOffer?.availabilityStatus ?? "UNAVAILABLE")}</strong>
+          <small>Consegna in {selectedOffer?.leadTimeDays ?? "â€”"} giorni</small>
+        </div>
+        <div>
+          <span>Migliore disponibile</span>
+          <strong>
+            {bestPrice?.normalizedPrice != null
+              ? formatCurrency(bestPrice.normalizedPrice, 4)
+              : "â€”"}
+          </strong>
+          <small>{comparison.lowest?.supplier.name}</small>
+        </div>
+        <div>
+          <span>{preferred ? "Posizione convenzionato" : "Stato offerta"}</span>
+          <strong>
+            {preferred
+              ? comparison.preferredDelta === 0
+                ? "Miglior prezzo"
+                : `+${comparison.preferredDelta.toFixed(1)}%`
+              : "Non convenzionata"}
+          </strong>
+          <small>
+            {preferred
+              ? comparison.preferredDelta === 0
+                ? "Nessun differenziale"
+                : "Da valutare"
+              : "Verificare la policy prima dellâ€™acquisto"}
+          </small>
+        </div>
+      </section>
+      <details id="specifiche" className="disclosure-section">
+        <summary>
+          <span>Specifiche tecniche</span>
+          <small>{attributes.length} caratteristiche</small>
+        </summary>
+        <div className="spec-grid">
+          {attributes.map((attribute) => (
+            <div key={attribute.key}>
+              <span>{attribute.label}</span>
+              <strong>{attribute.value}</strong>
+            </div>
+          ))}
+        </div>
+      </details>
+      {technicalLoadError && (
+        <p role="alert" className="warning">
+          Le evidenze tecniche non sono temporaneamente disponibili. Codice: {technicalLoadError}
+        </p>
+      )}
+      <details
+        id="evidenze-tecniche"
+        className="disclosure-section"
+        open={technicalState?.status !== "COMPLETE"}
+      >
+        <summary>
+          <span>Evidenze tecniche</span>
+          <small>
+            {technicalState
+              ? `${technicalState.completenessPercent}% Â· ${technicalState.status}`
+              : "Profilo non valutato"}
+          </small>
+        </summary>
+        <div className="technical-product-status">
+          <div>
+            <strong>{technicalState?.status ?? "INCOMPLETE"}</strong>
+            <span>
+              {technicalState?.missingCount ?? 0} evidenze mancanti Â·{" "}
+              {technicalState?.conflictCount ?? 0} conflitti Â· {technicalState?.expiredCount ?? 0}{" "}
+              scadute
+            </span>
+          </div>
+          {["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"].includes(context.roleCode) && (
+            <Link className="secondary-cta" href="/technical-documents">
+              Gestisci evidenze
+            </Link>
+          )}
+        </div>
+        {missingEvidence.length > 0 && (
+          <div className="technical-missing">
+            <h3>Evidenza necessaria</h3>
+            {missingEvidence.map((item) => (
+              <p key={item.id}>
+                <strong>
+                  {item.requiredField ?? item.requiredDocumentType ?? "Evidenza tecnica"}
+                </strong>{" "}
+                â€” {item.reason}
+                <span>{item.suggestedEvidence}</span>
+              </p>
+            ))}
+          </div>
+        )}
+        <div className="document-list">
+          {technicalAssociations.map((association) => (
+            <Link
+              href={`/imports/documents/${association.technicalDocument.currentVersion?.sourceDocumentId}`}
+              key={association.id}
+            >
+              <strong>{association.technicalDocument.title}</strong>
+              <span>
+                {association.technicalDocument.documentType} Â· v
+                {association.technicalDocument.currentVersion?.versionNumber} Â·{" "}
+                {Math.round(Number(association.confidence) * 100)}%
+              </span>
+            </Link>
+          ))}
+        </div>
+        {technicalAttributes.length > 0 && (
+          <DataTable label="Profilo tecnico normalizzato">
+            <thead>
+              <tr>
+                <th>Attributo</th>
+                <th>Valore</th>
+                <th>Fonte</th>
+                <th>Stato</th>
+              </tr>
+            </thead>
+            <tbody>
+              {technicalAttributes.map((attribute) => (
+                <tr key={attribute.id}>
+                  <td>{attribute.label}</td>
+                  <td>
+                    {attribute.valueText} {attribute.unit}
+                  </td>
+                  <td>{attribute.technicalDocumentVersion.technicalDocument.title}</td>
+                  <td>{attribute.reviewState}</td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
+        )}
+      </details>
+      <details id="equivalenti" className="disclosure-section">
+        <summary>
+          <span>Prodotti equivalenti</span>
+          <small>{equivalence.length} valutazioni basate su evidenze</small>
+        </summary>
+        {equivalence.length ? (
+          <DataTable label="Valutazioni di equivalenza">
+            <thead>
+              <tr>
+                <th>Prodotto</th>
+                <th>Esito</th>
+                <th>Confidenza</th>
+                <th>Spiegazione</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {equivalence.map((item) => {
+                const other = item.productAId === product.id ? item.productB : item.productA;
+                return (
+                  <tr key={item.id}>
+                    <td>
+                      <Link href={`/products/${other.id}`}>{other.name}</Link>
+                    </td>
+                    <td>{item.result}</td>
+                    <td>{Math.round(Number(item.confidence) * 100)}%</td>
+                    <td>
+                      {item.explanation}
+                      {item.missingEvidence.length > 0 && (
+                        <span className="cell-detail">
+                          Manca:{" "}
+                          {item.missingEvidence
+                            .map((value) => value.requiredField ?? value.requiredDocumentType)
+                            .join(", ")}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <Link href={`/technical-compare?ids=${product.id},${other.id}`}>
+                        Confronta
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </DataTable>
+        ) : (
+          <p className="muted">
+            Nessuna equivalenza tecnica valutata. Le alternative commerciali restano separate
+            finchÃ© le evidenze non sono sufficienti.
+          </p>
+        )}
+      </details>
+      <details id="offerte" className="disclosure-section" open>
+        <summary>
+          <span>Confronto offerte dello stesso prodotto</span>
+          <small>
+            {comparison.sorted.length} offerte Â· spread {comparison.spread.toFixed(1)}%
+          </small>
+        </summary>
+        <p className="muted">
+          Il confronto riguarda lo stesso prodotto canonico. Prezzi non normalizzabili o unitÃ 
+          incompatibili non vengono ordinati come equivalenti.
+        </p>
+        <DataTable label="Confronto offerte fornitori">
+          <thead>
+            <tr>
+              <th>Fornitore / SKU</th>
+              <th>Confezione</th>
+              <th>Economia</th>
+              <th>Condizioni commerciali</th>
+              <th>Pagamento / consegna</th>
+              <th>ValiditÃ </th>
+              <th>Fonte</th>
+            </tr>
+          </thead>
+          <tbody>
+            {comparison.sorted.map((offer, index) => {
+              const price = normalizeOfferPrice(product, offer);
+              const comparable = price.normalizedPrice != null;
+              return (
+                <tr className={index === 0 && comparable ? "best-offer-row" : ""} key={offer.id}>
+                  <td>
+                    <strong>{offer.supplier.name}</strong>
+                    <span className="cell-detail mono">{offer.supplierSku ?? "SKU n.d."}</span>
+                    {offer.preferred && <span className="cell-detail">Convenzionato</span>}
+                  </td>
+                  <td>
+                    {product.packageDescription}
+                    <span className="cell-detail">
+                      {Number(offer.packageSize ?? product.unitsPerPackage).toLocaleString("it-IT")}{" "}
+                      {offer.packageUnit ?? product.purchaseUom}
+                    </span>
+                  </td>
+                  <td>
+                    <strong>
+                      {comparable
+                        ? `${formatCurrency(price.normalizedPrice!, 4)} / ${price.consumptionLabel}`
+                        : "Non confrontabile"}
+                    </strong>
+                    <span className="cell-detail">
+                      {formatMoney(Number(offer.unitPrice))} / confezione
+                    </span>
+                    <span className="cell-detail">
+                      {comparable
+                        ? index === 0
+                          ? "Migliore"
+                          : `+${((price.normalizedPrice! / Number(comparison.lowest?.normalizedUnitPrice) - 1) * 100).toFixed(1)}%`
+                        : "UOM da verificare"}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="cell-detail">
+                      MOQ {Number(offer.moq).toLocaleString("it-IT")}
+                    </span>
+                    <span className="cell-detail">
+                      Franco{" "}
+                      {offer.supplier.freeShippingThreshold
+                        ? formatMoney(Number(offer.supplier.freeShippingThreshold))
+                        : "n.d."}
+                    </span>
+                    <span className="cell-detail">
+                      Trasporto{" "}
+                      {offer.supplier.shippingFeeBelowThreshold
+                        ? formatMoney(Number(offer.supplier.shippingFeeBelowThreshold))
+                        : "n.d."}
+                    </span>
+                    <span className="cell-detail">
+                      Maggiorazione{" "}
+                      {offer.supplier.surchargeBelowMinimum
+                        ? formatMoney(Number(offer.supplier.surchargeBelowMinimum))
+                        : "n.d."}
+                    </span>
+                  </td>
+                  <td>
+                    {offer.supplier.paymentTerms ?? "n.d."}
+                    <span className="cell-detail">
+                      {offer.leadTimeDays != null
+                        ? `${offer.leadTimeDays} giorni`
+                        : (offer.supplier.deliveryTerms ?? "n.d.")}
+                    </span>
+                  </td>
+                  <td>
+                    {offer.validFrom ? formatDate(offer.validFrom) : "n.d."}
+                    <span className="cell-detail">
+                      fino al {offer.validUntil ? formatDate(offer.validUntil) : "n.d."}
+                    </span>
+                  </td>
+                  <td>
+                    {offer.sourceDocument && offer.importedRecord ? (
+                      ["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"].includes(context.roleCode) ? (
+                        <Link
+                          className="text-link"
+                          href={`/imports/${offer.importedRecord.importJobId}`}
+                        >
+                          {offer.sourceDocument.originalFilename}
+                        </Link>
+                      ) : (
+                        <span className="muted">{offer.sourceDocument.originalFilename}</span>
+                      )
+                    ) : (
+                      <span className="muted">{offer.priceList?.name ?? "Listino demo"}</span>
+                    )}
+                    <span className="cell-detail">
+                      {offer.priceList ? `v${offer.priceList.version}` : "Versione n.d."}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </DataTable>
+      </details>
+      <details id="storico" className="disclosure-section">
+        <summary>
+          <span>
+            {history.length >= 12
+              ? "Andamento del prezzo negli ultimi 12 mesi"
+              : "Ultime variazioni di prezzo"}
+          </span>
+          <small>
+            {history.length
+              ? `Min ${formatCurrency(min, 4)} Â· Max ${formatCurrency(max, 4)}`
+              : "Nessuno storico disponibile"}
+          </small>
+        </summary>
+        {history.length > 1 && (
+          <>
+            <svg
+              className="line-chart"
+              viewBox="0 0 1000 220"
+              preserveAspectRatio="none"
+              aria-label="Andamento mensile del prezzo"
+            >
+              <polyline
+                points={historyValues
+                  .map(
+                    (value, index) =>
+                      `${(index / Math.max(1, historyValues.length - 1)) * 1000},${190 - ((value - min) / Math.max(0.0001, max - min)) * 150}`,
+                  )
+                  .join(" ")}
+              />
+              {historyValues.map((value, index) => (
+                <circle
+                  key={index}
+                  cx={(index / Math.max(1, historyValues.length - 1)) * 1000}
+                  cy={190 - ((value - min) / Math.max(0.0001, max - min)) * 150}
+                  r="5"
+                />
+              ))}
+            </svg>
+            <div className="chart-labels">
+              {history.map((point) => (
+                <span key={point.id}>
+                  {new Intl.DateTimeFormat("it-IT", { month: "short" }).format(point.effectiveAt)}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+      </details>
+      <details id="utilizzo" className="disclosure-section">
+        <summary>
+          <span>Utilizzo nel perimetro</span>
+          <small>{quantity} unitÃ  osservate</small>
+        </summary>
+        <div className="metrics-grid four">
+          <Metric label="QuantitÃ  acquistata" value={quantity} />
+          <Metric label="Spesa da inizio anno" value={formatMoney(spend)} />
+          <Metric
+            label="Ultimo acquisto"
+            value={last ? formatDate(last.purchaseOrder.issuedAt) : "Nessuno"}
+          />
+          <Metric
+            label="Strutture acquirenti"
+            value={new Set(usage.map((line) => line.purchaseOrder.facilityId)).size}
+          />
+        </div>
+      </details>
+      <details id="documenti" className="disclosure-section">
+        <summary>
+          <span>Documenti verificabili</span>
+          <small>Schede e certificazioni</small>
+        </summary>
+        <div className="document-list">
+          {[
+            ["Scheda tecnica", product.datasheetPath],
+            ["Scheda di sicurezza", product.safetySheetPath],
+            ["Certificazione", product.certificationPath],
+            ["Dichiarazione di conformitÃ ", product.declarationPath],
+          ]
+            .filter(([, path]) => path)
+            .map(([label, path]) => (
+              <Link href={path!} key={label}>
+                <strong>{label}</strong>
+                <span>Apri PDF demo</span>
+              </Link>
+            ))}
+        </div>
+      </details>
+      <details id="alternative" className="disclosure-section">
+        <summary>
+          <span>Alternative commerciali</span>
+          <small>{alternatives.length} prodotti da valutare</small>
+        </summary>
+        <div className="disclosure-actions">
+          <Link
+            className="secondary-cta"
+            href={`/compare-products?ids=${[product.id, ...alternatives.slice(0, 2).map((item) => item.id)].join(",")}`}
+          >
+            Confronta prodotti
+          </Link>
+        </div>
+        <div className="alternative-grid">
+          {alternatives.map((alternative, index) => {
+            const offer = getPreferredOffer(alternative.offers) ?? alternative.offers[0];
+            const price = offer ? normalizeOfferPrice(alternative, offer) : null;
+            return (
+              <Link href={`/products/${alternative.id}`} key={alternative.id}>
+                <ProductImage name={alternative.name} categoryCode={alternative.category.code} />
+                <b>
+                  {index % 3 === 0
+                    ? "Variante"
+                    : index % 3 === 1
+                      ? "Alternativa commerciale"
+                      : "Alternativa funzionale da verificare"}
+                </b>
+                <strong>{alternative.name}</strong>
+                <span>
+                  {offer?.supplier.name} Â· {price?.normalizedLabel}
+                </span>
+                <small>{statusLabel(offer?.availabilityStatus ?? "UNAVAILABLE")}</small>
+              </Link>
+            );
+          })}
+        </div>
+      </details>
+    </main>
+  );
 }

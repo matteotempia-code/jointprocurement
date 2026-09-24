@@ -23,7 +23,8 @@ export function verifiedPostgresConfig(connectionString: string): PoolConfig {
 
   if (isLocalDatabase(url.hostname)) return { connectionString, max: 1 };
 
-  for (const parameter of ["sslmode", "sslcert", "sslkey", "sslrootcert"]) url.searchParams.delete(parameter);
+  for (const parameter of ["sslmode", "sslcert", "sslkey", "sslrootcert"])
+    url.searchParams.delete(parameter);
   return {
     connectionString: url.toString(),
     max: 1,

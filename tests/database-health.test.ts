@@ -4,14 +4,21 @@ import { databaseHealth, databaseProjectRef } from "../src/lib/database-health";
 
 test("database project ref is derived from Supabase pooler and direct URLs", () => {
   assert.equal(
-    databaseProjectRef("postgresql://postgres.kvrvprzojwqhqtqsxkgu:secret@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"),
+    databaseProjectRef(
+      "postgresql://postgres.kvrvprzojwqhqtqsxkgu:secret@aws-0-eu-west-1.pooler.supabase.com:6543/postgres",
+    ),
     "kvrvprzojwqhqtqsxkgu",
   );
   assert.equal(
-    databaseProjectRef("postgresql://postgres:secret@db.kvrvprzojwqhqtqsxkgu.supabase.co:5432/postgres"),
+    databaseProjectRef(
+      "postgresql://postgres:secret@db.kvrvprzojwqhqtqsxkgu.supabase.co:5432/postgres",
+    ),
     "kvrvprzojwqhqtqsxkgu",
   );
-  assert.throws(() => databaseProjectRef("postgresql://postgres:secret@example.com:5432/postgres"), /does not identify/);
+  assert.throws(
+    () => databaseProjectRef("postgresql://postgres:secret@example.com:5432/postgres"),
+    /does not identify/,
+  );
 });
 
 test("database health reports only project identity and latest completed migration", async () => {

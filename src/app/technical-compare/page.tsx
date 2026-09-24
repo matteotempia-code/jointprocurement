@@ -27,7 +27,15 @@ export default async function TechnicalCompare({
       },
     },
   });
-  const selectableProducts = products.length === 2 ? [] : await prisma.canonicalProduct.findMany({ where: { organizationId: context.organization.id, active: true }, orderBy: { name: "asc" }, take: 200, select: { id: true, name: true } });
+  const selectableProducts =
+    products.length === 2
+      ? []
+      : await prisma.canonicalProduct.findMany({
+          where: { organizationId: context.organization.id, active: true },
+          orderBy: { name: "asc" },
+          take: 200,
+          select: { id: true, name: true },
+        });
   let assessment = null;
   let attributes: Awaited<ReturnType<typeof prisma.technicalProductAttribute.findMany>> = [];
   if (ids.length === 2) {
@@ -61,9 +69,41 @@ export default async function TechnicalCompare({
         title="Confronto tecnico"
         description="Differenze, evidenze e risultato restano separati dal semplice confronto descrittivo."
       />
-      {query.error && <p className="warning" role="alert">{query.error}</p>}
-      {query.saved && <p className="success" role="status">Decisione salvata.</p>}
-      {products.length !== 2 && <form action={runTechnicalComparison} className="technical-requirement-form"><label>Prodotto A<select name="productAId" required>{selectableProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label><label>Prodotto B<select name="productBId" required>{selectableProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label><button className="primary-cta">Confronta evidenze</button></form>}
+      {query.error && (
+        <p className="warning" role="alert">
+          {query.error}
+        </p>
+      )}
+      {query.saved && (
+        <p className="success" role="status">
+          Decisione salvata.
+        </p>
+      )}
+      {products.length !== 2 && (
+        <form action={runTechnicalComparison} className="technical-requirement-form">
+          <label>
+            Prodotto A
+            <select name="productAId" required>
+              {selectableProducts.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Prodotto B
+            <select name="productBId" required>
+              {selectableProducts.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="primary-cta">Confronta evidenze</button>
+        </form>
+      )}
       {products.length === 2 && (
         <>
           <section className="technical-comparison-head">
@@ -91,7 +131,8 @@ export default async function TechnicalCompare({
             <section className="technical-assessment">
               <StatusChip
                 variant={
-                  assessment.result === "IDENTICAL" || assessment.result === "FUNCTIONALLY_EQUIVALENT"
+                  assessment.result === "IDENTICAL" ||
+                  assessment.result === "FUNCTIONALLY_EQUIVALENT"
                     ? "ok"
                     : assessment.result === "NOT_EQUIVALENT"
                       ? "danger"
@@ -100,40 +141,85 @@ export default async function TechnicalCompare({
               >
                 {assessment.result}
               </StatusChip>
-              <StatusChip variant={assessment.reviewStatus === "HUMAN_APPROVED" ? "ok" : assessment.reviewStatus === "HUMAN_REJECTED" ? "danger" : "warn"}>
+              <StatusChip
+                variant={
+                  assessment.reviewStatus === "HUMAN_APPROVED"
+                    ? "ok"
+                    : assessment.reviewStatus === "HUMAN_REJECTED"
+                      ? "danger"
+                      : "warn"
+                }
+              >
                 {assessment.reviewStatus}
               </StatusChip>
               <strong>Confidenza {Math.round(Number(assessment.confidence) * 100)}%</strong>
               <p>{assessment.explanation}</p>
               {assessment.missingEvidence.map((item) => (
-                <p key={item.id}><b>Manca {item.requiredField ?? item.requiredDocumentType}</b> · {item.suggestedEvidence}</p>
+                <p key={item.id}>
+                  <b>Manca {item.requiredField ?? item.requiredDocumentType}</b> ·{" "}
+                  {item.suggestedEvidence}
+                </p>
               ))}
               {assessment.result === "FUNCTIONALLY_EQUIVALENT" && (
                 <form action={decideTechnicalEquivalence} className="technical-decision-form">
                   <input type="hidden" name="assessmentId" value={assessment.id} />
-                  <input type="hidden" name="evidenceFingerprint" value={assessment.evidenceFingerprint} />
+                  <input
+                    type="hidden"
+                    name="evidenceFingerprint"
+                    value={assessment.evidenceFingerprint}
+                  />
                   <input type="hidden" name="ids" value={ids.join(",")} />
-                  <label>Motivazione<input name="reason" required minLength={5} /></label>
-                  <button name="decision" value="APPROVE" className="primary-cta">Approva equivalenza</button>
-                  <button name="decision" value="REJECT" className="danger-cta">Rifiuta</button>
+                  <label>
+                    Motivazione
+                    <input name="reason" required minLength={5} />
+                  </label>
+                  <button name="decision" value="APPROVE" className="primary-cta">
+                    Approva equivalenza
+                  </button>
+                  <button name="decision" value="REJECT" className="danger-cta">
+                    Rifiuta
+                  </button>
                 </form>
               )}
               {assessment.savingOpportunities.map((saving) => (
                 <p key={saving.id}>
-                  <b>{saving.type}</b> · {saving.savingPercent === null ? "nessun saving difendibile" : `${Number(saving.savingPercent).toFixed(1)}%`}
+                  <b>{saving.type}</b> ·{" "}
+                  {saving.savingPercent === null
+                    ? "nessun saving difendibile"
+                    : `${Number(saving.savingPercent).toFixed(1)}%`}
                 </p>
               ))}
             </section>
           )}
           <DataTable label="Matrice attributi tecnici">
-            <thead><tr><th>Attributo</th>{products.map((product) => <th key={product.id}>{product.name}</th>)}</tr></thead>
+            <thead>
+              <tr>
+                <th>Attributo</th>
+                {products.map((product) => (
+                  <th key={product.id}>{product.name}</th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
-              {keys.length ? keys.map((key) => (
-                <tr key={key}>
-                  <td>{attributes.find((item) => item.attributeKey === key)?.label ?? key}</td>
-                  {products.map((product) => <td key={product.id}>{attributes.find((item) => item.attributeKey === key && item.canonicalProductId === product.id)?.valueText ?? "Evidenza mancante"}</td>)}
-                </tr>
-              )) : <EmptyRow colSpan={3}>Nessun attributo tecnico approvato per il confronto.</EmptyRow>}
+              {keys.length ? (
+                keys.map((key) => (
+                  <tr key={key}>
+                    <td>{attributes.find((item) => item.attributeKey === key)?.label ?? key}</td>
+                    {products.map((product) => (
+                      <td key={product.id}>
+                        {attributes.find(
+                          (item) =>
+                            item.attributeKey === key && item.canonicalProductId === product.id,
+                        )?.valueText ?? "Evidenza mancante"}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                <EmptyRow colSpan={3}>
+                  Nessun attributo tecnico approvato per il confronto.
+                </EmptyRow>
+              )}
             </tbody>
           </DataTable>
         </>

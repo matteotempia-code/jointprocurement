@@ -16,5 +16,8 @@ export interface DocumentStorageProvider {
   exists(locator: DocumentStorageLocator): Promise<boolean>;
   delete(locator: DocumentStorageLocator): Promise<void>;
   head(locator: DocumentStorageLocator): Promise<StoredDocumentMetadata | null>;
-  createSignedUrl(locator: DocumentStorageLocator, expiresInSeconds: number): Promise<string | null>;
+  createSignedUrl(
+    locator: DocumentStorageLocator,
+    expiresInSeconds: number,
+  ): Promise<string | null>;
 }

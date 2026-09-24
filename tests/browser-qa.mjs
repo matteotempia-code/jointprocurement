@@ -17,71 +17,131 @@ await mkdir(smartImportUxArtifacts, { recursive: true });
 
 let localServer;
 async function isExpectedApp() {
-  try { const response = await fetch(base); return response.ok && (await response.text()).includes("Joint Procurement"); }
-  catch { return false; }
+  try {
+    const response = await fetch(base);
+    return response.ok && (await response.text()).includes("Joint Procurement");
+  } catch {
+    return false;
+  }
 }
 if (!(await isExpectedApp())) {
   const command = process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "npm";
-  const args = process.platform === "win32" ? ["/d", "/s", "/c", `npx next dev -p ${qaPort}`] : ["run", "dev", "--", "-p", qaPort];
+  const args =
+    process.platform === "win32"
+      ? ["/d", "/s", "/c", `npx next dev -p ${qaPort}`]
+      : ["run", "dev", "--", "-p", qaPort];
   localServer = spawn(command, args, { cwd: process.cwd(), stdio: "ignore", windowsHide: true });
-  for (let attempt = 0; attempt < 90 && !(await isExpectedApp()); attempt += 1) await new Promise((resolve) => setTimeout(resolve, 500));
+  for (let attempt = 0; attempt < 90 && !(await isExpectedApp()); attempt += 1)
+    await new Promise((resolve) => setTimeout(resolve, 500));
   if (!(await isExpectedApp())) throw new Error(`Joint Procurement OS non disponibile su ${base}.`);
 }
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const browserErrors = [];
-page.on("console", (message) => { if (message.type() === "error" && !message.text().includes("tree hydrated")) browserErrors.push(message.text()); });
+page.on("console", (message) => {
+  if (message.type() === "error" && !message.text().includes("tree hydrated"))
+    browserErrors.push(message.text());
+});
 page.on("pageerror", (error) => browserErrors.push(error.message));
 
 async function open(path = "/") {
   const response = await page.goto(new URL(path, base).toString(), { waitUntil: "networkidle" });
-  if (!response?.ok()) throw new Error(`GET ${path}: HTTP ${response?.status() ?? "nessuna risposta"}`);
+  if (!response?.ok())
+    throw new Error(`GET ${path}: HTTP ${response?.status() ?? "nessuna risposta"}`);
   await page.locator("main").waitFor();
 }
 async function switchTo(name) {
   await open("/");
   const switcher = page.getByLabel(/^(Persona demo|Visualizza come)$/);
-  const value = await switcher.locator("option").evaluateAll((options, expected) => options.find((option) => option.textContent?.includes(expected))?.value, name);
+  const value = await switcher
+    .locator("option")
+    .evaluateAll(
+      (options, expected) =>
+        options.find((option) => option.textContent?.includes(expected))?.value,
+      name,
+    );
   if (!value) throw new Error(`Persona demo non disponibile: ${name}`);
   await switcher.selectOption(value);
   await page.waitForLoadState("networkidle");
   await page.getByText(name, { exact: true }).last().waitFor();
 }
-async function shot(filename, fullPage = true) { await page.screenshot({ path: `${artifacts}/${filename}`, fullPage }); }
-async function expectText(text) { await page.getByText(text, { exact: false }).first().waitFor(); }
+async function shot(filename, fullPage = true) {
+  await page.screenshot({ path: `${artifacts}/${filename}`, fullPage });
+}
+async function expectText(text) {
+  await page.getByText(text, { exact: false }).first().waitFor();
+}
 async function expectItalianCore() {
   const visible = await page.locator("body").innerText();
-  for (const forbidden of ["Request summary", "Budget impact", "Quick actions", "Needs attention", "Supplier Directory", "Download PDF", "Add to cart"]) {
-    if (visible.includes(forbidden)) throw new Error(`Copy inglese visibile: ${forbidden} (${page.url()})`);
+  for (const forbidden of [
+    "Request summary",
+    "Budget impact",
+    "Quick actions",
+    "Needs attention",
+    "Supplier Directory",
+    "Download PDF",
+    "Add to cart",
+  ]) {
+    if (visible.includes(forbidden))
+      throw new Error(`Copy inglese visibile: ${forbidden} (${page.url()})`);
   }
 }
 async function assertNoOverflow() {
   const overflow = await page.evaluate(() => {
     if (document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1) return [];
-    return [...document.querySelectorAll("body *")].filter((element) => {
-      const rect = element.getBoundingClientRect();
-      return rect.right > document.documentElement.clientWidth + 1 || rect.left < -1;
-    }).slice(0, 8).map((element) => ({
-      element: `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ""}${[...element.classList].map((name) => `.${name}`).join("")}`,
-      left: Math.round(element.getBoundingClientRect().left),
-      right: Math.round(element.getBoundingClientRect().right),
-      width: Math.round(element.getBoundingClientRect().width),
-    }));
+    return [...document.querySelectorAll("body *")]
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.right > document.documentElement.clientWidth + 1 || rect.left < -1;
+      })
+      .slice(0, 8)
+      .map((element) => ({
+        element: `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ""}${[...element.classList].map((name) => `.${name}`).join("")}`,
+        left: Math.round(element.getBoundingClientRect().left),
+        right: Math.round(element.getBoundingClientRect().right),
+        width: Math.round(element.getBoundingClientRect().width),
+      }));
   });
-  if (overflow.length) throw new Error(`Overflow orizzontale: ${page.url()} ${JSON.stringify(overflow)}`);
+  if (overflow.length)
+    throw new Error(`Overflow orizzontale: ${page.url()} ${JSON.stringify(overflow)}`);
 }
 
 const generated = [];
-async function capture(filename, fullPage = true) { await expectItalianCore(); await assertNoOverflow(); await shot(filename, fullPage); generated.push(filename); }
+async function capture(filename, fullPage = true) {
+  await expectItalianCore();
+  await assertNoOverflow();
+  await shot(filename, fullPage);
+  generated.push(filename);
+}
 const styleGenerated = [];
-async function captureStyle(filename, fullPage = true) { await expectItalianCore(); await assertNoOverflow(); await page.screenshot({ path: `${styleArtifacts}/${filename}`, fullPage }); styleGenerated.push(filename); }
+async function captureStyle(filename, fullPage = true) {
+  await expectItalianCore();
+  await assertNoOverflow();
+  await page.screenshot({ path: `${styleArtifacts}/${filename}`, fullPage });
+  styleGenerated.push(filename);
+}
 const uxGenerated = [];
-async function captureUx(filename, fullPage = false) { await expectItalianCore(); await assertNoOverflow(); await page.screenshot({ path: `${uxArtifacts}/${filename}`, fullPage }); uxGenerated.push(filename); }
+async function captureUx(filename, fullPage = false) {
+  await expectItalianCore();
+  await assertNoOverflow();
+  await page.screenshot({ path: `${uxArtifacts}/${filename}`, fullPage });
+  uxGenerated.push(filename);
+}
 const smartImportGenerated = [];
-async function captureSmartImport(filename, fullPage = true) { await expectItalianCore(); await assertNoOverflow(); await page.screenshot({ path: `${smartImportArtifacts}/${filename}`, fullPage }); smartImportGenerated.push(filename); }
+async function captureSmartImport(filename, fullPage = true) {
+  await expectItalianCore();
+  await assertNoOverflow();
+  await page.screenshot({ path: `${smartImportArtifacts}/${filename}`, fullPage });
+  smartImportGenerated.push(filename);
+}
 const smartImportUxGenerated = [];
-async function captureSmartImportUx(filename, fullPage = true) { await expectItalianCore(); await assertNoOverflow(); await page.screenshot({ path: `${smartImportUxArtifacts}/${filename}`, fullPage }); smartImportUxGenerated.push(filename); }
+async function captureSmartImportUx(filename, fullPage = true) {
+  await expectItalianCore();
+  await assertNoOverflow();
+  await page.screenshot({ path: `${smartImportUxArtifacts}/${filename}`, fullPage });
+  smartImportUxGenerated.push(filename);
+}
 let sourceDocumentHref;
 
 try {
@@ -90,28 +150,47 @@ try {
   await capture("01-home-rsa.png");
   await captureStyle("01-shell-desktop.png", false);
   await captureStyle("02-home-rsa.png");
-  const importDenied = await page.goto(new URL("/imports", base).toString(), { waitUntil: "networkidle" });
-  const importWorkspaceVisible = await page.getByRole("heading", { name: "Importazioni", exact: true }).count();
-  if (importDenied?.status() !== 404 && importWorkspaceVisible) throw new Error("Un RSA Director può accedere alle Importazioni.");
+  const importDenied = await page.goto(new URL("/imports", base).toString(), {
+    waitUntil: "networkidle",
+  });
+  const importWorkspaceVisible = await page
+    .getByRole("heading", { name: "Importazioni", exact: true })
+    .count();
+  if (importDenied?.status() !== 404 && importWorkspaceVisible)
+    throw new Error("Un RSA Director può accedere alle Importazioni.");
 
   await open("/catalog?q=guanto");
   await expectText(/prodotti(?: trovati)?(?: · pagina)?/i);
-  if (!await page.locator('[role="img"][aria-label^="Immagine dimostrativa di"]').count()) throw new Error("Immagine prodotto assente dal catalogo");
+  if (!(await page.locator('[role="img"][aria-label^="Immagine dimostrativa di"]').count()))
+    throw new Error("Immagine prodotto assente dal catalogo");
   const productLink = page.locator(".refined-catalog article h2").first().locator("..");
   const productHref = await productLink.getAttribute("href");
   const favoriteAdd = page.getByRole("button", { name: /Aggiungi .* ai preferiti/i }).first();
-  if (await favoriteAdd.count()) { await favoriteAdd.click(); await page.waitForLoadState("networkidle"); }
+  if (await favoriteAdd.count()) {
+    await favoriteAdd.click();
+    await page.waitForLoadState("networkidle");
+  }
   await capture("02-catalogo.png");
   await captureStyle("03-catalogo.png");
   await captureUx("01-catalogo-row-desktop.png");
-  const catalogMoreActions = page.locator("summary:visible").filter({ hasText: "Altre azioni" }).first();
-  if (await catalogMoreActions.count()) { await catalogMoreActions.click(); await captureUx("03-add-to-list-dialog.png"); }
+  const catalogMoreActions = page
+    .locator("summary:visible")
+    .filter({ hasText: "Altre azioni" })
+    .first();
+  if (await catalogMoreActions.count()) {
+    await catalogMoreActions.click();
+    await captureUx("03-add-to-list-dialog.png");
+  }
 
   await open(productHref);
   await expectText(/Offerta convenzionata|Migliore offerta disponibile/);
-  if (!await page.locator('[role="img"][aria-label^="Immagine dimostrativa di"]').count()) throw new Error("Immagine prodotto assente da Prodotto 360");
+  if (!(await page.locator('[role="img"][aria-label^="Immagine dimostrativa di"]').count()))
+    throw new Error("Immagine prodotto assente da Prodotto 360");
   await page.locator("summary:visible").filter({ hasText: "Altre azioni" }).first().click();
-  const compareHref = await page.getByRole("link", { name: "Confronta offerte" }).first().getAttribute("href");
+  const compareHref = await page
+    .getByRole("link", { name: "Confronta offerte" })
+    .first()
+    .getAttribute("href");
   await page.locator("summary:visible").filter({ hasText: "Altre azioni" }).first().click();
   await capture("03-product-360.png");
   await captureStyle("04-product-360.png");
@@ -120,13 +199,18 @@ try {
   await open("/preferiti");
   await expectText("Catalogo personale");
   await capture("04-preferiti.png");
-  await page.getByRole("button", { name: /Aggiungi al carrello/i }).first().click();
+  await page
+    .getByRole("button", { name: /Aggiungi al carrello/i })
+    .first()
+    .click();
   await page.waitForLoadState("networkidle");
 
   await open("/liste");
   await capture("05-liste.png");
   const seededList = page.locator("article").filter({ hasText: "Dotazione mensile assistenza" });
-  const existingListHref = await seededList.getByRole("link", { name: /^Apri$/i }).getAttribute("href");
+  const existingListHref = await seededList
+    .getByRole("link", { name: /^Apri$/i })
+    .getAttribute("href");
   await open(existingListHref);
   await capture("06-dettaglio-lista.png");
   await captureUx("04-list-detail.png");
@@ -134,7 +218,10 @@ try {
   await page.waitForLoadState("networkidle");
 
   await open("/cart");
-  if (!await page.getByText("Budget generale", { exact: false }).count()) throw new Error(`Carrello non operativo: ${(await page.locator("main").innerText()).slice(0, 800)}`);
+  if (!(await page.getByText("Budget generale", { exact: false }).count()))
+    throw new Error(
+      `Carrello non operativo: ${(await page.locator("main").innerText()).slice(0, 800)}`,
+    );
   await capture("07-carrello.png");
   const savedListName = "Lista QA browser";
   await page.getByPlaceholder("Nome della nuova lista").fill(savedListName);
@@ -159,7 +246,10 @@ try {
 
   await open("/consegne");
   await capture("14-consegne.png");
-  const receiveHref = await page.getByRole("link", { name: "Registra ricezione" }).first().getAttribute("href");
+  const receiveHref = await page
+    .getByRole("link", { name: "Registra ricezione" })
+    .first()
+    .getAttribute("href");
   await open(receiveHref);
   await expectText("Registra consegna");
   await capture("15-ricezione.png");
@@ -183,7 +273,8 @@ try {
   await page.locator(".approval-actions").scrollIntoViewIfNeeded();
   await captureUx("07-approval-decision.png");
   await open("/facilities");
-  if (await page.getByText("Villa Serena", { exact: true }).count()) throw new Error("Area Manager vede una struttura fuori scope");
+  if (await page.getByText("Villa Serena", { exact: true }).count())
+    throw new Error("Area Manager vede una struttura fuori scope");
 
   await switchTo("Giulia Bianchi");
   await expectText("Coda operativa");
@@ -199,7 +290,10 @@ try {
   await captureStyle("05-supplier-360.png");
   await captureUx("06-supplier-kpis.png");
   await open("/categorie");
-  const categoryHref = await page.getByRole("link", { name: /spesa osservata/i }).first().getAttribute("href");
+  const categoryHref = await page
+    .getByRole("link", { name: /spesa osservata/i })
+    .first()
+    .getAttribute("href");
   await open(categoryHref);
   await capture("21-categoria-360.png");
 
@@ -211,11 +305,15 @@ try {
   await captureSmartImportUx("01-import-work-queue.png");
   await open("/imports/new");
   await captureSmartImport("02-new-import.png");
-  await page.getByTestId("import-file").setInputFiles("demo-imports/listino-alfa-medical-2027.xlsx");
+  await page
+    .getByTestId("import-file")
+    .setInputFiles("demo-imports/listino-alfa-medical-2027.xlsx");
   await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: "Alfa Medical" });
   await captureSmartImport("03-uploaded-document.png");
   await page.getByRole("button", { name: "Carica e interpreta" }).click();
-  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 60_000 });
+  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), {
+    timeout: 60_000,
+  });
   const firstImportUrl = new URL(page.url());
   const firstImportPath = firstImportUrl.pathname;
   await expectText("Revisione per eccezione");
@@ -228,13 +326,19 @@ try {
   await captureSmartImportUx("03-column-mapping-refined.png");
   await open(`${firstImportPath}?filtro=ready`);
   await captureSmartImport("06-review-exceptions.png");
-  const firstRecordHref = await page.getByRole("link", { name: "Riga 1", exact: true }).first().getAttribute("href");
+  const firstRecordHref = await page
+    .getByRole("link", { name: "Riga 1", exact: true })
+    .first()
+    .getAttribute("href");
   await open(firstRecordHref);
   await expectText("Dato interpretato");
-  sourceDocumentHref = await page.getByRole("link", { name: /Apri documento originale/i }).getAttribute("href");
+  sourceDocumentHref = await page
+    .getByRole("link", { name: /Apri documento originale/i })
+    .getAttribute("href");
   if (!sourceDocumentHref) throw new Error("Link al documento sorgente assente.");
   const sourceResponse = await page.request.get(new URL(sourceDocumentHref, base).toString());
-  if (!sourceResponse.ok() || !(await sourceResponse.body()).length) throw new Error("Documento sorgente non leggibile dallo storage.");
+  if (!sourceResponse.ok() || !(await sourceResponse.body()).length)
+    throw new Error("Documento sorgente non leggibile dallo storage.");
   await captureSmartImport("07-record-review.png");
   await captureSmartImport("08-match-candidates.png", false);
   await captureSmartImportUx("06-record-review-compact.png", false);
@@ -253,11 +357,15 @@ try {
   await captureSmartImport("12-publish-ready.png", false);
   await captureSmartImportUx("13-publish-summary.png");
   const publishButton = page.getByRole("button", { name: "Pubblica importazione" });
-  if (!await publishButton.isEnabled()) throw new Error("Il primo import pulito non è pubblicabile dopo la conferma dei match alti.");
+  if (!(await publishButton.isEnabled()))
+    throw new Error("Il primo import pulito non è pubblicabile dopo la conferma dei match alti.");
   await publishButton.click();
   await page.getByRole("dialog").waitFor();
   await captureSmartImportUx("14-publish-confirm.png", false);
-  await Promise.all([page.waitForURL(/pubblicato=/, { timeout: 60_000 }), page.getByRole("dialog").getByRole("button", { name: "Pubblica", exact: true }).click()]);
+  await Promise.all([
+    page.waitForURL(/pubblicato=/, { timeout: 60_000 }),
+    page.getByRole("dialog").getByRole("button", { name: "Pubblica", exact: true }).click(),
+  ]);
   await open(`${firstImportPath}/summary`);
   await expectText("Importazione completata");
   await captureSmartImport("13-import-completed.png");
@@ -270,11 +378,15 @@ try {
   await captureSmartImportUx("17-price-intelligence-filtered.png");
 
   await open("/imports/new");
-  await page.getByTestId("import-file").setInputFiles("demo-imports/listino-alfa-medical-2028.xlsx");
+  await page
+    .getByTestId("import-file")
+    .setInputFiles("demo-imports/listino-alfa-medical-2028.xlsx");
   await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: "Alfa Medical" });
   await captureSmartImport("16-second-version-upload.png");
   await page.getByRole("button", { name: "Carica e interpreta" }).click();
-  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 60_000 });
+  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), {
+    timeout: 60_000,
+  });
   const secondImportPath = new URL(page.url()).pathname;
   await open(`${secondImportPath}/changes`);
   await captureSmartImport("17-old-vs-new.png");
@@ -284,7 +396,9 @@ try {
   await captureSmartImportUx("18-packaging-change.png");
   await open(`${secondImportPath}?filtro=attention&eccezione=PACKAGE_CHANGE`);
   const packagingRow = page.locator("tr", { hasText: "Cambio confezione" }).first();
-  const packagingHref = await packagingRow.getByRole("link", { name: /^Riga / }).getAttribute("href");
+  const packagingHref = await packagingRow
+    .getByRole("link", { name: /^Riga / })
+    .getAttribute("href");
   await open(packagingHref);
   await captureSmartImport("19-packaging-change-review.png");
   await Promise.all([
@@ -292,7 +406,10 @@ try {
     page.getByRole("button", { name: "Conferma associazione" }).first().click(),
   ]);
   await open(`${secondImportPath}?filtro=nuovi`);
-  const newProductHref = await page.getByRole("link", { name: /Schermo facciale antiappannamento/i }).first().getAttribute("href");
+  const newProductHref = await page
+    .getByRole("link", { name: /Schermo facciale antiappannamento/i })
+    .first()
+    .getAttribute("href");
   await open(newProductHref);
   await captureSmartImport("09-new-product-review.png");
   await captureSmartImportUx("11-new-product-compact.png");
@@ -303,13 +420,18 @@ try {
   ]);
 
   await open("/imports");
-  const dirtyImportHref = await page.getByRole("link", { name: "offerta-caresupply-sporca.csv" }).first().getAttribute("href");
+  const dirtyImportHref = await page
+    .getByRole("link", { name: "offerta-caresupply-sporca.csv" })
+    .first()
+    .getAttribute("href");
   await open(dirtyImportHref);
   await captureSmartImportUx("04-exceptions-first.png");
   await captureSmartImportUx("05-bulk-review.png", false);
   await open(`${new URL(dirtyImportHref, base).pathname}?filtro=all`);
   const nonComparableRow = page.locator("tr", { hasText: "Non confrontabile" }).first();
-  const nonComparableHref = await nonComparableRow.getByRole("link", { name: /^Riga / }).getAttribute("href");
+  const nonComparableHref = await nonComparableRow
+    .getByRole("link", { name: /^Riga / })
+    .getAttribute("href");
   await open(nonComparableHref);
   await captureSmartImport("10-non-comparable.png");
   await captureSmartImportUx("12-non-comparable-action.png");
@@ -327,7 +449,8 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await switchTo("Lucia Ferri");
   const deniedDocument = await page.request.get(new URL(sourceDocumentHref, base).toString());
-  if (deniedDocument.status() !== 404) throw new Error("Un utente fuori ruolo puo accedere al documento sorgente.");
+  if (deniedDocument.status() !== 404)
+    throw new Error("Un utente fuori ruolo puo accedere al documento sorgente.");
   await open("/");
   await expectText("Cosa ti serve oggi");
   await capture("25-home-rsa-mobile.png");
@@ -357,7 +480,10 @@ try {
   await switchTo("Elena Conti");
   await switchTo("Davide Romano");
 
-  const expected = Array.from({ length: 33 }, (_, index) => `${String(index + 1).padStart(2, "0")}-`).length;
+  const expected = Array.from(
+    { length: 33 },
+    (_, index) => `${String(index + 1).padStart(2, "0")}-`,
+  ).length;
   if (generated.length !== expected) throw new Error(`Screenshot generati ${generated.length}/33`);
   for (const filename of generated) await access(`${artifacts}/${filename}`);
   const canonicalStyleViews = new Map([
@@ -370,17 +496,25 @@ try {
     ["07-procurement-control-center.png", "18-procurement-control-center.png"],
     ["08-catalogo-mobile.png", "26-catalogo-mobile.png"],
   ]);
-  for (const [target, source] of canonicalStyleViews) await copyFile(`${artifacts}/${source}`, `${styleArtifacts}/${target}`);
-  if (styleGenerated.length !== 8) throw new Error(`Screenshot style audit generati ${styleGenerated.length}/8`);
+  for (const [target, source] of canonicalStyleViews)
+    await copyFile(`${artifacts}/${source}`, `${styleArtifacts}/${target}`);
+  if (styleGenerated.length !== 8)
+    throw new Error(`Screenshot style audit generati ${styleGenerated.length}/8`);
   for (const filename of styleGenerated) await access(`${styleArtifacts}/${filename}`);
-  if (uxGenerated.length !== 10) throw new Error(`Screenshot UX finali generati ${uxGenerated.length}/10`);
+  if (uxGenerated.length !== 10)
+    throw new Error(`Screenshot UX finali generati ${uxGenerated.length}/10`);
   for (const filename of uxGenerated) await access(`${uxArtifacts}/${filename}`);
-  if (smartImportGenerated.length !== 19) throw new Error(`Screenshot Smart Import generati ${smartImportGenerated.length}/19`);
+  if (smartImportGenerated.length !== 19)
+    throw new Error(`Screenshot Smart Import generati ${smartImportGenerated.length}/19`);
   for (const filename of smartImportGenerated) await access(`${smartImportArtifacts}/${filename}`);
-  if (smartImportUxGenerated.length !== 20) throw new Error(`Screenshot Smart Import UX generati ${smartImportUxGenerated.length}/20`);
-  for (const filename of smartImportUxGenerated) await access(`${smartImportUxArtifacts}/${filename}`);
+  if (smartImportUxGenerated.length !== 20)
+    throw new Error(`Screenshot Smart Import UX generati ${smartImportUxGenerated.length}/20`);
+  for (const filename of smartImportUxGenerated)
+    await access(`${smartImportUxArtifacts}/${filename}`);
   if (browserErrors.length) throw new Error(`Errori console browser:\n${browserErrors.join("\n")}`);
-  console.log(`BROWSER QA PASS: 6 personas, flussi core e Smart Import reale, scope, ${generated.length} screenshot finali, ${styleGenerated.length} style audit, ${uxGenerated.length} UX finali e ${smartImportGenerated.length} Smart Import verificati.`);
+  console.log(
+    `BROWSER QA PASS: 6 personas, flussi core e Smart Import reale, scope, ${generated.length} screenshot finali, ${styleGenerated.length} style audit, ${uxGenerated.length} UX finali e ${smartImportGenerated.length} Smart Import verificati.`,
+  );
   console.log(generated.join("\n"));
   console.log(styleGenerated.join("\n"));
   console.log(uxGenerated.join("\n"));

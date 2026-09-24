@@ -8,10 +8,14 @@ const files = (await readdir(testDirectory))
   .sort()
   .map((name) => path.join("tests", name));
 
-const child = spawn(process.execPath, ["--import", "tsx", "--test", "--test-concurrency=1", ...files], {
-  env: process.env,
-  stdio: ["ignore", "pipe", "pipe"],
-});
+const child = spawn(
+  process.execPath,
+  ["--import", "tsx", "--test", "--test-concurrency=1", ...files],
+  {
+    env: process.env,
+    stdio: ["ignore", "pipe", "pipe"],
+  },
+);
 
 let tap = "";
 const forward = (stream, destination) => {
@@ -27,12 +31,14 @@ forward(child.stderr, process.stderr);
 
 const exitCode = await new Promise((resolve) => child.on("close", (code) => resolve(code ?? 1)));
 if (exitCode !== 0 && process.env.GITHUB_ACTIONS === "true") {
-  const failedNames = [...tap.matchAll(/^not ok \d+ - (.+)$/gm)]
-    .map((match) => match[1].replace(/[^\p{L}\p{N} .,:()/_-]/gu, "").slice(0, 180));
+  const failedNames = [...tap.matchAll(/^not ok \d+ - (.+)$/gm)].map((match) =>
+    match[1].replace(/[^\p{L}\p{N} .,:()/_-]/gu, "").slice(0, 180),
+  );
   const safeErrors = [...tap.matchAll(/^\s*error: ['"](.+?)['"]\s*$/gm)]
     .map((match) => match[1].replace(/[^\p{L}\p{N} .,:()/_-]/gu, "").slice(0, 180))
     .slice(0, 3);
-  const summary = [...failedNames, ...safeErrors].join(" | ") || "test process exited without a TAP failure name";
+  const summary =
+    [...failedNames, ...safeErrors].join(" | ") || "test process exited without a TAP failure name";
   console.error(`::error title=Sanitized test failures::${summary}`);
 }
 

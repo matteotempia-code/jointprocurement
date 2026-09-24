@@ -10,4 +10,8 @@ export async function cleanVideoArtifacts() {
   console.log(`VIDEO DEMO CLEAN: PASS\nRipulito esclusivamente ${PATHS.root}`);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) cleanVideoArtifacts().catch((error) => { console.error(error); process.exitCode = 1; });
+if (process.argv[1] === fileURLToPath(import.meta.url))
+  cleanVideoArtifacts().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });

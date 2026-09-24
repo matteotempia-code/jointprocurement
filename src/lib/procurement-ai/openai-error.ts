@@ -11,7 +11,9 @@ export function openAIRequestSignal(timeoutMs: number) {
 }
 
 export function openAIRequestTimeoutMs(operation: string) {
-  return ["DOCUMENT_CONTEXT", "COMMERCIAL_CONDITIONS", "TECHNICAL_DOCUMENT"].includes(operation) ? 45_000 : 15_000;
+  return ["DOCUMENT_CONTEXT", "COMMERCIAL_CONDITIONS", "TECHNICAL_DOCUMENT"].includes(operation)
+    ? 45_000
+    : 15_000;
 }
 
 export function isOpenAIRequestTimeout(error: unknown) {
@@ -47,7 +49,8 @@ export function safeOpenAIErrorDiagnostic(input: {
   operation: string;
   model: string;
 }): SafeOpenAIErrorDiagnostic {
-  const payload = input.payload && typeof input.payload === "object" ? input.payload as OpenAIErrorPayload : {};
+  const payload =
+    input.payload && typeof input.payload === "object" ? (input.payload as OpenAIErrorPayload) : {};
   return {
     httpStatus: input.status,
     type: safeString(payload.error?.type, "unknown", 100),

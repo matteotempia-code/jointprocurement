@@ -19,13 +19,48 @@ export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const context = await getCurrentUserOrNull();
-  if (!context) return <html lang="it"><body>{children}</body></html>;
+  if (!context)
+    return (
+      <html lang="it">
+        <body>{children}</body>
+      </html>
+    );
   const scope = await resolveScope(context.assignment);
   const demoMode = demoModeEnabled();
   const users = demoMode ? await getDemoUsers() : [];
   return (
     <html lang="it" data-scroll-behavior="smooth">
-      <body><AppShell navigation={navigationByRole[context.roleCode]} demoMode={demoMode} switcher={demoMode ? <DemoRoleSwitcher users={users} currentId={context.user.id} /> : null} identity={<div className="identity"><div className="avatar">{context.user.name.split(" ").map((part) => part[0]).join("")}</div><div><b>{context.user.name}</b><span>{roleNameLabel(context.role.name)}</span><ScopeBadge type={scope.type} label={scope.label} />{!demoMode && <form action={logout}><button type="submit">Esci</button></form>}</div></div>}>{children}</AppShell></body>
+      <body>
+        <AppShell
+          navigation={navigationByRole[context.roleCode]}
+          demoMode={demoMode}
+          switcher={
+            demoMode ? <DemoRoleSwitcher users={users} currentId={context.user.id} /> : null
+          }
+          identity={
+            <div className="identity">
+              <div className="avatar">
+                {context.user.name
+                  .split(" ")
+                  .map((part) => part[0])
+                  .join("")}
+              </div>
+              <div>
+                <b>{context.user.name}</b>
+                <span>{roleNameLabel(context.role.name)}</span>
+                <ScopeBadge type={scope.type} label={scope.label} />
+                {!demoMode && (
+                  <form action={logout}>
+                    <button type="submit">Esci</button>
+                  </form>
+                )}
+              </div>
+            </div>
+          }
+        >
+          {children}
+        </AppShell>
+      </body>
     </html>
   );
 }

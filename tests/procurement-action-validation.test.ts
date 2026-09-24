@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { actionId, actionQuantity, procurementActionSchemas } from "../src/lib/procurement/action-validation";
+import {
+  actionId,
+  actionQuantity,
+  procurementActionSchemas,
+} from "../src/lib/procurement/action-validation";
 
 test("procurement action quantities reject empty, NaN and out-of-range values", () => {
   for (const value of ["", "NaN", Number.NaN, "0", "-1", "1000001"]) {

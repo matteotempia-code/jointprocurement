@@ -4,37 +4,93 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 async function main() {
   if (process.env.DEMO_MODE !== "true" || process.env.ALLOW_CERTIFICATION_CLEANUP !== "true") {
-    throw new Error("Certification cleanup requires DEMO_MODE=true and ALLOW_CERTIFICATION_CLEANUP=true.");
+    throw new Error(
+      "Certification cleanup requires DEMO_MODE=true and ALLOW_CERTIFICATION_CLEANUP=true.",
+    );
   }
-  if (process.env.NODE_ENV === "production") throw new Error("Certification cleanup is forbidden with NODE_ENV=production.");
+  if (process.env.NODE_ENV === "production")
+    throw new Error("Certification cleanup is forbidden with NODE_ENV=production.");
   const connectionString = process.env.DATABASE_URL?.trim();
   if (!connectionString) throw new Error("DATABASE_URL is required.");
 
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   try {
     const requisitions = await prisma.purchaseRequisition.findMany({
-      where: { OR: [{ requisitionNumber: { startsWith: "PR-EDGE-" } }, { requisitionNumber: { startsWith: "PR-TEST-SPLIT" } }] },
-      select: { id: true, purchaseOrders: { select: { id: true, lines: { select: { id: true } }, receipts: { select: { id: true, lines: { select: { id: true } } } } } } },
+      where: {
+        OR: [
+          { requisitionNumber: { startsWith: "PR-EDGE-" } },
+          { requisitionNumber: { startsWith: "PR-TEST-SPLIT" } },
+        ],
+      },
+      select: {
+        id: true,
+        purchaseOrders: {
+          select: {
+            id: true,
+            lines: { select: { id: true } },
+            receipts: { select: { id: true, lines: { select: { id: true } } } },
+          },
+        },
+      },
     });
     const requisitionIds = requisitions.map((item) => item.id);
-    const purchaseOrderIds = requisitions.flatMap((item) => item.purchaseOrders.map((order) => order.id));
-    const purchaseOrderLineIds = requisitions.flatMap((item) => item.purchaseOrders.flatMap((order) => order.lines.map((line) => line.id)));
-    const receiptIds = requisitions.flatMap((item) => item.purchaseOrders.flatMap((order) => order.receipts.map((receipt) => receipt.id)));
-    const receiptLineIds = requisitions.flatMap((item) => item.purchaseOrders.flatMap((order) => order.receipts.flatMap((receipt) => receipt.lines.map((line) => line.id))));
+    const purchaseOrderIds = requisitions.flatMap((item) =>
+      item.purchaseOrders.map((order) => order.id),
+    );
+    const purchaseOrderLineIds = requisitions.flatMap((item) =>
+      item.purchaseOrders.flatMap((order) => order.lines.map((line) => line.id)),
+    );
+    const receiptIds = requisitions.flatMap((item) =>
+      item.purchaseOrders.flatMap((order) => order.receipts.map((receipt) => receipt.id)),
+    );
+    const receiptLineIds = requisitions.flatMap((item) =>
+      item.purchaseOrders.flatMap((order) =>
+        order.receipts.flatMap((receipt) => receipt.lines.map((line) => line.id)),
+      ),
+    );
 
     if (requisitionIds.length) {
       await prisma.$transaction(async (tx) => {
-        await tx.auditEvent.deleteMany({ where: { entityId: { in: [...requisitionIds, ...purchaseOrderIds, ...purchaseOrderLineIds, ...receiptIds, ...receiptLineIds] } } });
-        await tx.qualityIssue.deleteMany({ where: { OR: [{ purchaseOrderLineId: { in: purchaseOrderLineIds } }, { receiptLineId: { in: receiptLineIds } }] } });
+        await tx.auditEvent.deleteMany({
+          where: {
+            entityId: {
+              in: [
+                ...requisitionIds,
+                ...purchaseOrderIds,
+                ...purchaseOrderLineIds,
+                ...receiptIds,
+                ...receiptLineIds,
+              ],
+            },
+          },
+        });
+        await tx.qualityIssue.deleteMany({
+          where: {
+            OR: [
+              { purchaseOrderLineId: { in: purchaseOrderLineIds } },
+              { receiptLineId: { in: receiptLineIds } },
+            ],
+          },
+        });
         await tx.receipt.deleteMany({ where: { id: { in: receiptIds } } });
-        await tx.purchaseOrderLine.deleteMany({ where: { purchaseOrderId: { in: purchaseOrderIds } } });
+        await tx.purchaseOrderLine.deleteMany({
+          where: { purchaseOrderId: { in: purchaseOrderIds } },
+        });
         await tx.purchaseOrder.deleteMany({ where: { id: { in: purchaseOrderIds } } });
         await tx.approvalRequest.deleteMany({ where: { requisitionId: { in: requisitionIds } } });
-        await tx.purchaseRequisitionLine.deleteMany({ where: { requisitionId: { in: requisitionIds } } });
+        await tx.purchaseRequisitionLine.deleteMany({
+          where: { requisitionId: { in: requisitionIds } },
+        });
         await tx.purchaseRequisition.deleteMany({ where: { id: { in: requisitionIds } } });
       });
     }
-    console.log(JSON.stringify({ marker: "CERTIFICATION_FIXTURE_CLEANUP_V1", requisitions: requisitionIds.length, purchaseOrders: purchaseOrderIds.length }));
+    console.log(
+      JSON.stringify({
+        marker: "CERTIFICATION_FIXTURE_CLEANUP_V1",
+        requisitions: requisitionIds.length,
+        purchaseOrders: purchaseOrderIds.length,
+      }),
+    );
   } finally {
     await prisma.$disconnect();
   }
@@ -46,7 +102,8 @@ main().catch((error) => {
     .replace(/postgres(?:ql)?:\/\/\S+/gi, "[connection]")
     .replace(/[^\p{L}\p{N} .,:()/_-]/gu, "")
     .slice(0, 300);
-  if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Certification cleanup::${safe}`);
+  if (process.env.GITHUB_ACTIONS === "true")
+    console.error(`::error title=Certification cleanup::${safe}`);
   else console.error(safe);
   process.exitCode = 1;
 });

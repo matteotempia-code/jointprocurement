@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-const identifier = z.string().trim().min(1).max(191).regex(/^[^\u0000-\u001f\u007f]+$/);
+const identifier = z
+  .string()
+  .trim()
+  .min(1)
+  .max(191)
+  .regex(/^[^\u0000-\u001f\u007f]+$/);
 const finiteQuantity = z.coerce.number().finite().max(1_000_000);
 
 export const procurementActionSchemas = {
@@ -18,8 +23,13 @@ export function actionId(value: FormDataEntryValue | null, field: string) {
   return parsed.data;
 }
 
-export function actionQuantity(value: FormDataEntryValue | number | null, options?: { removable?: boolean }) {
-  const schema = options?.removable ? procurementActionSchemas.removableQuantity : procurementActionSchemas.positiveQuantity;
+export function actionQuantity(
+  value: FormDataEntryValue | number | null,
+  options?: { removable?: boolean },
+) {
+  const schema = options?.removable
+    ? procurementActionSchemas.removableQuantity
+    : procurementActionSchemas.positiveQuantity;
   const parsed = schema.safeParse(value);
   if (!parsed.success) throw new Error("Quantità non valida.");
   return parsed.data;

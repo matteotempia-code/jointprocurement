@@ -8,11 +8,16 @@ export class LocalDocumentStorage implements DocumentStorageProvider {
   constructor(private readonly root = path.join(process.cwd(), "var", "imports")) {}
 
   private resolve(locator: DocumentStorageLocator, allowFixture = false) {
-    if (locator.provider !== this.id || locator.bucket) throw new Error("Locator locale non valido.");
+    if (locator.provider !== this.id || locator.bucket)
+      throw new Error("Locator locale non valido.");
     const objectKey = assertSafeObjectKey(locator.objectKey);
     if (objectKey.startsWith("fixtures/")) {
       if (!allowFixture) throw new Error("Le fixture repository sono in sola lettura.");
-      const fixture = path.resolve(process.cwd(), "demo-imports", ...objectKey.slice("fixtures/".length).split("/"));
+      const fixture = path.resolve(
+        process.cwd(),
+        "demo-imports",
+        ...objectKey.slice("fixtures/".length).split("/"),
+      );
       const fixturePrefix = path.resolve(process.cwd(), "demo-imports") + path.sep;
       if (!fixture.startsWith(fixturePrefix)) throw new Error("Percorso fixture non valido.");
       return fixture;
@@ -34,9 +39,31 @@ export class LocalDocumentStorage implements DocumentStorageProvider {
     });
   }
 
-  get(locator: DocumentStorageLocator) { return readFile(this.resolve(locator, true)); }
-  async exists(locator: DocumentStorageLocator) { try { await stat(this.resolve(locator, true)); return true; } catch { return false; } }
-  async delete(locator: DocumentStorageLocator) { await rm(this.resolve(locator), { force: true }); }
-  async head(locator: DocumentStorageLocator) { try { const value = await stat(this.resolve(locator, true)); return { size: value.size }; } catch { return null; } }
-  async createSignedUrl(_locator: DocumentStorageLocator, _expiresInSeconds: number) { void _locator; void _expiresInSeconds; return null; }
+  get(locator: DocumentStorageLocator) {
+    return readFile(this.resolve(locator, true));
+  }
+  async exists(locator: DocumentStorageLocator) {
+    try {
+      await stat(this.resolve(locator, true));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async delete(locator: DocumentStorageLocator) {
+    await rm(this.resolve(locator), { force: true });
+  }
+  async head(locator: DocumentStorageLocator) {
+    try {
+      const value = await stat(this.resolve(locator, true));
+      return { size: value.size };
+    } catch {
+      return null;
+    }
+  }
+  async createSignedUrl(_locator: DocumentStorageLocator, _expiresInSeconds: number) {
+    void _locator;
+    void _expiresInSeconds;
+    return null;
+  }
 }

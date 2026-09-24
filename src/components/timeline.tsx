@@ -10,5 +10,19 @@ type TimelineEvent = {
 };
 
 export function Timeline({ events }: { events: TimelineEvent[] }) {
-  return <ol className="timeline">{events.map((event) => <li key={event.id}><i /><div><strong>{statusLabel(event.action)}</strong><span>{formatDate(event.createdAt)} · {event.actor?.name ?? "Sistema"}</span></div></li>)}</ol>;
+  return (
+    <ol className="timeline">
+      {events.map((event) => (
+        <li key={event.id}>
+          <i />
+          <div>
+            <strong>{statusLabel(event.action)}</strong>
+            <span>
+              {formatDate(event.createdAt)} · {event.actor?.name ?? "Sistema"}
+            </span>
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
 }

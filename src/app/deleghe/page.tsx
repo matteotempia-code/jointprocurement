@@ -4,10 +4,142 @@ import { DataTable, EmptyRow, PageHeader, StatusChip } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/pricing";
-const iso=(date:Date)=>date.toISOString().slice(0,10);
-export default async function DelegationsPage({searchParams}:{searchParams:Promise<{esito?:string}>}){
- const context=await requireRoles(["PROCUREMENT_ADMIN"]),query=await searchParams,now=new Date();
- const [rows,users]=await Promise.all([prisma.approvalDelegation.findMany({where:{organizationId:context.organization.id},include:{delegator:true,delegate:true},orderBy:[{active:"desc"},{validUntil:"asc"}]}),prisma.user.findMany({where:{assignments:{some:{organizationId:context.organization.id,active:true}}},orderBy:{name:"asc"}})]);
- const status=(row:typeof rows[number])=>!row.active||row.validUntil<now?["Scaduta","neutral"]as const:row.validFrom>now?["Futura","warn"]as const:["Attiva","ok"]as const;
- return <main className="phase2-page phase2-admin"><PageHeader eyebrow="Poteri e continuita" title="Deleghe di approvazione" description="Crea e governa deleghe circoscritte al tenant, con validita verificata." action={<AdminPanel label="Nuova delega"><form action={manageDelegation} className="admin-crud-form"><input type="hidden" name="intent" value="create"/><label>Delegante<select name="delegatorId">{users.map(u=><option value={u.id} key={u.id}>{u.name}</option>)}</select></label><label>Delegato<select name="delegateId">{users.map(u=><option value={u.id} key={u.id}>{u.name}</option>)}</select></label><label>Dal<input name="validFrom" type="date" required/></label><label>Al<input name="validUntil" type="date" required/></label><button className="primary-cta">Crea delega</button></form></AdminPanel>}/><AdminFeedback result={query.esito}/><DataTable label="Deleghe"><thead><tr><th>Delegante</th><th>Delegato</th><th>Validita</th><th>Stato</th><th>Gestione</th></tr></thead><tbody>{rows.length?rows.map(row=>{const[label,variant]=status(row);return <tr key={row.id}><td>{row.delegator.name}</td><td>{row.delegate.name}</td><td>{formatDate(row.validFrom)} - {formatDate(row.validUntil)}</td><td><StatusChip variant={variant}>{label}</StatusChip></td><td><details className="row-more"><summary>Modifica</summary><form action={manageDelegation} className="admin-crud-form"><input type="hidden" name="id" value={row.id}/><label>Dal<input name="validFrom" type="date" defaultValue={iso(row.validFrom)} required/></label><label>Al<input name="validUntil" type="date" defaultValue={iso(row.validUntil)} required/></label><button name="intent" value="update">Salva</button>{row.active&&<button className="danger-secondary" name="intent" value="deactivate">Disattiva</button>}</form></details></td></tr>}):<EmptyRow colSpan={5}>Nessuna delega.</EmptyRow>}</tbody></DataTable></main>;
+const iso = (date: Date) => date.toISOString().slice(0, 10);
+export default async function DelegationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ esito?: string }>;
+}) {
+  const context = await requireRoles(["PROCUREMENT_ADMIN"]),
+    query = await searchParams,
+    now = new Date();
+  const [rows, users] = await Promise.all([
+    prisma.approvalDelegation.findMany({
+      where: { organizationId: context.organization.id },
+      include: { delegator: true, delegate: true },
+      orderBy: [{ active: "desc" }, { validUntil: "asc" }],
+    }),
+    prisma.user.findMany({
+      where: { assignments: { some: { organizationId: context.organization.id, active: true } } },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+  const status = (row: (typeof rows)[number]) =>
+    !row.active || row.validUntil < now
+      ? (["Scaduta", "neutral"] as const)
+      : row.validFrom > now
+        ? (["Futura", "warn"] as const)
+        : (["Attiva", "ok"] as const);
+  return (
+    <main className="phase2-page phase2-admin">
+      <PageHeader
+        eyebrow="Poteri e continuita"
+        title="Deleghe di approvazione"
+        description="Crea e governa deleghe circoscritte al tenant, con validita verificata."
+        action={
+          <AdminPanel label="Nuova delega">
+            <form action={manageDelegation} className="admin-crud-form">
+              <input type="hidden" name="intent" value="create" />
+              <label>
+                Delegante
+                <select name="delegatorId">
+                  {users.map((u) => (
+                    <option value={u.id} key={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Delegato
+                <select name="delegateId">
+                  {users.map((u) => (
+                    <option value={u.id} key={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Dal
+                <input name="validFrom" type="date" required />
+              </label>
+              <label>
+                Al
+                <input name="validUntil" type="date" required />
+              </label>
+              <button className="primary-cta">Crea delega</button>
+            </form>
+          </AdminPanel>
+        }
+      />
+      <AdminFeedback result={query.esito} />
+      <DataTable label="Deleghe">
+        <thead>
+          <tr>
+            <th>Delegante</th>
+            <th>Delegato</th>
+            <th>Validita</th>
+            <th>Stato</th>
+            <th>Gestione</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length ? (
+            rows.map((row) => {
+              const [label, variant] = status(row);
+              return (
+                <tr key={row.id}>
+                  <td>{row.delegator.name}</td>
+                  <td>{row.delegate.name}</td>
+                  <td>
+                    {formatDate(row.validFrom)} - {formatDate(row.validUntil)}
+                  </td>
+                  <td>
+                    <StatusChip variant={variant}>{label}</StatusChip>
+                  </td>
+                  <td>
+                    <details className="row-more">
+                      <summary>Modifica</summary>
+                      <form action={manageDelegation} className="admin-crud-form">
+                        <input type="hidden" name="id" value={row.id} />
+                        <label>
+                          Dal
+                          <input
+                            name="validFrom"
+                            type="date"
+                            defaultValue={iso(row.validFrom)}
+                            required
+                          />
+                        </label>
+                        <label>
+                          Al
+                          <input
+                            name="validUntil"
+                            type="date"
+                            defaultValue={iso(row.validUntil)}
+                            required
+                          />
+                        </label>
+                        <button name="intent" value="update">
+                          Salva
+                        </button>
+                        {row.active && (
+                          <button className="danger-secondary" name="intent" value="deactivate">
+                            Disattiva
+                          </button>
+                        )}
+                      </form>
+                    </details>
+                  </td>
+                </tr>
+              );
+            })
+          ) : (
+            <EmptyRow colSpan={5}>Nessuna delega.</EmptyRow>
+          )}
+        </tbody>
+      </DataTable>
+    </main>
+  );
 }

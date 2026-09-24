@@ -8,14 +8,29 @@ export async function ensureDirectories() {
 
 export function runCommand(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd: process.cwd(), windowsHide: true, stdio: options.quiet ? "pipe" : "inherit", env: { ...process.env, ...options.env } });
+    const child = spawn(command, args, {
+      cwd: process.cwd(),
+      windowsHide: true,
+      stdio: options.quiet ? "pipe" : "inherit",
+      env: { ...process.env, ...options.env },
+    });
     let output = "";
     if (options.quiet) {
-      child.stdout?.on("data", (chunk) => { output += chunk; });
-      child.stderr?.on("data", (chunk) => { output += chunk; });
+      child.stdout?.on("data", (chunk) => {
+        output += chunk;
+      });
+      child.stderr?.on("data", (chunk) => {
+        output += chunk;
+      });
     }
     child.on("error", reject);
-    child.on("exit", (code) => code === 0 ? resolve({ code, output }) : reject(new Error(`${command} ${args.join(" ")} è terminato con exit code ${code}.\n${output}`)));
+    child.on("exit", (code) =>
+      code === 0
+        ? resolve({ code, output })
+        : reject(
+            new Error(`${command} ${args.join(" ")} è terminato con exit code ${code}.\n${output}`),
+          ),
+    );
   });
 }
 
@@ -23,19 +38,31 @@ export async function isApplicationReady(baseUrl = BASE_URL) {
   try {
     const response = await fetch(baseUrl, { signal: AbortSignal.timeout(2500) });
     return response.ok && (await response.text()).includes("Joint Procurement");
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 export async function startDemoServer() {
   if (await isApplicationReady()) return { process: null, reused: true, baseUrl: BASE_URL };
   await ensureDirectories();
-  const child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "-p", String(PORT)], {
-    cwd: process.cwd(), windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, VIDEO_DEMO_MODE: "1", NEXT_TELEMETRY_DISABLED: "1" },
-  });
+  const child = spawn(
+    process.execPath,
+    ["node_modules/next/dist/bin/next", "dev", "-p", String(PORT)],
+    {
+      cwd: process.cwd(),
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, VIDEO_DEMO_MODE: "1", NEXT_TELEMETRY_DISABLED: "1" },
+    },
+  );
   let log = "";
-  child.stdout.on("data", (chunk) => { log += chunk; });
-  child.stderr.on("data", (chunk) => { log += chunk; });
+  child.stdout.on("data", (chunk) => {
+    log += chunk;
+  });
+  child.stderr.on("data", (chunk) => {
+    log += chunk;
+  });
   for (let attempt = 0; attempt < 180; attempt += 1) {
     if (await isApplicationReady()) {
       await writeFile(`${PATHS.reports}/server.log`, log, "utf8");
@@ -46,11 +73,17 @@ export async function startDemoServer() {
   }
   await writeFile(`${PATHS.reports}/server.log`, log, "utf8");
   stopDemoServer({ process: child, reused: false });
-  throw new Error(`Il server demo non è diventato disponibile su ${BASE_URL}. Consulta ${PATHS.reports}/server.log.`);
+  throw new Error(
+    `Il server demo non è diventato disponibile su ${BASE_URL}. Consulta ${PATHS.reports}/server.log.`,
+  );
 }
 
 export function stopDemoServer(server) {
   if (!server?.process || server.reused) return;
-  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(server.process.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" });
+  if (process.platform === "win32")
+    spawnSync("taskkill", ["/pid", String(server.process.pid), "/T", "/F"], {
+      windowsHide: true,
+      stdio: "ignore",
+    });
   else server.process.kill("SIGTERM");
 }

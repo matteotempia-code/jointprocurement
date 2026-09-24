@@ -15,7 +15,8 @@ const page = await browser.newPage({
 const errors = [];
 
 page.on("console", (message) => {
-  if (message.type() === "error" && !message.text().includes("tree hydrated")) errors.push(message.text());
+  if (message.type() === "error" && !message.text().includes("tree hydrated"))
+    errors.push(message.text());
 });
 page.on("pageerror", (error) => errors.push(error.message));
 
@@ -31,10 +32,13 @@ async function open(path) {
 async function switchTo(name) {
   await open("/");
   const switcher = page.getByLabel(/^(Persona demo|Visualizza come)$/);
-  const value = await switcher.locator("option").evaluateAll(
-    (options, expected) => options.find((option) => option.textContent?.includes(expected))?.value,
-    name,
-  );
+  const value = await switcher
+    .locator("option")
+    .evaluateAll(
+      (options, expected) =>
+        options.find((option) => option.textContent?.includes(expected))?.value,
+      name,
+    );
   assert.ok(value, `Demo persona ${name} is available`);
   await switcher.selectOption(value);
   await page.getByText(name, { exact: true }).last().waitFor();
@@ -57,9 +61,11 @@ try {
 
   await open("/imports");
   assert.match(await page.locator("main").innerText(), /Importazioni/i);
-  const reviewHrefs = await page.getByRole("link", { name: "Continua revisione" }).evaluateAll((links) => (
-    [...new Set(links.map((link) => link.getAttribute("href")).filter(Boolean))]
-  ));
+  const reviewHrefs = await page
+    .getByRole("link", { name: "Continua revisione" })
+    .evaluateAll((links) => [
+      ...new Set(links.map((link) => link.getAttribute("href")).filter(Boolean)),
+    ]);
   assert.ok(reviewHrefs.length, "At least one DEV Smart Import review job is available");
 
   let reviewHref;
@@ -74,8 +80,14 @@ try {
   const reviewText = await page.locator("main").innerText();
   assert.match(reviewText, /Revisione per eccezione/i);
   assert.match(reviewText, /Da verificare/i);
-  assert.ok(await page.locator('select[name="bulkAction"]').count(), "Bulk decision control is rendered");
-  assert.ok(await page.getByRole("button", { name: "Applica decisione" }).count(), "Review apply action is rendered");
+  assert.ok(
+    await page.locator('select[name="bulkAction"]').count(),
+    "Bulk decision control is rendered",
+  );
+  assert.ok(
+    await page.getByRole("button", { name: "Applica decisione" }).count(),
+    "Review apply action is rendered",
+  );
 
   const recordLink = page.getByRole("link", { name: /^Riga \d+$/ }).first();
   await recordLink.click();
@@ -83,7 +95,14 @@ try {
   assert.match(await page.locator("main").innerText(), /Revisione record|Documento/i);
 
   assert.deepEqual(errors, [], `Browser errors: ${errors.join(" | ")}`);
-  console.log(JSON.stringify({ status: "PASS", deployment: new URL(base).host, routes: routes.map(([path]) => path), review: reviewHref }));
+  console.log(
+    JSON.stringify({
+      status: "PASS",
+      deployment: new URL(base).host,
+      routes: routes.map(([path]) => path),
+      review: reviewHref,
+    }),
+  );
 } finally {
   await browser.close();
 }

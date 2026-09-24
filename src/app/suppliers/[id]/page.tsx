@@ -9,44 +9,473 @@ import { statusLabel } from "@/lib/presentation/status";
 import { getSupplierMetrics } from "@/lib/procurement/metrics";
 
 type Contact = { name?: string; email?: string; phone?: string };
-const tabs = [["overview", "Overview"], ["products", "Prodotti & prezzi"], ["commercial", "Condizioni"], ["quality", "Qualità"], ["documents", "Documenti"], ["activity", "Attività"]] as const;
+const tabs = [
+  ["overview", "Overview"],
+  ["products", "Prodotti & prezzi"],
+  ["commercial", "Condizioni"],
+  ["quality", "Qualità"],
+  ["documents", "Documenti"],
+  ["activity", "Attività"],
+] as const;
 
-export default async function Supplier360({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; page?: string }> }) {
+export default async function Supplier360({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string; page?: string }>;
+}) {
   const context = await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
   const id = (await params).id;
   const filters = await searchParams;
   const tab = tabs.some(([key]) => key === filters.tab) ? filters.tab! : "overview";
   const page = Math.max(1, Number.parseInt(filters.page ?? "1", 10) || 1);
   const [supplier, metrics, network] = await Promise.all([
-    prisma.supplier.findFirst({ where: { id, organizationId: context.organization.id }, include: { offers: { where: { active: true }, include: { canonicalProduct: { include: { category: true, offers: { where: { active: true } } } } } }, purchaseOrders: { include: { facility: true, lines: true, receipts: true }, orderBy: { issuedAt: "desc" } }, priceLists: { include: { sourceDocument: true, importJob: true }, orderBy: { createdAt: "desc" }, take: 6 } } }),
+    prisma.supplier.findFirst({
+      where: { id, organizationId: context.organization.id },
+      include: {
+        offers: {
+          where: { active: true },
+          include: {
+            canonicalProduct: { include: { category: true, offers: { where: { active: true } } } },
+          },
+        },
+        purchaseOrders: {
+          include: { facility: true, lines: true, receipts: true },
+          orderBy: { issuedAt: "desc" },
+        },
+        priceLists: {
+          include: { sourceDocument: true, importJob: true },
+          orderBy: { createdAt: "desc" },
+          take: 6,
+        },
+      },
+    }),
     getSupplierMetrics(id),
-    prisma.purchaseOrder.aggregate({ _sum: { total: true }, where: { organizationId: context.organization.id, status: { not: "CANCELLED" } } }),
+    prisma.purchaseOrder.aggregate({
+      _sum: { total: true },
+      where: { organizationId: context.organization.id, status: { not: "CANCELLED" } },
+    }),
   ]);
   if (!supplier) notFound();
-  const issues = await prisma.qualityIssue.findMany({ where: { purchaseOrderLine: { purchaseOrder: { supplierId: id } } }, include: { purchaseOrderLine: { include: { canonicalProduct: true, purchaseOrder: true } } }, orderBy: { openedAt: "desc" }, take: 20 });
+  const issues = await prisma.qualityIssue.findMany({
+    where: { purchaseOrderLine: { purchaseOrder: { supplierId: id } } },
+    include: { purchaseOrderLine: { include: { canonicalProduct: true, purchaseOrder: true } } },
+    orderBy: { openedAt: "desc" },
+    take: 20,
+  });
   const spend = supplier.purchaseOrders.reduce((sum, order) => sum + Number(order.total), 0);
-  const share = Number(network._sum.total) ? spend / Number(network._sum.total) * 100 : 0;
-  const dependency = share >= 25 ? "Alta dipendenza" : share >= 10 ? "Media dipendenza" : "Bassa dipendenza";
+  const share = Number(network._sum.total) ? (spend / Number(network._sum.total)) * 100 : 0;
+  const dependency =
+    share >= 25 ? "Alta dipendenza" : share >= 10 ? "Media dipendenza" : "Bassa dipendenza";
   const facilities = new Set(supplier.purchaseOrders.map((order) => order.facilityId));
-  const products = supplier.offers.map((offer) => { const current = getComparablePrice(offer); const best = Math.min(...offer.canonicalProduct.offers.map(getComparablePrice)); const lines = supplier.purchaseOrders.flatMap((order) => order.lines).filter((line) => line.canonicalProductId === offer.canonicalProductId); const last = supplier.purchaseOrders.find((order) => order.lines.some((line) => line.canonicalProductId === offer.canonicalProductId)); return { offer, current, best, spend: lines.reduce((sum, line) => sum + Number(line.lineTotal), 0), last }; }).sort((a, b) => b.spend - a.spend || a.offer.canonicalProduct.name.localeCompare(b.offer.canonicalProduct.name));
-  const singleSource = products.filter(({ offer }) => offer.canonicalProduct.offers.length === 1).length;
-  const monthly = Array.from({ length: 12 }, (_, offset) => { const date = new Date(2025, 8 + offset, 1); const value = supplier.purchaseOrders.filter((order) => order.issuedAt.getFullYear() === date.getFullYear() && order.issuedAt.getMonth() === date.getMonth()).reduce((sum, order) => sum + Number(order.total), 0); return { date, value }; });
+  const products = supplier.offers
+    .map((offer) => {
+      const current = getComparablePrice(offer);
+      const best = Math.min(...offer.canonicalProduct.offers.map(getComparablePrice));
+      const lines = supplier.purchaseOrders
+        .flatMap((order) => order.lines)
+        .filter((line) => line.canonicalProductId === offer.canonicalProductId);
+      const last = supplier.purchaseOrders.find((order) =>
+        order.lines.some((line) => line.canonicalProductId === offer.canonicalProductId),
+      );
+      return {
+        offer,
+        current,
+        best,
+        spend: lines.reduce((sum, line) => sum + Number(line.lineTotal), 0),
+        last,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.spend - a.spend ||
+        a.offer.canonicalProduct.name.localeCompare(b.offer.canonicalProduct.name),
+    );
+  const singleSource = products.filter(
+    ({ offer }) => offer.canonicalProduct.offers.length === 1,
+  ).length;
+  const monthly = Array.from({ length: 12 }, (_, offset) => {
+    const date = new Date(2025, 8 + offset, 1);
+    const value = supplier.purchaseOrders
+      .filter(
+        (order) =>
+          order.issuedAt.getFullYear() === date.getFullYear() &&
+          order.issuedAt.getMonth() === date.getMonth(),
+      )
+      .reduce((sum, order) => sum + Number(order.total), 0);
+    return { date, value };
+  });
   const maxMonth = Math.max(1, ...monthly.map(({ value }) => value));
-  const contacts = [supplier.commercialContact, supplier.orderContact, supplier.qualityContact] as Contact[];
-  const openIssues = issues.filter((issue) => ["OPEN", "UNDER_REVIEW"].includes(issue.status)).length;
+  const contacts = [
+    supplier.commercialContact,
+    supplier.orderContact,
+    supplier.qualityContact,
+  ] as Contact[];
+  const openIssues = issues.filter((issue) =>
+    ["OPEN", "UNDER_REVIEW"].includes(issue.status),
+  ).length;
   const visibleProducts = products.slice((page - 1) * 10, page * 10);
   const pageCount = Math.max(1, Math.ceil(products.length / 10));
   const visibleProductSpend = products.slice(0, 5).reduce((sum, item) => sum + item.spend, 0);
-  return <main className="phase1-page phase1-supplier">
-    <PageHeader eyebrow="Fornitore 360" title={supplier.name} description={`${supplier.vatNumber} · ${supplier.address}`} action={<div className="cta-row"><Link className="secondary-cta" href="/orders">Ordini</Link><Link className="secondary-cta" href="/non-conformita">Problemi</Link></div>} />
-    {(share >= 10 || openIssues > 0) && <div className="phase1-supplier-insight"><div><strong>{openIssues ? `${openIssues} non conformità aperte` : dependency}</strong><span>{share.toFixed(1)}% della spesa osservata · {singleSource} prodotti a fonte unica.</span></div><StatusChip variant={openIssues ? "warn" : "neutral"}>{dependency}</StatusChip></div>}
-    <div className="supplier-performance-strip"><div><span>Spesa osservata</span><strong>{formatMoney(spend)}</strong><small>{share.toFixed(1)}% del totale</small></div><div><span>Puntualità</span><strong>{metrics.delivered >= 5 ? `${metrics.onTimeRate.toFixed(1)}%` : "Dati insufficienti"}</strong><small>{metrics.delivered} consegne concluse</small></div><div><span>Completezza</span><strong>{metrics.delivered >= 5 ? `${metrics.completeRate.toFixed(1)}%` : "Dati insufficienti"}</strong><small>{metrics.delivered} consegne concluse</small></div><div><span>Qualità</span><strong>{openIssues} aperte</strong><small>{metrics.issues} problemi osservati</small></div></div>
-    <nav className="phase1-tabs" aria-label="Sezioni fornitore">{tabs.map(([key, label]) => <Link className={tab === key ? "active" : ""} key={key} href={`/suppliers/${id}?tab=${key}`}>{label}</Link>)}</nav>
-    {tab === "overview" && <div className="phase1-supplier-overview"><section><div className="section-heading"><div><h2>Spesa mensile</h2><p>Importi osservati sugli ordini emessi.</p></div></div><div className="mini-bars">{monthly.map((month) => <div key={month.date.toISOString()}><i><b style={{ height: `${month.value / maxMonth * 100}%` }} /></i><span>{new Intl.DateTimeFormat("it-IT", { month: "short" }).format(month.date)}</span><small>{month.value ? formatMoney(month.value) : "—"}</small></div>)}</div></section><section className="phase1-commercial-card"><span>Copertura commerciale</span><h2>{products.length} prodotti attivi</h2><dl><div><dt>Con alternative</dt><dd>{products.length - singleSource}</dd></div><div><dt>Fonte unica</dt><dd>{singleSource}</dd></div><div><dt>Strutture servite</dt><dd>{facilities.size}</dd></div><div><dt>Categorie</dt><dd>{new Set(supplier.offers.map(({ canonicalProduct }) => canonicalProduct.categoryId)).size}</dd></div></dl></section><section className="phase1-overview-products"><div className="section-heading"><div><h2>Prodotti rilevanti</h2><p>Top 5 per spesa: {formatMoney(visibleProductSpend)}. La spesa totale include tutte le {products.length} offerte.</p></div><Link href={`/suppliers/${id}?tab=products`}>Vedi tutti</Link></div>{products.slice(0, 5).map(({ offer, spend: productSpend }) => { const normalized = normalizeOfferPrice(offer.canonicalProduct, offer); return <Link href={`/products/${offer.canonicalProductId}`} key={offer.id}><div><strong>{offer.canonicalProduct.name}</strong><span>{offer.canonicalProduct.category.name}</span></div><PriceBlock normalizedPrice={normalized.normalizedPrice} normalizedUom={offer.canonicalProduct.consumptionUomLabel} packPrice={Number(offer.unitPrice)} packSize={offer.canonicalProduct.packageDescription} variant="table" /><strong>{formatMoney(productSpend)}</strong></Link>; })}</section></div>}
-    {tab === "products" && <section><div className="section-heading"><div><h2>Prodotti & prezzi</h2><p>Mostrati {visibleProducts.length} prodotti su {products.length}.</p></div></div><DataTable label="Prodotti del fornitore"><thead><tr><th>Prodotto</th><th>Categoria</th><th>Prezzo normalizzato</th><th>Posizione</th><th>Ultimo ordine</th><th>Spesa</th></tr></thead><tbody>{visibleProducts.length ? visibleProducts.map(({ offer, current, best, spend: productSpend, last }) => { const normalized = normalizeOfferPrice(offer.canonicalProduct, offer); return <tr key={offer.id}><td><Link href={`/products/${offer.canonicalProductId}`}>{offer.canonicalProduct.name}</Link></td><td>{offer.canonicalProduct.category.name}</td><td><PriceBlock normalizedPrice={normalized.normalizedPrice} normalizedUom={offer.canonicalProduct.consumptionUomLabel} packPrice={Number(offer.unitPrice)} packSize={offer.canonicalProduct.packageDescription} variant="table" /></td><td>{Math.abs(current - best) < .000001 ? "Migliore" : `+${((current / best - 1) * 100).toFixed(1)}%`}</td><td>{last ? formatDate(last.issuedAt) : "Mai"}</td><td className="num-cell">{formatMoney(productSpend)}</td></tr>; }) : <EmptyRow colSpan={6}>Nessun prodotto</EmptyRow>}</tbody></DataTable>{pageCount > 1 && <nav className="phase1-pagination"><Link href={`/suppliers/${id}?tab=products&page=${Math.max(1, page - 1)}`}>Precedente</Link><span>{page} / {pageCount}</span><Link href={`/suppliers/${id}?tab=products&page=${Math.min(pageCount, page + 1)}`}>Successiva</Link></nav>}</section>}
-    {tab === "commercial" && <div className="phase1-two-column"><section><h2>Condizioni correnti</h2><dl className="commercial-terms"><div><dt>Pagamento</dt><dd>{supplier.paymentTerms}</dd></div><div><dt>Consegna</dt><dd>{supplier.deliveryTerms}</dd></div><div><dt>Ordine minimo</dt><dd>{supplier.minimumOrderValue ? formatMoney(Number(supplier.minimumOrderValue)) : "—"}</dd></div><div><dt>Franco porto</dt><dd>{supplier.freeShippingThreshold ? formatMoney(Number(supplier.freeShippingThreshold)) : "—"}</dd></div></dl></section><section><h2>Referenti operativi</h2>{contacts.filter(Boolean).map((contact, index) => <div className="contact-row" key={index}><b>{["Commerciale", "Ordini", "Qualità"][index]}</b><strong>{contact.name}</strong><span>{contact.email} · {contact.phone}</span></div>)}</section></div>}
-    {tab === "quality" && <section><div className="section-heading"><div><h2>Consegne e non conformità</h2><p>{openIssues} aperte · {issues.length} osservate</p></div></div><DataTable label="Non conformità"><thead><tr><th>Prodotto</th><th>Tipo</th><th>Ordine</th><th>Gravità</th><th>Aperta</th><th>Stato</th></tr></thead><tbody>{issues.length ? issues.map((issue) => <tr key={issue.id}><td>{issue.purchaseOrderLine.canonicalProduct.name}</td><td>{statusLabel(issue.issueType)}</td><td><Link href={`/orders/${issue.purchaseOrderLine.purchaseOrder.id}`}>{issue.purchaseOrderLine.purchaseOrder.poNumber}</Link></td><td>{statusLabel(issue.severity)}</td><td>{formatDate(issue.openedAt)}</td><td>{statusLabel(issue.status)}</td></tr>) : <EmptyRow colSpan={6}>Nessuna non conformità registrata</EmptyRow>}</tbody></DataTable></section>}
-    {tab === "documents" && <div className="phase1-two-column"><section><h2>Documenti fornitore</h2>{[["Certificazione", supplier.certificationPath], ["Condizioni commerciali", supplier.commercialDocumentPath], ["Documento qualità", supplier.qualityDocumentPath]].map(([label, path]) => path ? <Link className="document-action" href={path} key={label}>{label} · PDF</Link> : <div className="empty-row" key={label}>{label} non disponibile</div>)}</section><section><h2>Listini recenti</h2>{supplier.priceLists.map((list) => <Link className="activity-row" href={`/price-lists/${list.id}`} key={list.id}><strong>{list.name}</strong><span>v{list.version} · {list.sourceDocument ? "Fonte verificata" : "Fixture demo"}</span><b>{list.active ? "Attivo" : "Storico"}</b></Link>)}</section></div>}
-    {tab === "activity" && <section><h2>Attività recente</h2>{supplier.purchaseOrders.slice(0, 12).map((order) => <Link className="activity-row" href={`/orders/${order.id}`} key={order.id}><strong>{order.poNumber}</strong><span>{formatDate(order.issuedAt)} · {statusLabel(order.status)} · {order.facility.name}</span><b>{formatMoney(Number(order.total))}</b></Link>)}</section>}
-  </main>;
+  return (
+    <main className="phase1-page phase1-supplier">
+      <PageHeader
+        eyebrow="Fornitore 360"
+        title={supplier.name}
+        description={`${supplier.vatNumber} · ${supplier.address}`}
+        action={
+          <div className="cta-row">
+            <Link className="secondary-cta" href="/orders">
+              Ordini
+            </Link>
+            <Link className="secondary-cta" href="/non-conformita">
+              Problemi
+            </Link>
+          </div>
+        }
+      />
+      {(share >= 10 || openIssues > 0) && (
+        <div className="phase1-supplier-insight">
+          <div>
+            <strong>{openIssues ? `${openIssues} non conformità aperte` : dependency}</strong>
+            <span>
+              {share.toFixed(1)}% della spesa osservata · {singleSource} prodotti a fonte unica.
+            </span>
+          </div>
+          <StatusChip variant={openIssues ? "warn" : "neutral"}>{dependency}</StatusChip>
+        </div>
+      )}
+      <div className="supplier-performance-strip">
+        <div>
+          <span>Spesa osservata</span>
+          <strong>{formatMoney(spend)}</strong>
+          <small>{share.toFixed(1)}% del totale</small>
+        </div>
+        <div>
+          <span>Puntualità</span>
+          <strong>
+            {metrics.delivered >= 5 ? `${metrics.onTimeRate.toFixed(1)}%` : "Dati insufficienti"}
+          </strong>
+          <small>{metrics.delivered} consegne concluse</small>
+        </div>
+        <div>
+          <span>Completezza</span>
+          <strong>
+            {metrics.delivered >= 5 ? `${metrics.completeRate.toFixed(1)}%` : "Dati insufficienti"}
+          </strong>
+          <small>{metrics.delivered} consegne concluse</small>
+        </div>
+        <div>
+          <span>Qualità</span>
+          <strong>{openIssues} aperte</strong>
+          <small>{metrics.issues} problemi osservati</small>
+        </div>
+      </div>
+      <nav className="phase1-tabs" aria-label="Sezioni fornitore">
+        {tabs.map(([key, label]) => (
+          <Link
+            className={tab === key ? "active" : ""}
+            key={key}
+            href={`/suppliers/${id}?tab=${key}`}
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
+      {tab === "overview" && (
+        <div className="phase1-supplier-overview">
+          <section>
+            <div className="section-heading">
+              <div>
+                <h2>Spesa mensile</h2>
+                <p>Importi osservati sugli ordini emessi.</p>
+              </div>
+            </div>
+            <div className="mini-bars">
+              {monthly.map((month) => (
+                <div key={month.date.toISOString()}>
+                  <i>
+                    <b style={{ height: `${(month.value / maxMonth) * 100}%` }} />
+                  </i>
+                  <span>
+                    {new Intl.DateTimeFormat("it-IT", { month: "short" }).format(month.date)}
+                  </span>
+                  <small>{month.value ? formatMoney(month.value) : "—"}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+          <section className="phase1-commercial-card">
+            <span>Copertura commerciale</span>
+            <h2>{products.length} prodotti attivi</h2>
+            <dl>
+              <div>
+                <dt>Con alternative</dt>
+                <dd>{products.length - singleSource}</dd>
+              </div>
+              <div>
+                <dt>Fonte unica</dt>
+                <dd>{singleSource}</dd>
+              </div>
+              <div>
+                <dt>Strutture servite</dt>
+                <dd>{facilities.size}</dd>
+              </div>
+              <div>
+                <dt>Categorie</dt>
+                <dd>
+                  {
+                    new Set(
+                      supplier.offers.map(({ canonicalProduct }) => canonicalProduct.categoryId),
+                    ).size
+                  }
+                </dd>
+              </div>
+            </dl>
+          </section>
+          <section className="phase1-overview-products">
+            <div className="section-heading">
+              <div>
+                <h2>Prodotti rilevanti</h2>
+                <p>
+                  Top 5 per spesa: {formatMoney(visibleProductSpend)}. La spesa totale include tutte
+                  le {products.length} offerte.
+                </p>
+              </div>
+              <Link href={`/suppliers/${id}?tab=products`}>Vedi tutti</Link>
+            </div>
+            {products.slice(0, 5).map(({ offer, spend: productSpend }) => {
+              const normalized = normalizeOfferPrice(offer.canonicalProduct, offer);
+              return (
+                <Link href={`/products/${offer.canonicalProductId}`} key={offer.id}>
+                  <div>
+                    <strong>{offer.canonicalProduct.name}</strong>
+                    <span>{offer.canonicalProduct.category.name}</span>
+                  </div>
+                  <PriceBlock
+                    normalizedPrice={normalized.normalizedPrice}
+                    normalizedUom={offer.canonicalProduct.consumptionUomLabel}
+                    packPrice={Number(offer.unitPrice)}
+                    packSize={offer.canonicalProduct.packageDescription}
+                    variant="table"
+                  />
+                  <strong>{formatMoney(productSpend)}</strong>
+                </Link>
+              );
+            })}
+          </section>
+        </div>
+      )}
+      {tab === "products" && (
+        <section>
+          <div className="section-heading">
+            <div>
+              <h2>Prodotti & prezzi</h2>
+              <p>
+                Mostrati {visibleProducts.length} prodotti su {products.length}.
+              </p>
+            </div>
+          </div>
+          <DataTable label="Prodotti del fornitore">
+            <thead>
+              <tr>
+                <th>Prodotto</th>
+                <th>Categoria</th>
+                <th>Prezzo normalizzato</th>
+                <th>Posizione</th>
+                <th>Ultimo ordine</th>
+                <th>Spesa</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleProducts.length ? (
+                visibleProducts.map(({ offer, current, best, spend: productSpend, last }) => {
+                  const normalized = normalizeOfferPrice(offer.canonicalProduct, offer);
+                  return (
+                    <tr key={offer.id}>
+                      <td>
+                        <Link href={`/products/${offer.canonicalProductId}`}>
+                          {offer.canonicalProduct.name}
+                        </Link>
+                      </td>
+                      <td>{offer.canonicalProduct.category.name}</td>
+                      <td>
+                        <PriceBlock
+                          normalizedPrice={normalized.normalizedPrice}
+                          normalizedUom={offer.canonicalProduct.consumptionUomLabel}
+                          packPrice={Number(offer.unitPrice)}
+                          packSize={offer.canonicalProduct.packageDescription}
+                          variant="table"
+                        />
+                      </td>
+                      <td>
+                        {Math.abs(current - best) < 0.000001
+                          ? "Migliore"
+                          : `+${((current / best - 1) * 100).toFixed(1)}%`}
+                      </td>
+                      <td>{last ? formatDate(last.issuedAt) : "Mai"}</td>
+                      <td className="num-cell">{formatMoney(productSpend)}</td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <EmptyRow colSpan={6}>Nessun prodotto</EmptyRow>
+              )}
+            </tbody>
+          </DataTable>
+          {pageCount > 1 && (
+            <nav className="phase1-pagination">
+              <Link href={`/suppliers/${id}?tab=products&page=${Math.max(1, page - 1)}`}>
+                Precedente
+              </Link>
+              <span>
+                {page} / {pageCount}
+              </span>
+              <Link href={`/suppliers/${id}?tab=products&page=${Math.min(pageCount, page + 1)}`}>
+                Successiva
+              </Link>
+            </nav>
+          )}
+        </section>
+      )}
+      {tab === "commercial" && (
+        <div className="phase1-two-column">
+          <section>
+            <h2>Condizioni correnti</h2>
+            <dl className="commercial-terms">
+              <div>
+                <dt>Pagamento</dt>
+                <dd>{supplier.paymentTerms}</dd>
+              </div>
+              <div>
+                <dt>Consegna</dt>
+                <dd>{supplier.deliveryTerms}</dd>
+              </div>
+              <div>
+                <dt>Ordine minimo</dt>
+                <dd>
+                  {supplier.minimumOrderValue
+                    ? formatMoney(Number(supplier.minimumOrderValue))
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>Franco porto</dt>
+                <dd>
+                  {supplier.freeShippingThreshold
+                    ? formatMoney(Number(supplier.freeShippingThreshold))
+                    : "—"}
+                </dd>
+              </div>
+            </dl>
+          </section>
+          <section>
+            <h2>Referenti operativi</h2>
+            {contacts.filter(Boolean).map((contact, index) => (
+              <div className="contact-row" key={index}>
+                <b>{["Commerciale", "Ordini", "Qualità"][index]}</b>
+                <strong>{contact.name}</strong>
+                <span>
+                  {contact.email} · {contact.phone}
+                </span>
+              </div>
+            ))}
+          </section>
+        </div>
+      )}
+      {tab === "quality" && (
+        <section>
+          <div className="section-heading">
+            <div>
+              <h2>Consegne e non conformità</h2>
+              <p>
+                {openIssues} aperte · {issues.length} osservate
+              </p>
+            </div>
+          </div>
+          <DataTable label="Non conformità">
+            <thead>
+              <tr>
+                <th>Prodotto</th>
+                <th>Tipo</th>
+                <th>Ordine</th>
+                <th>Gravità</th>
+                <th>Aperta</th>
+                <th>Stato</th>
+              </tr>
+            </thead>
+            <tbody>
+              {issues.length ? (
+                issues.map((issue) => (
+                  <tr key={issue.id}>
+                    <td>{issue.purchaseOrderLine.canonicalProduct.name}</td>
+                    <td>{statusLabel(issue.issueType)}</td>
+                    <td>
+                      <Link href={`/orders/${issue.purchaseOrderLine.purchaseOrder.id}`}>
+                        {issue.purchaseOrderLine.purchaseOrder.poNumber}
+                      </Link>
+                    </td>
+                    <td>{statusLabel(issue.severity)}</td>
+                    <td>{formatDate(issue.openedAt)}</td>
+                    <td>{statusLabel(issue.status)}</td>
+                  </tr>
+                ))
+              ) : (
+                <EmptyRow colSpan={6}>Nessuna non conformità registrata</EmptyRow>
+              )}
+            </tbody>
+          </DataTable>
+        </section>
+      )}
+      {tab === "documents" && (
+        <div className="phase1-two-column">
+          <section>
+            <h2>Documenti fornitore</h2>
+            {[
+              ["Certificazione", supplier.certificationPath],
+              ["Condizioni commerciali", supplier.commercialDocumentPath],
+              ["Documento qualità", supplier.qualityDocumentPath],
+            ].map(([label, path]) =>
+              path ? (
+                <Link className="document-action" href={path} key={label}>
+                  {label} · PDF
+                </Link>
+              ) : (
+                <div className="empty-row" key={label}>
+                  {label} non disponibile
+                </div>
+              ),
+            )}
+          </section>
+          <section>
+            <h2>Listini recenti</h2>
+            {supplier.priceLists.map((list) => (
+              <Link className="activity-row" href={`/price-lists/${list.id}`} key={list.id}>
+                <strong>{list.name}</strong>
+                <span>
+                  v{list.version} · {list.sourceDocument ? "Fonte verificata" : "Fixture demo"}
+                </span>
+                <b>{list.active ? "Attivo" : "Storico"}</b>
+              </Link>
+            ))}
+          </section>
+        </div>
+      )}
+      {tab === "activity" && (
+        <section>
+          <h2>Attività recente</h2>
+          {supplier.purchaseOrders.slice(0, 12).map((order) => (
+            <Link className="activity-row" href={`/orders/${order.id}`} key={order.id}>
+              <strong>{order.poNumber}</strong>
+              <span>
+                {formatDate(order.issuedAt)} · {statusLabel(order.status)} · {order.facility.name}
+              </span>
+              <b>{formatMoney(Number(order.total))}</b>
+            </Link>
+          ))}
+        </section>
+      )}
+    </main>
+  );
 }

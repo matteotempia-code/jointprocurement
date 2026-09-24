@@ -6,30 +6,62 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outputDirectory = path.join(root, "public", "documents");
 
 const documents = [
-  ["scheda-tecnica-demo.pdf", "SCHEDA TECNICA DEMO", "Dispositivo professionale sintetico - Modello JP-100", [
-    ["Identificazione", "Codice: DEMO-JP-100 | Lotto: FAC-SIMILE | Origine: dataset dimostrativo"],
-    ["Caratteristiche", "Materiale dimostrativo, confezione da 100 unita, uso professionale."],
-    ["Conservazione", "Conservare in luogo asciutto tra 5 C e 30 C. Proteggere dalla luce."],
-    ["Nota", "Documento sintetico senza validita tecnica, commerciale o regolatoria."],
-  ]],
-  ["scheda-sicurezza-demo.pdf", "SCHEDA DI SICUREZZA DEMO", "Fac-simile informativo - Prodotto sintetico JP-SAFE", [
-    ["Classificazione", "Prodotto dimostrativo non classificato. Nessuna sostanza reale dichiarata."],
-    ["Precauzioni", "Uso professionale simulato. Evitare contatto e dispersione accidentale."],
-    ["Primo intervento", "In un caso reale consultare sempre la scheda ufficiale del produttore."],
-    ["Nota", "Fac-simile privo di validita legale, sanitaria o regolatoria."],
-  ]],
-  ["certificazione-demo.pdf", "CERTIFICAZIONE DEMO", "Attestazione sintetica per il catalogo Joint Procurement OS", [
-    ["Oggetto", "Referenza dimostrativa DEMO-CERT-001."],
-    ["Dichiarazione", "Il presente asset verifica esclusivamente il flusso documentale software."],
-    ["Validita", "Nessuna. Non certifica prodotti, imprese, processi o conformita reali."],
-    ["Tracciabilita", "Emesso automaticamente dal generatore repository - revisione 1."],
-  ]],
-  ["dichiarazione-conformita-demo.pdf", "DICHIARAZIONE DI CONFORMITA DEMO", "FAC-SIMILE - Nessun fabbricante o soggetto reale", [
-    ["Prodotto", "Articolo sintetico JP-CONFORM-001, creato per test e presentazioni."],
-    ["Dichiarazione", "I dati sono inventati e non attestano conformita a norme o direttive."],
-    ["Responsabilita", "Non utilizzare il documento per acquisti, gare o verifiche regolatorie."],
-    ["Stato", "Documento demo controllato - revisione 1."],
-  ]],
+  [
+    "scheda-tecnica-demo.pdf",
+    "SCHEDA TECNICA DEMO",
+    "Dispositivo professionale sintetico - Modello JP-100",
+    [
+      [
+        "Identificazione",
+        "Codice: DEMO-JP-100 | Lotto: FAC-SIMILE | Origine: dataset dimostrativo",
+      ],
+      ["Caratteristiche", "Materiale dimostrativo, confezione da 100 unita, uso professionale."],
+      ["Conservazione", "Conservare in luogo asciutto tra 5 C e 30 C. Proteggere dalla luce."],
+      ["Nota", "Documento sintetico senza validita tecnica, commerciale o regolatoria."],
+    ],
+  ],
+  [
+    "scheda-sicurezza-demo.pdf",
+    "SCHEDA DI SICUREZZA DEMO",
+    "Fac-simile informativo - Prodotto sintetico JP-SAFE",
+    [
+      [
+        "Classificazione",
+        "Prodotto dimostrativo non classificato. Nessuna sostanza reale dichiarata.",
+      ],
+      ["Precauzioni", "Uso professionale simulato. Evitare contatto e dispersione accidentale."],
+      [
+        "Primo intervento",
+        "In un caso reale consultare sempre la scheda ufficiale del produttore.",
+      ],
+      ["Nota", "Fac-simile privo di validita legale, sanitaria o regolatoria."],
+    ],
+  ],
+  [
+    "certificazione-demo.pdf",
+    "CERTIFICAZIONE DEMO",
+    "Attestazione sintetica per il catalogo Joint Procurement OS",
+    [
+      ["Oggetto", "Referenza dimostrativa DEMO-CERT-001."],
+      [
+        "Dichiarazione",
+        "Il presente asset verifica esclusivamente il flusso documentale software.",
+      ],
+      ["Validita", "Nessuna. Non certifica prodotti, imprese, processi o conformita reali."],
+      ["Tracciabilita", "Emesso automaticamente dal generatore repository - revisione 1."],
+    ],
+  ],
+  [
+    "dichiarazione-conformita-demo.pdf",
+    "DICHIARAZIONE DI CONFORMITA DEMO",
+    "FAC-SIMILE - Nessun fabbricante o soggetto reale",
+    [
+      ["Prodotto", "Articolo sintetico JP-CONFORM-001, creato per test e presentazioni."],
+      ["Dichiarazione", "I dati sono inventati e non attestano conformita a norme o direttive."],
+      ["Responsabilita", "Non utilizzare il documento per acquisti, gare o verifiche regolatorie."],
+      ["Stato", "Documento demo controllato - revisione 1."],
+    ],
+  ],
 ].map(([file, title, subtitle, sections]) => ({ file, title, subtitle, sections }));
 
 function escapePdfText(value) {
@@ -38,9 +70,12 @@ function escapePdfText(value) {
 
 function createPdf(document) {
   const commands = [
-    "0.10 0.25 0.38 rg", "40 770 515 42 re f",
-    "BT /F1 19 Tf 1 1 1 rg 58 786 Td", `(${escapePdfText(document.title)}) Tj ET`,
-    "BT /F1 11 Tf 0.16 0.20 0.24 rg 58 748 Td", `(${escapePdfText(document.subtitle)}) Tj ET`,
+    "0.10 0.25 0.38 rg",
+    "40 770 515 42 re f",
+    "BT /F1 19 Tf 1 1 1 rg 58 786 Td",
+    `(${escapePdfText(document.title)}) Tj ET`,
+    "BT /F1 11 Tf 0.16 0.20 0.24 rg 58 748 Td",
+    `(${escapePdfText(document.subtitle)}) Tj ET`,
     "0.82 0.86 0.89 RG 40 728 m 555 728 l S",
   ];
   let y = 690;
@@ -79,5 +114,6 @@ function createPdf(document) {
 }
 
 await mkdir(outputDirectory, { recursive: true });
-for (const document of documents) await writeFile(path.join(outputDirectory, document.file), createPdf(document));
+for (const document of documents)
+  await writeFile(path.join(outputDirectory, document.file), createPdf(document));
 console.log(`Generated ${documents.length} synthetic demo PDFs in ${outputDirectory}`);

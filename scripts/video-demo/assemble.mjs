@@ -39,7 +39,13 @@ function run(binary, args, options = {}) {
 }
 
 function probe(file) {
-  return JSON.parse(execFileSync(ffprobePath, ["-v", "error", "-show_streams", "-show_format", "-of", "json", file], { encoding: "utf8" }));
+  return JSON.parse(
+    execFileSync(
+      ffprobePath,
+      ["-v", "error", "-show_streams", "-show_format", "-of", "json", file],
+      { encoding: "utf8" },
+    ),
+  );
 }
 
 function duration(file) {
@@ -89,7 +95,33 @@ function makeCard(output, durationSeconds, title, subtitle, detail) {
     `drawtext=fontfile='${font}':text='${escapeDrawtext(detail)}':fontcolor=0x77716a:fontsize=23:x=(w-text_w)/2:y=540`,
     `fade=t=in:st=0:d=0.7,fade=t=out:st=${(durationSeconds - 0.7).toFixed(2)}:d=0.7`,
   ].join(",");
-  run(ffmpegPath, ["-y", "-f", "lavfi", "-i", `color=c=0xf4f1eb:s=1920x1080:r=30:d=${durationSeconds}`, "-f", "lavfi", "-i", `anullsrc=r=48000:cl=stereo:d=${durationSeconds}`, "-vf", filters, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-shortest", output]);
+  run(ffmpegPath, [
+    "-y",
+    "-f",
+    "lavfi",
+    "-i",
+    `color=c=0xf4f1eb:s=1920x1080:r=30:d=${durationSeconds}`,
+    "-f",
+    "lavfi",
+    "-i",
+    `anullsrc=r=48000:cl=stereo:d=${durationSeconds}`,
+    "-vf",
+    filters,
+    "-c:v",
+    "libx264",
+    "-preset",
+    "medium",
+    "-crf",
+    "20",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "192k",
+    "-shortest",
+    output,
+  ]);
 }
 
 fs.mkdirSync(audioDir, { recursive: true });
@@ -97,14 +129,22 @@ fs.mkdirSync(finalDir, { recursive: true });
 fs.rmSync(workDir, { recursive: true, force: true });
 fs.mkdirSync(workDir, { recursive: true });
 
-const zipPath = path.resolve(arg("--voiceover") || process.env.VOICEOVER_ZIP_PATH || path.join(audioDir, "joint_procurement_voiceover.zip"));
+const zipPath = path.resolve(
+  arg("--voiceover") ||
+    process.env.VOICEOVER_ZIP_PATH ||
+    path.join(audioDir, "joint_procurement_voiceover.zip"),
+);
 if (!fs.existsSync(zipPath)) throw new Error(`Voiceover ZIP not found: ${zipPath}`);
 new AdmZip(zipPath).extractAllTo(audioDir, true);
 
 for (const [slug] of scenes) {
-  for (const [folder, extension] of [[clipsDir, "webm"], [audioDir, "mp3"]]) {
+  for (const [folder, extension] of [
+    [clipsDir, "webm"],
+    [audioDir, "mp3"],
+  ]) {
     const file = path.join(folder, `${slug}.${extension}`);
-    if (!fs.existsSync(file) || fs.statSync(file).size === 0) throw new Error(`Required input missing: ${file}`);
+    if (!fs.existsSync(file) || fs.statSync(file).size === 0)
+      throw new Error(`Required input missing: ${file}`);
   }
 }
 
@@ -115,15 +155,30 @@ const report = {
   introDuration,
   outroDuration,
   transitionDuration: transition,
-  encoding: { video: "H.264", resolution: "1920x1080", fps: 30, pixelFormat: "yuv420p", crf: 20, audio: "AAC 48 kHz stereo 192 kbps", faststart: true },
-  subtitleMethod: "Repository narration cue sheets, sentence segmented and aligned inside each final voice track; editorial cue subtitles, not word-level transcription.",
+  encoding: {
+    video: "H.264",
+    resolution: "1920x1080",
+    fps: 30,
+    pixelFormat: "yuv420p",
+    crf: 20,
+    audio: "AAC 48 kHz stereo 192 kbps",
+    faststart: true,
+  },
+  subtitleMethod:
+    "Repository narration cue sheets, sentence segmented and aligned inside each final voice track; editorial cue subtitles, not word-level transcription.",
   scenes: [],
   warnings: [],
 };
 
 const segments = [];
 const intro = path.join(workDir, "00-intro.mp4");
-makeCard(intro, introDuration, "Joint Procurement OS", "Anteo × Coopselios", "AI-Native Joint Procurement Operating System");
+makeCard(
+  intro,
+  introDuration,
+  "Joint Procurement OS",
+  "Anteo × Coopselios",
+  "AI-Native Joint Procurement Operating System",
+);
 segments.push(intro);
 
 let masterCursor = introDuration;
@@ -146,40 +201,144 @@ for (const [slug, label] of scenes) {
     extension > 0.005 ? `tpad=stop_mode=clone:stop_duration=${extension.toFixed(3)}` : null,
     `drawtext=fontfile='${font}':text='${escapeDrawtext(label)}':fontcolor=0x24211f:fontsize=25:box=1:boxcolor=0xf4f1ebdd:boxborderw=15:x=64:y=64:enable='between(t,0.7,3.2)'`,
     `fade=t=in:st=0:d=${transition},fade=t=out:st=${fadeOut.toFixed(3)}:d=${transition}`,
-  ].filter(Boolean).join(",");
+  ]
+    .filter(Boolean)
+    .join(",");
   const delay = Math.round(lead * 1000);
   const af = `loudnorm=I=-16:TP=-1:LRA=11,adelay=${delay}|${delay},apad=pad_dur=${finalDuration.toFixed(3)},atrim=0:${finalDuration.toFixed(3)},afade=t=in:st=0:d=0.08,afade=t=out:st=${Math.max(0, finalDuration - 0.25).toFixed(3)}:d=0.25`;
-  run(ffmpegPath, ["-y", "-i", video, "-i", audio, "-vf", vf, "-af", af, "-t", finalDuration.toFixed(3), "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-ar", "48000", "-ac", "2", "-b:a", "192k", output]);
+  run(ffmpegPath, [
+    "-y",
+    "-i",
+    video,
+    "-i",
+    audio,
+    "-vf",
+    vf,
+    "-af",
+    af,
+    "-t",
+    finalDuration.toFixed(3),
+    "-c:v",
+    "libx264",
+    "-preset",
+    "medium",
+    "-crf",
+    "20",
+    "-pix_fmt",
+    "yuv420p",
+    "-r",
+    "30",
+    "-c:a",
+    "aac",
+    "-ar",
+    "48000",
+    "-ac",
+    "2",
+    "-b:a",
+    "192k",
+    output,
+  ]);
   segments.push(output);
 
   const text = cueText(slug);
-  const phrases = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((x) => x.trim()).filter(Boolean) || [text];
+  const phrases = text
+    .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
+    ?.map((x) => x.trim())
+    .filter(Boolean) || [text];
   const available = audioDuration / phrases.length;
   phrases.forEach((phrase, index) => {
     const start = masterCursor + lead + index * available;
-    const end = Math.min(masterCursor + lead + audioDuration, start + Math.max(2.2, available - 0.15));
+    const end = Math.min(
+      masterCursor + lead + audioDuration,
+      start + Math.max(2.2, available - 0.15),
+    );
     subtitleCues.push({ start, end, text: wrap(phrase) });
   });
-  report.scenes.push({ scene: slug, videoSource: path.relative(root, video), videoDuration, audioSource: path.relative(root, audio), audioDuration, narrationStartOffset: lead, visualExtension: extension, playbackSpeedChange: 0, finalSceneDuration: finalDuration, transitionDuration: transition, warnings: extension ? [`Final-frame hold ${extension.toFixed(3)}s`] : [] });
+  report.scenes.push({
+    scene: slug,
+    videoSource: path.relative(root, video),
+    videoDuration,
+    audioSource: path.relative(root, audio),
+    audioDuration,
+    narrationStartOffset: lead,
+    visualExtension: extension,
+    playbackSpeedChange: 0,
+    finalSceneDuration: finalDuration,
+    transitionDuration: transition,
+    warnings: extension ? [`Final-frame hold ${extension.toFixed(3)}s`] : [],
+  });
   masterCursor += finalDuration;
 }
 
 const outro = path.join(workDir, "10-outro.mp4");
-makeCard(outro, outroDuration, "Joint Procurement OS", "Procurement semplice per chi acquista.", "Intelligence per chi governa.");
+makeCard(
+  outro,
+  outroDuration,
+  "Joint Procurement OS",
+  "Procurement semplice per chi acquista.",
+  "Intelligence per chi governa.",
+);
 segments.push(outro);
 
 const concatFile = path.join(workDir, "concat.txt");
-fs.writeFileSync(concatFile, segments.map((file) => `file '${file.replaceAll("'", "'\\''")}'`).join("\n") + "\n");
+fs.writeFileSync(
+  concatFile,
+  segments.map((file) => `file '${file.replaceAll("'", "'\\''")}'`).join("\n") + "\n",
+);
 const cleanMaster = path.join(finalDir, "joint-procurement-demo-v1.mp4");
 const musicPath = process.env.MUSIC_PATH ? path.resolve(process.env.MUSIC_PATH) : undefined;
 const voiceMaster = musicPath ? path.join(workDir, "voice-only-master.mp4") : cleanMaster;
-run(ffmpegPath, ["-y", "-f", "concat", "-safe", "0", "-i", concatFile, "-c", "copy", "-movflags", "+faststart", voiceMaster]);
+run(ffmpegPath, [
+  "-y",
+  "-f",
+  "concat",
+  "-safe",
+  "0",
+  "-i",
+  concatFile,
+  "-c",
+  "copy",
+  "-movflags",
+  "+faststart",
+  voiceMaster,
+]);
 if (musicPath) {
-  if (!fs.existsSync(musicPath)) throw new Error(`Optional MUSIC_PATH does not exist: ${musicPath}`);
-  run(ffmpegPath, ["-y", "-i", voiceMaster, "-stream_loop", "-1", "-i", musicPath, "-filter_complex", "[1:a]volume=0.025[music];[music][0:a]sidechaincompress=threshold=0.015:ratio=10:attack=30:release=500[ducked];[0:a][ducked]amix=inputs=2:duration=first:dropout_transition=2[mix]", "-map", "0:v", "-map", "[mix]", "-c:v", "copy", "-c:a", "aac", "-ar", "48000", "-ac", "2", "-b:a", "192k", "-movflags", "+faststart", "-shortest", cleanMaster]);
+  if (!fs.existsSync(musicPath))
+    throw new Error(`Optional MUSIC_PATH does not exist: ${musicPath}`);
+  run(ffmpegPath, [
+    "-y",
+    "-i",
+    voiceMaster,
+    "-stream_loop",
+    "-1",
+    "-i",
+    musicPath,
+    "-filter_complex",
+    "[1:a]volume=0.025[music];[music][0:a]sidechaincompress=threshold=0.015:ratio=10:attack=30:release=500[ducked];[0:a][ducked]amix=inputs=2:duration=first:dropout_transition=2[mix]",
+    "-map",
+    "0:v",
+    "-map",
+    "[mix]",
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-ar",
+    "48000",
+    "-ac",
+    "2",
+    "-b:a",
+    "192k",
+    "-movflags",
+    "+faststart",
+    "-shortest",
+    cleanMaster,
+  ]);
 }
 
-const srt = subtitleCues.map((cue, i) => `${i + 1}\n${timestamp(cue.start)} --> ${timestamp(cue.end)}\n${cue.text}\n`).join("\n");
+const srt = subtitleCues
+  .map((cue, i) => `${i + 1}\n${timestamp(cue.start)} --> ${timestamp(cue.end)}\n${cue.text}\n`)
+  .join("\n");
 const vtt = `WEBVTT\n\n${subtitleCues.map((cue) => `${timestamp(cue.start, true)} --> ${timestamp(cue.end, true)}\n${cue.text}\n`).join("\n")}`;
 const srtPath = path.join(finalDir, "joint-procurement-demo-it.srt");
 const vttPath = path.join(finalDir, "joint-procurement-demo-it.vtt");
@@ -188,11 +347,40 @@ fs.writeFileSync(vttPath, vtt, "utf8");
 
 const subtitled = path.join(finalDir, "joint-procurement-demo-v1-subtitled.mp4");
 const subtitleFilterPath = srtPath.replaceAll("\\", "/").replace(":", "\\:").replaceAll("'", "\\'");
-run(ffmpegPath, ["-y", "-i", cleanMaster, "-vf", `subtitles='${subtitleFilterPath}':force_style='FontName=Segoe UI,FontSize=19,PrimaryColour=&H00FFFFFF,OutlineColour=&H99000000,BorderStyle=3,BackColour=&H80000000,Outline=1,Shadow=0,MarginV=34,Alignment=2'`, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", subtitled]);
+run(ffmpegPath, [
+  "-y",
+  "-i",
+  cleanMaster,
+  "-vf",
+  `subtitles='${subtitleFilterPath}':force_style='FontName=Segoe UI,FontSize=19,PrimaryColour=&H00FFFFFF,OutlineColour=&H99000000,BorderStyle=3,BackColour=&H80000000,Outline=1,Shadow=0,MarginV=34,Alignment=2'`,
+  "-c:v",
+  "libx264",
+  "-preset",
+  "medium",
+  "-crf",
+  "20",
+  "-pix_fmt",
+  "yuv420p",
+  "-c:a",
+  "copy",
+  "-movflags",
+  "+faststart",
+  subtitled,
+]);
 
 report.totalMasterDuration = duration(cleanMaster);
-report.music = musicPath ? { path: path.relative(root, musicPath), mode: "quiet ducked bed under narration" } : { mode: "voice only" };
-report.outputs = [cleanMaster, subtitled, srtPath, vttPath].map((file) => ({ path: path.relative(root, file), size: fs.statSync(file).size, duration: file.endsWith(".mp4") ? duration(file) : undefined }));
-report.executiveCut = "OMITTED: coherent 3–4 minute cut requires shortened narration; supplied narration was not rewritten or replaced.";
-fs.writeFileSync(path.join(finalDir, "assembly-report.json"), JSON.stringify(report, null, 2) + "\n");
+report.music = musicPath
+  ? { path: path.relative(root, musicPath), mode: "quiet ducked bed under narration" }
+  : { mode: "voice only" };
+report.outputs = [cleanMaster, subtitled, srtPath, vttPath].map((file) => ({
+  path: path.relative(root, file),
+  size: fs.statSync(file).size,
+  duration: file.endsWith(".mp4") ? duration(file) : undefined,
+}));
+report.executiveCut =
+  "OMITTED: coherent 3–4 minute cut requires shortened narration; supplied narration was not rewritten or replaced.";
+fs.writeFileSync(
+  path.join(finalDir, "assembly-report.json"),
+  JSON.stringify(report, null, 2) + "\n",
+);
 console.log(`Final master: ${cleanMaster}`);

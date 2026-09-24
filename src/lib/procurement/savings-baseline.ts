@@ -9,7 +9,10 @@ export type HistoricalPriceLine = {
   unitsPerPackage: unknown;
 };
 
-export function selectHistoricalBaseline(lines: HistoricalPriceLine[], vatDeductibilityPercent: unknown) {
+export function selectHistoricalBaseline(
+  lines: HistoricalPriceLine[],
+  vatDeductibilityPercent: unknown,
+) {
   const latest = [...lines].sort((a, b) => b.issuedAt.getTime() - a.issuedAt.getTime())[0];
   if (!latest) return null;
   const units = Number(latest.unitsPerPackage);

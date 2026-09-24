@@ -15,9 +15,11 @@ Price-list / Smart Import hangs and does not complete.
 This is a demo blocker.
 
 ## MISSION
+
 Find the exact root cause of the hanging price-list import and make the import reliable end-to-end on the current demo environment.
 
 DO NOT:
+
 - redesign the feature
 - add unrelated functionality
 - touch master
@@ -25,14 +27,17 @@ DO NOT:
 - hide failures with fake success states
 
 ## 1. REPRODUCE THE BUG
+
 Use the real deployed develop/demo environment.
 
 Run at least:
+
 - one normal CSV/XLSX price list
 - one larger realistic price list if supported
 - one malformed/unsupported input
 
 Record the exact stage where it hangs:
+
 - upload
 - file persistence
 - parsing
@@ -44,7 +49,9 @@ Record the exact stage where it hangs:
 - UI polling/refresh
 
 ## 2. INSPECT RUNTIME
+
 Inspect:
+
 - Vercel runtime logs
 - API route/server action logs
 - Prisma/database errors
@@ -54,6 +61,7 @@ Inspect:
 - import status rows
 
 Determine whether the hang is:
+
 - request timeout
 - DB timeout
 - OpenAI timeout
@@ -66,6 +74,7 @@ Determine whether the hang is:
 - race condition
 
 ## 3. NO INFINITE PROCESSING
+
 Every import must finish in one of these states:
 
 COMPLETED
@@ -82,7 +91,9 @@ AI_ANALYSIS
 Add explicit timeout/error transitions where missing.
 
 ## 4. OBSERVABILITY
+
 For each import persist enough information to diagnose failures:
+
 - import id
 - current stage
 - started_at
@@ -97,7 +108,9 @@ For each import persist enough information to diagnose failures:
 Do not store secrets.
 
 ## 5. OPENAI SAFETY
+
 If OpenAI is used:
+
 - add explicit timeout
 - bounded retries
 - fail gracefully
@@ -107,13 +120,16 @@ If OpenAI is used:
 If AI fails, the import should move to NEEDS_REVIEW or FAILED with a visible reason.
 
 ## 6. PARSING
+
 Verify parsing for supported formats.
 
 At minimum confirm:
+
 - CSV
 - XLSX/XLS if currently supported
 
 Handle:
+
 - empty rows
 - merged cells
 - unexpected headers
@@ -126,7 +142,9 @@ Handle:
 Do not invent supplier identity if evidence is insufficient.
 
 ## 7. DATABASE / JOB INTEGRITY
+
 Check that:
+
 - import transaction boundaries are reasonable
 - large imports do not hold one giant DB transaction
 - partial failures do not lock the whole import
@@ -134,7 +152,9 @@ Check that:
 - retries are idempotent
 
 ## 8. UI
+
 The UI must:
+
 - show progress or current stage
 - stop spinner on failure
 - show a human-readable error
@@ -144,12 +164,14 @@ The UI must:
 No silent spinner forever.
 
 ## 9. REMOTE CERTIFICATION
+
 Against:
 `https://procurement.partnersviluppo.dev`
 
 Verify:
 
 A. Normal price list
+
 - upload succeeds
 - processing starts
 - processing finishes
@@ -158,26 +180,33 @@ A. Normal price list
 - persisted data visible
 
 B. AI failure simulation / timeout
+
 - import exits PROCESSING
 - visible FAILED or NEEDS_REVIEW
 
 C. malformed file
+
 - visible failure
 - no stuck state
 
 D. retry
+
 - does not duplicate imported products/rows unexpectedly
 
 ## 10. DEMO PATH
+
 Only mark Smart Import demo-ready if the full remote flow passes.
 
 Otherwise:
+
 - keep the core demo working
 - disable/hide Smart Import from the external demo path
 - document limitation clearly
 
 ## 11. QUALITY
+
 Run:
+
 - prisma validate
 - prisma generate
 - tests
@@ -187,6 +216,7 @@ Run:
 - relevant remote import smoke
 
 ## 12. COMMIT
+
 Commit and push only to:
 `develop`
 

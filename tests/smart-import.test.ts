@@ -6,9 +6,16 @@ import path from "node:path";
 import test from "node:test";
 import { classifyPriceChange } from "../src/lib/imports/changes";
 import { suggestColumnMapping } from "../src/lib/imports/mapping";
-import { extractCommercialConditions, suggestSupplierFromDocument } from "../src/lib/imports/document-context";
+import {
+  extractCommercialConditions,
+  suggestSupplierFromDocument,
+} from "../src/lib/imports/document-context";
 import { suggestMatches } from "../src/lib/imports/matching";
-import { normalizeImportDate, normalizeImportedFields, parseItalianNumber } from "../src/lib/imports/normalization";
+import {
+  normalizeImportDate,
+  normalizeImportedFields,
+  parseItalianNumber,
+} from "../src/lib/imports/normalization";
 import { mergeAiInterpretedFields } from "../src/lib/imports/ai-merge";
 import { parseDocument, xlsxRuntimeDiagnosticFromError } from "../src/lib/imports/parser";
 
@@ -36,7 +43,10 @@ test("parser XLSX carica stabilmente 100 volte il fixture multi-foglio", async (
   const buffer = await readFile(path.join(fixtures, "listino-alfa-medical-2027.xlsx"));
   for (let iteration = 0; iteration < 100; iteration += 1) {
     const parsed = await parseDocument(buffer, "listino-alfa-medical-2027.xlsx");
-    assert.deepEqual(parsed.sheets.map((sheet) => sheet.name), ["Note", "Listino"]);
+    assert.deepEqual(
+      parsed.sheets.map((sheet) => sheet.name),
+      ["Note", "Listino"],
+    );
     assert.equal(parsed.sheets.find((sheet) => sheet.name === "Listino")?.selected, true);
     assert.equal(parsed.sheets.find((sheet) => sheet.name === "Note")?.selected, false);
     assert.equal(parsed.rows.length, 36);
@@ -49,12 +59,21 @@ test("parser XLSX conserva celle vuote, numeri, testo, date e risultati formula"
   workbook.addWorksheet("Note").addRow(["Istruzioni"]);
   const sheet = workbook.addWorksheet("Listino tipizzato");
   sheet.addRow(["Codice", "Descrizione", "Prezzo", "Validità", "Formula"]);
-  sheet.addRow(["SKU-1", "Prodotto tipizzato", 12.5, new Date("2027-03-15T00:00:00.000Z"), { formula: "C2*2", result: 25 }]);
+  sheet.addRow([
+    "SKU-1",
+    "Prodotto tipizzato",
+    12.5,
+    new Date("2027-03-15T00:00:00.000Z"),
+    { formula: "C2*2", result: 25 },
+  ]);
   sheet.addRow(["SKU-2", null, 0, null, null]);
   const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 
   const parsed = await parseDocument(buffer, "fixture-tipizzato.xlsx");
-  assert.deepEqual(parsed.sheets.map((candidate) => candidate.name), ["Note", "Listino tipizzato"]);
+  assert.deepEqual(
+    parsed.sheets.map((candidate) => candidate.name),
+    ["Note", "Listino tipizzato"],
+  );
   assert.equal(parsed.rows[0].values.Codice, "SKU-1");
   assert.equal(parsed.rows[0].values.Descrizione, "Prodotto tipizzato");
   assert.equal(parsed.rows[0].values.Prezzo, 12.5);
@@ -96,9 +115,24 @@ test("parser PDF nativo usa il testo senza OCR", async () => {
 
 test("parser DOCX usa il contenuto testuale strutturato senza file temporanei", async () => {
   const zip = new AdmZip();
-  zip.addFile("[Content_Types].xml", Buffer.from('<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'));
-  zip.addFile("_rels/.rels", Buffer.from('<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'));
-  zip.addFile("word/document.xml", Buffer.from('<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>sku;descrizione;prezzo;pezzi</w:t></w:r></w:p><w:p><w:r><w:t>DOCX-1;Guanto nitrile demo;2,50;100</w:t></w:r></w:p></w:body></w:document>'));
+  zip.addFile(
+    "[Content_Types].xml",
+    Buffer.from(
+      '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
+    ),
+  );
+  zip.addFile(
+    "_rels/.rels",
+    Buffer.from(
+      '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+    ),
+  );
+  zip.addFile(
+    "word/document.xml",
+    Buffer.from(
+      '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>sku;descrizione;prezzo;pezzi</w:t></w:r></w:p><w:p><w:r><w:t>DOCX-1;Guanto nitrile demo;2,50;100</w:t></w:r></w:p></w:body></w:document>',
+    ),
+  );
   const parsed = await parseDocument(zip.toBuffer(), "listino-demo.docx");
   assert.equal(parsed.parserType, "DOCX_TEXT_DETERMINISTIC");
   assert.equal(parsed.rows.length, 1);
@@ -106,7 +140,14 @@ test("parser DOCX usa il contenuto testuale strutturato senza file temporanei", 
 });
 
 test("mapping colonne riconosce sinonimi commerciali italiani", () => {
-  const mapping = suggestColumnMapping(["Codice art.", "Descrizione", "Pz/conf", "Prezzo netto", "UM", "IVA"]);
+  const mapping = suggestColumnMapping([
+    "Codice art.",
+    "Descrizione",
+    "Pz/conf",
+    "Prezzo netto",
+    "UM",
+    "IVA",
+  ]);
   assert.equal(mapping["Codice art."], "supplierSku");
   assert.equal(mapping["Pz/conf"], "unitsPerPackage");
   assert.equal(mapping["Prezzo netto"], "netPrice");
@@ -116,89 +157,216 @@ test("mapping colonne riconosce sinonimi commerciali italiani", () => {
 test("mapping riconcilia layout fornitori con intestazioni e ordine differenti", () => {
   const layoutA = suggestColumnMapping(["SKU", "Description", "Box", "Price"]);
   const layoutB = suggestColumnMapping(["Description", "Unit price", "UOM", "Supplier code"]);
-  assert.equal(layoutA.SKU, "supplierSku"); assert.equal(layoutA.Description, "description"); assert.equal(layoutA.Box, "unitsPerPackage"); assert.equal(layoutA.Price, "netPrice");
-  assert.equal(layoutB["Supplier code"], "supplierSku"); assert.equal(layoutB["Unit price"], "netPrice"); assert.equal(layoutB.UOM, "purchaseUom");
+  assert.equal(layoutA.SKU, "supplierSku");
+  assert.equal(layoutA.Description, "description");
+  assert.equal(layoutA.Box, "unitsPerPackage");
+  assert.equal(layoutA.Price, "netPrice");
+  assert.equal(layoutB["Supplier code"], "supplierSku");
+  assert.equal(layoutB["Unit price"], "netPrice");
+  assert.equal(layoutB.UOM, "purchaseUom");
 });
 
 test("identificazione fornitore suggerisce senza associare e rifiuta ambiguità", () => {
-  const suppliers = [{ id: "a", name: "Alfa Medical", vatNumber: "IT12345678901" }, { id: "b", name: "Beta Care", vatNumber: "IT10987654321" }];
-  assert.equal(suggestSupplierFromDocument("listino.xlsx", "ALFA MEDICAL - P.IVA 12345678901", suppliers)?.supplierId, "a");
+  const suppliers = [
+    { id: "a", name: "Alfa Medical", vatNumber: "IT12345678901" },
+    { id: "b", name: "Beta Care", vatNumber: "IT10987654321" },
+  ];
+  assert.equal(
+    suggestSupplierFromDocument("listino.xlsx", "ALFA MEDICAL - P.IVA 12345678901", suppliers)
+      ?.supplierId,
+    "a",
+  );
   assert.equal(suggestSupplierFromDocument("listino.xlsx", "catalogo prodotti", suppliers), null);
 });
 
 test("condizioni documento restano estratte con scope di listino da verificare", () => {
-  const conditions = extractCommercialConditions("Ordine minimo: 350 €; franco porto: 750 €; trasporto: 24 €; pagamento: 60 gg D.F.F.M.; sconto 5%");
-  assert.equal(conditions.minimumOrderValue, 350); assert.equal(conditions.freeShippingThreshold, 750); assert.equal(conditions.shippingFee, 24); assert.equal(conditions.discountPercent, 5); assert.match(conditions.paymentTerms ?? "", /60 gg/);
+  const conditions = extractCommercialConditions(
+    "Ordine minimo: 350 €; franco porto: 750 €; trasporto: 24 €; pagamento: 60 gg D.F.F.M.; sconto 5%",
+  );
+  assert.equal(conditions.minimumOrderValue, 350);
+  assert.equal(conditions.freeShippingThreshold, 750);
+  assert.equal(conditions.shippingFee, 24);
+  assert.equal(conditions.discountPercent, 5);
+  assert.match(conditions.paymentTerms ?? "", /60 gg/);
 });
 
 test("similarità descrittiva non viene dichiarata equivalenza funzionale", () => {
-  const products = [{ id: "p1", name: "Guanto nitrile blu M", brand: null, manufacturerSku: null, ean: null, purchaseUom: "BOX", unitsPerPackage: 100, consumptionUom: "PIECE", category: { id: "c1", name: "DPI", code: "DPI" }, offers: [] }];
-  const [match] = suggestMatches(normalizeImportedFields({ description: "Guanto nitrile blu taglia M", unitsPerPackage: 100, purchaseUom: "BOX", consumptionUom: "PIECE", netPrice: 4 }), products);
-  assert.notEqual(match.matchType, "FUNCTIONAL_EQUIVALENT"); assert.notEqual(match.matchType, "COMMERCIAL_SUBSTITUTE");
+  const products = [
+    {
+      id: "p1",
+      name: "Guanto nitrile blu M",
+      brand: null,
+      manufacturerSku: null,
+      ean: null,
+      purchaseUom: "BOX",
+      unitsPerPackage: 100,
+      consumptionUom: "PIECE",
+      category: { id: "c1", name: "DPI", code: "DPI" },
+      offers: [],
+    },
+  ];
+  const [match] = suggestMatches(
+    normalizeImportedFields({
+      description: "Guanto nitrile blu taglia M",
+      unitsPerPackage: 100,
+      purchaseUom: "BOX",
+      consumptionUom: "PIECE",
+      netPrice: 4,
+    }),
+    products,
+  );
+  assert.notEqual(match.matchType, "FUNCTIONAL_EQUIVALENT");
+  assert.notEqual(match.matchType, "COMMERCIAL_SUBSTITUTE");
 });
 
 test("campi AI nulli, vuoti o invalidi non cancellano valori deterministici", () => {
-  const deterministic = { ean: "8001000000001", manufacturerSku: "SKU-42", description: "Guanto", netPrice: 4.2 };
+  const deterministic = {
+    ean: "8001000000001",
+    manufacturerSku: "SKU-42",
+    description: "Guanto",
+    netPrice: 4.2,
+  };
   assert.deepEqual(
-    mergeAiInterpretedFields(deterministic, { ean: null, manufacturerSku: " ", description: "", netPrice: "NaN" }),
+    mergeAiInterpretedFields(deterministic, {
+      ean: null,
+      manufacturerSku: " ",
+      description: "",
+      netPrice: "NaN",
+    }),
     deterministic,
   );
   assert.deepEqual(
-    mergeAiInterpretedFields(deterministic, { ean: "not-a-gtin", description: " Guanto nitrile ", netPrice: "4,50" }),
+    mergeAiInterpretedFields(deterministic, {
+      ean: "not-a-gtin",
+      description: " Guanto nitrile ",
+      netPrice: "4,50",
+    }),
     { ...deterministic, description: "Guanto nitrile", netPrice: "4,50" },
   );
 });
 
 test("normalizzazione import: box 100 a 2,50 € vale 0,025 € per pezzo", () => {
-  const result = normalizeImportedFields({ description: "Guanti nitrile M", purchaseUom: "BOX", unitsPerPackage: 100, consumptionUom: "PIECE", netPrice: "2,50", currency: "EUR" });
+  const result = normalizeImportedFields({
+    description: "Guanti nitrile M",
+    purchaseUom: "BOX",
+    unitsPerPackage: 100,
+    consumptionUom: "PIECE",
+    netPrice: "2,50",
+    currency: "EUR",
+  });
   assert.equal(result.comparable, true);
   assert.equal(result.normalizedPrice, 0.025);
 });
 
 test("normalizzazione recupera il fattore da una colonna formato CF 100", () => {
-  const result = normalizeImportedFields({ description: "Guanto nitrile M", purchaseUom: "CF", packageDescription: "CF 100", netPrice: "2,50" });
-  assert.equal(result.unitsPerPackage, 100); assert.equal(result.normalizedPrice, .025); assert.equal(result.comparable, true);
+  const result = normalizeImportedFields({
+    description: "Guanto nitrile M",
+    purchaseUom: "CF",
+    packageDescription: "CF 100",
+    netPrice: "2,50",
+  });
+  assert.equal(result.unitsPerPackage, 100);
+  assert.equal(result.normalizedPrice, 0.025);
+  assert.equal(result.comparable, true);
 });
 
 test("normalizzazione import: tanica da 5 litri usa il litro come unità di consumo", () => {
-  const result = normalizeImportedFields({ description: "Detergente professionale 5 L", purchaseUom: "CAN", unitsPerPackage: 5, netPrice: "12,00", currency: "EUR" });
+  const result = normalizeImportedFields({
+    description: "Detergente professionale 5 L",
+    purchaseUom: "CAN",
+    unitsPerPackage: 5,
+    netPrice: "12,00",
+    currency: "EUR",
+  });
   assert.equal(result.consumptionUom, "L");
   assert.equal(result.normalizedPrice, 2.4);
 });
 
 test("normalizzazione import: confezione da 5 kg usa il chilogrammo come unità di consumo", () => {
-  const result = normalizeImportedFields({ description: "Pasta secca confezione 5 kg", purchaseUom: "PACK", unitsPerPackage: 5, netPrice: "10,00", currency: "EUR" });
+  const result = normalizeImportedFields({
+    description: "Pasta secca confezione 5 kg",
+    purchaseUom: "PACK",
+    unitsPerPackage: 5,
+    netPrice: "10,00",
+    currency: "EUR",
+  });
   assert.equal(result.consumptionUom, "KG");
   assert.equal(result.normalizedPrice, 2);
 });
 
 test("normalizzazione import: la capacità di una siringa non diventa unità di consumo", () => {
-  const result = normalizeImportedFields({ description: "Siringa sterile 10 ml — 100 pezzi", purchaseUom: "BOX", unitsPerPackage: 100, netPrice: "6,74", currency: "EUR" });
+  const result = normalizeImportedFields({
+    description: "Siringa sterile 10 ml — 100 pezzi",
+    purchaseUom: "BOX",
+    unitsPerPackage: 100,
+    netPrice: "6,74",
+    currency: "EUR",
+  });
   assert.equal(result.consumptionUom, "PIECE");
   assert.equal(result.normalizedPrice, 0.0674);
 });
 
 test("normalizzazione import: multipack acqua usa il volume totale", () => {
-  const result = normalizeImportedFields({ description: "Acqua naturale 6 × 1,5 L", purchaseUom: "PACK", unitsPerPackage: 9, netPrice: "3,60", currency: "EUR" });
+  const result = normalizeImportedFields({
+    description: "Acqua naturale 6 × 1,5 L",
+    purchaseUom: "PACK",
+    unitsPerPackage: 9,
+    netPrice: "3,60",
+    currency: "EUR",
+  });
   assert.equal(result.consumptionUom, "L");
   assert.equal(result.normalizedPrice, 0.4);
 });
 
 test("normalizzazione non forza confronti con conversione mancante", () => {
-  const result = normalizeImportedFields({ description: "Prodotto ambiguo", purchaseUom: "BOX", netPrice: 8.5 });
+  const result = normalizeImportedFields({
+    description: "Prodotto ambiguo",
+    purchaseUom: "BOX",
+    netPrice: 8.5,
+  });
   assert.equal(result.comparable, false);
-  assert.ok(result.warnings.some((warning) => warning.toLocaleLowerCase("it-IT").includes("confezion")));
+  assert.ok(
+    result.warnings.some((warning) => warning.toLocaleLowerCase("it-IT").includes("confezion")),
+  );
 });
 
 test("date italiane diventano ISO e intervalli invertiti bloccano il record", () => {
   assert.equal(normalizeImportDate("31/12/2027"), "2027-12-31");
-  const result = normalizeImportedFields({ description: "Prodotto", unitsPerPackage: 10, netPrice: 5, validFrom: "31/12/2027", validUntil: "01/01/2027" });
+  const result = normalizeImportedFields({
+    description: "Prodotto",
+    unitsPerPackage: 10,
+    netPrice: 5,
+    validFrom: "31/12/2027",
+    validUntil: "01/01/2027",
+  });
   assert.ok(result.validationErrors.includes("La validità termina prima della data di inizio"));
 });
 
 test("matching privilegia GTIN e spiega la corrispondenza", () => {
-  const products = [{ id: "p1", name: "Guanto nitrile senza polvere M", brand: "DemoCare", manufacturerSku: "DM-01", ean: "8001000000001", purchaseUom: "BOX", unitsPerPackage: 100, consumptionUom: "PIECE", category: { id: "c1", name: "Dispositivi monouso", code: "DISPOSABLES" }, offers: [] }];
-  const normalized = normalizeImportedFields({ ean: "8001000000001", description: "Guanto nit blu M cf100", brand: "DemoCare", category: "Dispositivi monouso", purchaseUom: "BOX", unitsPerPackage: 100, consumptionUom: "PIECE", netPrice: 2.5 });
+  const products = [
+    {
+      id: "p1",
+      name: "Guanto nitrile senza polvere M",
+      brand: "DemoCare",
+      manufacturerSku: "DM-01",
+      ean: "8001000000001",
+      purchaseUom: "BOX",
+      unitsPerPackage: 100,
+      consumptionUom: "PIECE",
+      category: { id: "c1", name: "Dispositivi monouso", code: "DISPOSABLES" },
+      offers: [],
+    },
+  ];
+  const normalized = normalizeImportedFields({
+    ean: "8001000000001",
+    description: "Guanto nit blu M cf100",
+    brand: "DemoCare",
+    category: "Dispositivi monouso",
+    purchaseUom: "BOX",
+    unitsPerPackage: 100,
+    consumptionUom: "PIECE",
+    netPrice: 2.5,
+  });
   const [match] = suggestMatches(normalized, products);
   assert.equal(match.matchType, "IDENTICAL");
   assert.equal(match.canonicalProductId, "p1");
@@ -206,21 +374,52 @@ test("matching privilegia GTIN e spiega la corrispondenza", () => {
 });
 
 test("confezione differente abbassa la compatibilità e richiede review", () => {
-  const products = [{ id: "p1", name: "Garza sterile 10 x 10 cm", brand: "DemoCare", manufacturerSku: null, ean: null, purchaseUom: "BOX", unitsPerPackage: 100, consumptionUom: "PIECE", category: { id: "c1", name: "Dispositivi monouso", code: "DISPOSABLES" }, offers: [] }];
-  const normalized = normalizeImportedFields({ description: "Garza sterile 10 x 10 cm", brand: "DemoCare", category: "Dispositivi monouso", purchaseUom: "BOX", unitsPerPackage: 50, consumptionUom: "PIECE", netPrice: 1.8 });
+  const products = [
+    {
+      id: "p1",
+      name: "Garza sterile 10 x 10 cm",
+      brand: "DemoCare",
+      manufacturerSku: null,
+      ean: null,
+      purchaseUom: "BOX",
+      unitsPerPackage: 100,
+      consumptionUom: "PIECE",
+      category: { id: "c1", name: "Dispositivi monouso", code: "DISPOSABLES" },
+      offers: [],
+    },
+  ];
+  const normalized = normalizeImportedFields({
+    description: "Garza sterile 10 x 10 cm",
+    brand: "DemoCare",
+    category: "Dispositivi monouso",
+    purchaseUom: "BOX",
+    unitsPerPackage: 50,
+    consumptionUom: "PIECE",
+    netPrice: 1.8,
+  });
   const [match] = suggestMatches(normalized, products);
   assert.equal(match.packagingCompatibility, false);
   assert.notEqual(match.matchType, "IDENTICAL");
 });
 
 test("analisi prezzo usa il normalizzato: 2,50/100 → 3,00/100 = +20%", () => {
-  const change = classifyPriceChange({ oldNormalizedPrice: 2.5 / 100, newNormalizedPrice: 3 / 100, oldPackageQuantity: 100, newPackageQuantity: 100 });
+  const change = classifyPriceChange({
+    oldNormalizedPrice: 2.5 / 100,
+    newNormalizedPrice: 3 / 100,
+    oldPackageQuantity: 100,
+    newPackageQuantity: 100,
+  });
   assert.equal(Math.round(change.deltaPercent!), 20);
   assert.equal(change.kind, "INCREASE");
 });
 
 test("cambio pack: 2,50/100 → 4,60/200 = -8%, non +84%", () => {
-  const change = classifyPriceChange({ oldNormalizedPrice: 2.5 / 100, newNormalizedPrice: 4.6 / 200, oldPackageQuantity: 100, newPackageQuantity: 200 });
+  const change = classifyPriceChange({
+    oldNormalizedPrice: 2.5 / 100,
+    newNormalizedPrice: 4.6 / 200,
+    oldPackageQuantity: 100,
+    newPackageQuantity: 200,
+  });
   assert.equal(Math.round(change.deltaPercent!), -8);
   assert.equal(change.kind, "PACKAGE_CHANGE");
   assert.equal(change.direction, "DECREASE");

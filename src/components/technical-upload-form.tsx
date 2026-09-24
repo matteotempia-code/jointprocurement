@@ -59,10 +59,13 @@ export function TechnicalUploadForm() {
         />
       </label>
       <p>
-        PDF testuali, DOCX, TXT, immagini e ZIP. Le immagini senza testo vengono
-        conservate come “OCR necessario”.
+        PDF testuali, DOCX, TXT, immagini e ZIP. Le immagini senza testo vengono conservate come
+        “OCR necessario”.
       </p>
-      <label><input ref={aiRef} type="checkbox" defaultChecked /> Usa Procurement AI per interpretare i documenti testuali</label>
+      <label>
+        <input ref={aiRef} type="checkbox" defaultChecked /> Usa Procurement AI per interpretare i
+        documenti testuali
+      </label>
       {error && (
         <p role="alert" className="warning">
           {error}

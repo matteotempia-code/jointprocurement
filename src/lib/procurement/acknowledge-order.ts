@@ -48,7 +48,10 @@ export async function acknowledgePurchaseOrder(
         entityType: "PURCHASE_ORDER",
         entityId: input.orderId,
         action: "SUPPLIER_ACKNOWLEDGED",
-        metadata: { organizationId: input.organizationId, expectedDate: input.expectedDate ?? null },
+        metadata: {
+          organizationId: input.organizationId,
+          expectedDate: input.expectedDate ?? null,
+        },
       },
     });
   });

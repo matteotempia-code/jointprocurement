@@ -14,9 +14,12 @@ export async function GET() {
       headers: { "cache-control": "no-store" },
     });
   } catch {
-    return Response.json({ status: "error", code: "DATABASE_HEALTH_CHECK_FAILED" }, {
-      status: 503,
-      headers: { "cache-control": "no-store" },
-    });
+    return Response.json(
+      { status: "error", code: "DATABASE_HEALTH_CHECK_FAILED" },
+      {
+        status: 503,
+        headers: { "cache-control": "no-store" },
+      },
+    );
   }
 }

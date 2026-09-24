@@ -9,7 +9,8 @@ export function demoModeEnabled(environment: DemoEnvironment = process.env) {
 }
 
 function demoSessionKey(environment: DemoEnvironment = process.env) {
-  const secret = environment.DEMO_SESSION_SECRET?.trim() || environment.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const secret =
+    environment.DEMO_SESSION_SECRET?.trim() || environment.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!secret) throw new Error("DEMO_SESSION_SECRET is required when DEMO_MODE=true.");
   return createHash("sha256").update(secret).digest();
 }
@@ -22,7 +23,10 @@ export function sealDemoUserId(userId: string, environment: DemoEnvironment = pr
   return [iv, cipher.getAuthTag(), encrypted].map((value) => value.toString("base64url")).join(".");
 }
 
-export function openDemoUserId(token: string | undefined, environment: DemoEnvironment = process.env) {
+export function openDemoUserId(
+  token: string | undefined,
+  environment: DemoEnvironment = process.env,
+) {
   if (!demoModeEnabled(environment)) throw new Error("Demo identity is disabled.");
   if (!token) return null;
   try {
@@ -31,7 +35,12 @@ export function openDemoUserId(token: string | undefined, environment: DemoEnvir
     const iv = Buffer.from(ivValue, "base64url");
     const tag = Buffer.from(tagValue, "base64url");
     const encrypted = Buffer.from(encryptedValue, "base64url");
-    if (iv.toString("base64url") !== ivValue || tag.toString("base64url") !== tagValue || encrypted.toString("base64url") !== encryptedValue) return null;
+    if (
+      iv.toString("base64url") !== ivValue ||
+      tag.toString("base64url") !== tagValue ||
+      encrypted.toString("base64url") !== encryptedValue
+    )
+      return null;
     const decipher = createDecipheriv("aes-256-gcm", demoSessionKey(environment), iv);
     decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");

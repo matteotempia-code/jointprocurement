@@ -9,27 +9,392 @@ import { formatDate } from "@/lib/pricing";
 import { statusLabel } from "@/lib/presentation/status";
 import { resolveScope } from "@/lib/scope";
 
-const tabs = [["overview", "Overview"], ["items", "Articoli"], ["delivery", "Consegna e ricezione"], ["documents", "Documenti"], ["commercial", "Condizioni commerciali"], ["audit", "Audit"]] as const;
-export default async function OrderDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ received?: string; tab?: string }> }) {
-  const context = await requireRoles(["RSA_DIRECTOR", "PROCUREMENT_MANAGER"]), scope = await resolveScope(context.assignment), query = await searchParams, id = (await params).id;
-  const order = await prisma.purchaseOrder.findUnique({ where: { id }, include: { supplier: true, facility: true, requisition: { include: { requester: true, approvals: { include: { approver: true } } } }, lines: { include: { canonicalProduct: true, receiptLines: { include: { receipt: { include: { receivedBy: true } } } }, qualityIssues: { include: { attachments: true } } } }, receipts: { include: { receivedBy: true, lines: true, attachments: true }, orderBy: { receivedAt: "desc" } } } });
-  if (!order || context.roleCode !== "PROCUREMENT_MANAGER" && !scope.facilityIds.includes(order.facilityId)) notFound();
+const tabs = [
+  ["overview", "Overview"],
+  ["items", "Articoli"],
+  ["delivery", "Consegna e ricezione"],
+  ["documents", "Documenti"],
+  ["commercial", "Condizioni commerciali"],
+  ["audit", "Audit"],
+] as const;
+export default async function OrderDetail({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ received?: string; tab?: string }>;
+}) {
+  const context = await requireRoles(["RSA_DIRECTOR", "PROCUREMENT_MANAGER"]),
+    scope = await resolveScope(context.assignment),
+    query = await searchParams,
+    id = (await params).id;
+  const order = await prisma.purchaseOrder.findUnique({
+    where: { id },
+    include: {
+      supplier: true,
+      facility: true,
+      requisition: { include: { requester: true, approvals: { include: { approver: true } } } },
+      lines: {
+        include: {
+          canonicalProduct: true,
+          receiptLines: { include: { receipt: { include: { receivedBy: true } } } },
+          qualityIssues: { include: { attachments: true } },
+        },
+      },
+      receipts: {
+        include: { receivedBy: true, lines: true, attachments: true },
+        orderBy: { receivedAt: "desc" },
+      },
+    },
+  });
+  if (
+    !order ||
+    (context.roleCode !== "PROCUREMENT_MANAGER" && !scope.facilityIds.includes(order.facilityId))
+  )
+    notFound();
   const tab = tabs.some(([key]) => key === query.tab) ? query.tab! : "overview";
-  const events = tab === "audit" ? await prisma.auditEvent.findMany({ where: { organizationId: context.organization.id, OR: [{ entityType: "PURCHASE_ORDER", entityId: order.id }, { entityType: "PURCHASE_REQUISITION", entityId: order.requisitionId }] }, include: { actor: true }, orderBy: { createdAt: "desc" } }) : [];
-  const issues = order.lines.flatMap((line) => line.qualityIssues), latestReceipt = order.receipts[0];
-  const remaining = order.lines.reduce((sum, line) => sum + Math.max(0, Number(line.quantity) - line.receiptLines.reduce((part, receipt) => part + Number(receipt.quantityReceived), 0)), 0);
-  const belowMinimum = order.supplier.minimumOrderValue != null && Number(order.subtotal) < Number(order.supplier.minimumOrderValue);
-  return <main className="phase2-page phase2-po-detail">
-    {query.received && <div className="success">Ricezione registrata e stato dell’ordine aggiornato.</div>}
-    <PageHeader eyebrow="Ordine al fornitore" title={order.poNumber} description={`${order.supplier.name} · consegna a ${order.facility.name}`} action={<div className="cta-row"><Link className="secondary-cta" href={`/orders/${order.id}/pdf`}>Scarica PDF</Link>{context.roleCode === "RSA_DIRECTOR" && <form action={buyAgain}><input type="hidden" name="poId" value={order.id} /><button className="secondary-cta">Acquista di nuovo</button></form>}{context.roleCode === "RSA_DIRECTOR" && !["RECEIVED", "CANCELLED"].includes(order.status) && <Link className="primary-cta" href={`/orders/${order.id}/receive`}>Registra consegna</Link>}</div>} />
-    <section className="phase2-summary-strip"><div><span>Stato</span><StatusChip variant={order.status === "RECEIVED" ? "ok" : "neutral"}>{statusLabel(order.status)}</StatusChip><small>{remaining} unità residue</small></div><div><span>Totale ordine</span><strong><Num value={Number(order.total)} kind="currency" /></strong><small>IVA inclusa</small></div><div><span>Consegna prevista</span><strong>{formatDate(order.expectedDeliveryDate)}</strong><small>{order.supplierAcknowledgedAt ? `Confermata ${formatDate(order.supplierAcknowledgedAt)}` : "Conferma non ricevuta"}</small></div><div><span>Condizioni</span><StatusChip variant={belowMinimum ? "warn" : "ok"}>{belowMinimum ? "Sotto minimo" : "Coerenti"}</StatusChip><small>{issues.length ? `${issues.length} problemi collegati` : "Nessun problema aperto"}</small></div></section>
-    <nav className="phase2-anchor-tabs" aria-label="Sezioni ordine">{tabs.map(([key, label]) => <Link className={tab === key ? "active" : ""} href={`/orders/${id}?tab=${key}`} key={key}>{label}</Link>)}</nav>
-    {tab === "overview" && <section className="phase2-po-overview"><div><span>Fornitore</span><strong>{order.supplier.name}</strong><small>{order.supplier.paymentTerms ?? "Termini non definiti"}</small></div><div><span>Destinazione</span><strong>{order.facility.name}</strong><small>{order.deliveryLocation}</small></div><div><span>Richiesta origine</span><Link href={`/requisitions/${order.requisitionId}`}>{order.requisition.requisitionNumber}</Link><small>{order.requisition.requester.name}</small></div><div><span>Ricezione</span><strong>{latestReceipt ? statusLabel(latestReceipt.status) : "Non iniziata"}</strong><small>{latestReceipt ? `${formatDate(latestReceipt.receivedAt)} · ${latestReceipt.receivedBy.name}` : `${remaining} unità da ricevere`}</small></div><div><span>Esito policy</span><strong>{statusLabel(order.requisition.policyDecision)}</strong><small>{order.requisition.policyExplanation}</small></div><div><span>Approvazione</span><strong>{order.requisition.approvals.length ? order.requisition.approvals.map((item) => statusLabel(item.status)).join(" · ") : "Automatica"}</strong><small>{order.requisition.approvals.map((item) => item.approver.name).join(" · ")}</small></div></section>}
-    {tab === "items" && <DataTable label="Righe ordine"><thead><tr><th>Prodotto</th><th>SKU</th><th className="num-cell">Ordinato</th><th className="num-cell">Ricevuto</th><th className="num-cell">Residuo</th><th className="num-cell">Prezzo</th><th className="num-cell">Totale</th><th>Problemi</th></tr></thead><tbody>{order.lines.map((line) => { const received = line.receiptLines.reduce((sum, item) => sum + Number(item.quantityReceived), 0); return <tr key={line.id}><td><Link className="table-link" href={`/products/${line.canonicalProductId}`}>{line.descriptionSnapshot}</Link></td><td className="mono">{line.supplierSkuSnapshot}</td><td className="num-cell">{Number(line.quantity)}</td><td className="num-cell">{received}</td><td className="num-cell">{Math.max(0, Number(line.quantity) - received)}</td><td className="num-cell"><Num value={Number(line.unitPrice)} kind="currency" /></td><td className="num-cell"><Num value={Number(line.lineTotal)} kind="currency" /></td><td>{line.qualityIssues.length ? <StatusChip variant="warn">{line.qualityIssues.length}</StatusChip> : "—"}</td></tr>; })}</tbody></DataTable>}
-    {tab === "delivery" && <section className="phase2-split"><div><h2>Ricezioni</h2>{order.receipts.length ? order.receipts.map((receipt) => <article key={receipt.id}><strong>{receipt.receiptNumber}</strong><span>{formatDate(receipt.receivedAt)} · {receipt.receivedBy.name}</span><small>{receipt.lines.reduce((sum, line) => sum + Number(line.quantityReceived), 0)} ricevuti · {statusLabel(receipt.status)}</small></article>) : <p className="quiet-empty">Nessuna ricezione registrata.</p>}</div><div><h2>Problemi collegati</h2>{issues.length ? issues.map((issue) => <article key={issue.id}><strong>{statusLabel(issue.issueType)}</strong><span>{issue.description}</span><StatusChip variant="warn">{statusLabel(issue.severity)} · {statusLabel(issue.status)}</StatusChip></article>) : <p className="quiet-empty">Nessuna non conformità.</p>}</div></section>}
-    {tab === "documents" && <section className="phase2-document-list"><Link href={`/orders/${order.id}/pdf`}><strong>Ordine al fornitore</strong><span>PDF generato dai dati correnti</span></Link><div><strong>Conferma fornitore</strong><span>{order.supplierAcknowledgedAt ? "Registrata" : "Non disponibile"}</span></div>{order.receipts.flatMap((receipt) => receipt.attachments).map((attachment) => <Link href={`/attachments/${attachment.id}`} key={attachment.id}><strong>{attachment.originalFilename}</strong><span>Documento di ricezione · {Math.ceil(attachment.sizeBytes / 1024)} KB</span></Link>)}{issues.flatMap((issue) => issue.attachments).map((attachment) => <Link href={`/attachments/${attachment.id}`} key={attachment.id}><strong>{attachment.originalFilename}</strong><span>Evidenza non conformità · {Math.ceil(attachment.sizeBytes / 1024)} KB</span></Link>)}{!order.receipts.some((receipt) => receipt.attachments.length) && !issues.some((issue) => issue.attachments.length) && <div><strong>Documenti di ricezione</strong><span>Nessun allegato caricato</span></div>}</section>}
-    {tab === "commercial" && <section className="phase2-po-overview"><div><span>Imponibile</span><strong><Num value={Number(order.subtotal)} kind="currency" /></strong></div><div><span>IVA</span><strong><Num value={Number(order.taxTotal)} kind="currency" /></strong></div><div><span>Totale</span><strong><Num value={Number(order.total)} kind="currency" /></strong></div><div><span>Ordine minimo</span><strong>{order.supplier.minimumOrderValue ? <Num value={Number(order.supplier.minimumOrderValue)} kind="currency" /> : "Non previsto"}</strong></div><div><span>Franco porto</span><strong>{order.supplier.freeShippingThreshold ? <Num value={Number(order.supplier.freeShippingThreshold)} kind="currency" /> : "Non previsto"}</strong></div><div><span>Consegna</span><strong>{order.supplier.deliveryTerms ?? "Non definite"}</strong></div></section>}
-    {tab === "audit" && <section><h2>Audit e cronologia</h2>{events.length ? <Timeline events={events} /> : <p className="quiet-empty">Nessun evento.</p>}</section>}
-    {context.roleCode === "PROCUREMENT_MANAGER" && order.status === "ISSUED" && <details className="phase2-secondary-section"><summary>Registra conferma fornitore</summary><form className="acknowledge-form" action={acknowledgeOrder}><input type="hidden" name="poId" value={order.id} /><label>Data confermata<input type="date" name="expectedDate" defaultValue={order.expectedDeliveryDate.toISOString().slice(0, 10)} /></label><button className="secondary-cta">Registra conferma</button></form></details>}
-  </main>;
+  const events =
+    tab === "audit"
+      ? await prisma.auditEvent.findMany({
+          where: {
+            organizationId: context.organization.id,
+            OR: [
+              { entityType: "PURCHASE_ORDER", entityId: order.id },
+              { entityType: "PURCHASE_REQUISITION", entityId: order.requisitionId },
+            ],
+          },
+          include: { actor: true },
+          orderBy: { createdAt: "desc" },
+        })
+      : [];
+  const issues = order.lines.flatMap((line) => line.qualityIssues),
+    latestReceipt = order.receipts[0];
+  const remaining = order.lines.reduce(
+    (sum, line) =>
+      sum +
+      Math.max(
+        0,
+        Number(line.quantity) -
+          line.receiptLines.reduce((part, receipt) => part + Number(receipt.quantityReceived), 0),
+      ),
+    0,
+  );
+  const belowMinimum =
+    order.supplier.minimumOrderValue != null &&
+    Number(order.subtotal) < Number(order.supplier.minimumOrderValue);
+  return (
+    <main className="phase2-page phase2-po-detail">
+      {query.received && (
+        <div className="success">Ricezione registrata e stato dell’ordine aggiornato.</div>
+      )}
+      <PageHeader
+        eyebrow="Ordine al fornitore"
+        title={order.poNumber}
+        description={`${order.supplier.name} · consegna a ${order.facility.name}`}
+        action={
+          <div className="cta-row">
+            <Link className="secondary-cta" href={`/orders/${order.id}/pdf`}>
+              Scarica PDF
+            </Link>
+            {context.roleCode === "RSA_DIRECTOR" && (
+              <form action={buyAgain}>
+                <input type="hidden" name="poId" value={order.id} />
+                <button className="secondary-cta">Acquista di nuovo</button>
+              </form>
+            )}
+            {context.roleCode === "RSA_DIRECTOR" &&
+              !["RECEIVED", "CANCELLED"].includes(order.status) && (
+                <Link className="primary-cta" href={`/orders/${order.id}/receive`}>
+                  Registra consegna
+                </Link>
+              )}
+          </div>
+        }
+      />
+      <section className="phase2-summary-strip">
+        <div>
+          <span>Stato</span>
+          <StatusChip variant={order.status === "RECEIVED" ? "ok" : "neutral"}>
+            {statusLabel(order.status)}
+          </StatusChip>
+          <small>{remaining} unità residue</small>
+        </div>
+        <div>
+          <span>Totale ordine</span>
+          <strong>
+            <Num value={Number(order.total)} kind="currency" />
+          </strong>
+          <small>IVA inclusa</small>
+        </div>
+        <div>
+          <span>Consegna prevista</span>
+          <strong>{formatDate(order.expectedDeliveryDate)}</strong>
+          <small>
+            {order.supplierAcknowledgedAt
+              ? `Confermata ${formatDate(order.supplierAcknowledgedAt)}`
+              : "Conferma non ricevuta"}
+          </small>
+        </div>
+        <div>
+          <span>Condizioni</span>
+          <StatusChip variant={belowMinimum ? "warn" : "ok"}>
+            {belowMinimum ? "Sotto minimo" : "Coerenti"}
+          </StatusChip>
+          <small>
+            {issues.length ? `${issues.length} problemi collegati` : "Nessun problema aperto"}
+          </small>
+        </div>
+      </section>
+      <nav className="phase2-anchor-tabs" aria-label="Sezioni ordine">
+        {tabs.map(([key, label]) => (
+          <Link className={tab === key ? "active" : ""} href={`/orders/${id}?tab=${key}`} key={key}>
+            {label}
+          </Link>
+        ))}
+      </nav>
+      {tab === "overview" && (
+        <section className="phase2-po-overview">
+          <div>
+            <span>Fornitore</span>
+            <strong>{order.supplier.name}</strong>
+            <small>{order.supplier.paymentTerms ?? "Termini non definiti"}</small>
+          </div>
+          <div>
+            <span>Destinazione</span>
+            <strong>{order.facility.name}</strong>
+            <small>{order.deliveryLocation}</small>
+          </div>
+          <div>
+            <span>Richiesta origine</span>
+            <Link href={`/requisitions/${order.requisitionId}`}>
+              {order.requisition.requisitionNumber}
+            </Link>
+            <small>{order.requisition.requester.name}</small>
+          </div>
+          <div>
+            <span>Ricezione</span>
+            <strong>{latestReceipt ? statusLabel(latestReceipt.status) : "Non iniziata"}</strong>
+            <small>
+              {latestReceipt
+                ? `${formatDate(latestReceipt.receivedAt)} · ${latestReceipt.receivedBy.name}`
+                : `${remaining} unità da ricevere`}
+            </small>
+          </div>
+          <div>
+            <span>Esito policy</span>
+            <strong>{statusLabel(order.requisition.policyDecision)}</strong>
+            <small>{order.requisition.policyExplanation}</small>
+          </div>
+          <div>
+            <span>Approvazione</span>
+            <strong>
+              {order.requisition.approvals.length
+                ? order.requisition.approvals.map((item) => statusLabel(item.status)).join(" · ")
+                : "Automatica"}
+            </strong>
+            <small>
+              {order.requisition.approvals.map((item) => item.approver.name).join(" · ")}
+            </small>
+          </div>
+        </section>
+      )}
+      {tab === "items" && (
+        <DataTable label="Righe ordine">
+          <thead>
+            <tr>
+              <th>Prodotto</th>
+              <th>SKU</th>
+              <th className="num-cell">Ordinato</th>
+              <th className="num-cell">Ricevuto</th>
+              <th className="num-cell">Residuo</th>
+              <th className="num-cell">Prezzo</th>
+              <th className="num-cell">Totale</th>
+              <th>Problemi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {order.lines.map((line) => {
+              const received = line.receiptLines.reduce(
+                (sum, item) => sum + Number(item.quantityReceived),
+                0,
+              );
+              return (
+                <tr key={line.id}>
+                  <td>
+                    <Link className="table-link" href={`/products/${line.canonicalProductId}`}>
+                      {line.descriptionSnapshot}
+                    </Link>
+                  </td>
+                  <td className="mono">{line.supplierSkuSnapshot}</td>
+                  <td className="num-cell">{Number(line.quantity)}</td>
+                  <td className="num-cell">{received}</td>
+                  <td className="num-cell">{Math.max(0, Number(line.quantity) - received)}</td>
+                  <td className="num-cell">
+                    <Num value={Number(line.unitPrice)} kind="currency" />
+                  </td>
+                  <td className="num-cell">
+                    <Num value={Number(line.lineTotal)} kind="currency" />
+                  </td>
+                  <td>
+                    {line.qualityIssues.length ? (
+                      <StatusChip variant="warn">{line.qualityIssues.length}</StatusChip>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </DataTable>
+      )}
+      {tab === "delivery" && (
+        <section className="phase2-split">
+          <div>
+            <h2>Ricezioni</h2>
+            {order.receipts.length ? (
+              order.receipts.map((receipt) => (
+                <article key={receipt.id}>
+                  <strong>{receipt.receiptNumber}</strong>
+                  <span>
+                    {formatDate(receipt.receivedAt)} · {receipt.receivedBy.name}
+                  </span>
+                  <small>
+                    {receipt.lines.reduce((sum, line) => sum + Number(line.quantityReceived), 0)}{" "}
+                    ricevuti · {statusLabel(receipt.status)}
+                  </small>
+                </article>
+              ))
+            ) : (
+              <p className="quiet-empty">Nessuna ricezione registrata.</p>
+            )}
+          </div>
+          <div>
+            <h2>Problemi collegati</h2>
+            {issues.length ? (
+              issues.map((issue) => (
+                <article key={issue.id}>
+                  <strong>{statusLabel(issue.issueType)}</strong>
+                  <span>{issue.description}</span>
+                  <StatusChip variant="warn">
+                    {statusLabel(issue.severity)} · {statusLabel(issue.status)}
+                  </StatusChip>
+                </article>
+              ))
+            ) : (
+              <p className="quiet-empty">Nessuna non conformità.</p>
+            )}
+          </div>
+        </section>
+      )}
+      {tab === "documents" && (
+        <section className="phase2-document-list">
+          <Link href={`/orders/${order.id}/pdf`}>
+            <strong>Ordine al fornitore</strong>
+            <span>PDF generato dai dati correnti</span>
+          </Link>
+          <div>
+            <strong>Conferma fornitore</strong>
+            <span>{order.supplierAcknowledgedAt ? "Registrata" : "Non disponibile"}</span>
+          </div>
+          {order.receipts
+            .flatMap((receipt) => receipt.attachments)
+            .map((attachment) => (
+              <Link href={`/attachments/${attachment.id}`} key={attachment.id}>
+                <strong>{attachment.originalFilename}</strong>
+                <span>Documento di ricezione · {Math.ceil(attachment.sizeBytes / 1024)} KB</span>
+              </Link>
+            ))}
+          {issues
+            .flatMap((issue) => issue.attachments)
+            .map((attachment) => (
+              <Link href={`/attachments/${attachment.id}`} key={attachment.id}>
+                <strong>{attachment.originalFilename}</strong>
+                <span>Evidenza non conformità · {Math.ceil(attachment.sizeBytes / 1024)} KB</span>
+              </Link>
+            ))}
+          {!order.receipts.some((receipt) => receipt.attachments.length) &&
+            !issues.some((issue) => issue.attachments.length) && (
+              <div>
+                <strong>Documenti di ricezione</strong>
+                <span>Nessun allegato caricato</span>
+              </div>
+            )}
+        </section>
+      )}
+      {tab === "commercial" && (
+        <section className="phase2-po-overview">
+          <div>
+            <span>Imponibile</span>
+            <strong>
+              <Num value={Number(order.subtotal)} kind="currency" />
+            </strong>
+          </div>
+          <div>
+            <span>IVA</span>
+            <strong>
+              <Num value={Number(order.taxTotal)} kind="currency" />
+            </strong>
+          </div>
+          <div>
+            <span>Totale</span>
+            <strong>
+              <Num value={Number(order.total)} kind="currency" />
+            </strong>
+          </div>
+          <div>
+            <span>Ordine minimo</span>
+            <strong>
+              {order.supplier.minimumOrderValue ? (
+                <Num value={Number(order.supplier.minimumOrderValue)} kind="currency" />
+              ) : (
+                "Non previsto"
+              )}
+            </strong>
+          </div>
+          <div>
+            <span>Franco porto</span>
+            <strong>
+              {order.supplier.freeShippingThreshold ? (
+                <Num value={Number(order.supplier.freeShippingThreshold)} kind="currency" />
+              ) : (
+                "Non previsto"
+              )}
+            </strong>
+          </div>
+          <div>
+            <span>Consegna</span>
+            <strong>{order.supplier.deliveryTerms ?? "Non definite"}</strong>
+          </div>
+        </section>
+      )}
+      {tab === "audit" && (
+        <section>
+          <h2>Audit e cronologia</h2>
+          {events.length ? (
+            <Timeline events={events} />
+          ) : (
+            <p className="quiet-empty">Nessun evento.</p>
+          )}
+        </section>
+      )}
+      {context.roleCode === "PROCUREMENT_MANAGER" && order.status === "ISSUED" && (
+        <details className="phase2-secondary-section">
+          <summary>Registra conferma fornitore</summary>
+          <form className="acknowledge-form" action={acknowledgeOrder}>
+            <input type="hidden" name="poId" value={order.id} />
+            <label>
+              Data confermata
+              <input
+                type="date"
+                name="expectedDate"
+                defaultValue={order.expectedDeliveryDate.toISOString().slice(0, 10)}
+              />
+            </label>
+            <button className="secondary-cta">Registra conferma</button>
+          </form>
+        </details>
+      )}
+    </main>
+  );
 }

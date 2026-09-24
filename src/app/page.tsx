@@ -25,19 +25,10 @@ export default async function Home() {
       />
     );
   if (context.roleCode === "AREA_MANAGER")
-    return (
-      <Area
-        name={context.user.name}
-        ids={scope.facilityIds}
-        label={scope.label}
-      />
-    );
+    return <Area name={context.user.name} ids={scope.facilityIds} label={scope.label} />;
   if (context.roleCode === "PROCUREMENT_MANAGER")
     return (
-      <Procurement
-        name={context.user.name}
-        organizationId={context.assignment.organizationId}
-      />
+      <Procurement name={context.user.name} organizationId={context.assignment.organizationId} />
     );
   if (context.roleCode === "FINANCE_CONTROLLER") {
     const [committed, received, open] = await Promise.all([
@@ -63,22 +54,15 @@ export default async function Home() {
           description="Visibilità sugli acquisti prima dell’arrivo del ciclo fattura."
         />
         <div className="metrics-grid three">
-          <Metric
-            label="Spesa impegnata"
-            value={formatMoney(Number(committed._sum.total ?? 0))}
-          />
-          <Metric
-            label="Merce ricevuta"
-            value={formatMoney(Number(received._sum.total ?? 0))}
-          />
+          <Metric label="Spesa impegnata" value={formatMoney(Number(committed._sum.total ?? 0))} />
+          <Metric label="Merce ricevuta" value={formatMoney(Number(received._sum.total ?? 0))} />
           <Metric label="Ordini aperti" value={open} />
         </div>
         <section className="future-panel">
           <h2>Prossima attivazione: riconciliazione fatture</h2>
           <p>
-            Acquisizione fatture e controllo a tre vie non sono ancora
-            operativi. I valori mostrati derivano da ordini e ricezioni reali
-            della demo.
+            Acquisizione fatture e controllo a tre vie non sono ancora operativi. I valori mostrati
+            derivano da ordini e ricezioni reali della demo.
           </p>
         </section>
       </main>
@@ -133,65 +117,59 @@ async function Director({
 }) {
   const budget = await getFacilityBudget(facilityId);
   const today = new Date();
-  const dayStart = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
-  );
+  const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const dayEnd = new Date(dayStart.getTime() + 86400000);
-  const [requests, pending, todayDeliveries, late, issues, recent, frequent] =
-    await Promise.all([
-      prisma.purchaseRequisition.count({
-        where: {
-          facilityId,
-          createdAt: {
-            gte: new Date(today.getFullYear(), today.getMonth(), 1),
-          },
+  const [requests, pending, todayDeliveries, late, issues, recent, frequent] = await Promise.all([
+    prisma.purchaseRequisition.count({
+      where: {
+        facilityId,
+        createdAt: {
+          gte: new Date(today.getFullYear(), today.getMonth(), 1),
         },
-      }),
-      prisma.purchaseRequisition.count({
-        where: { facilityId, status: "PENDING_APPROVAL" },
-      }),
-      prisma.purchaseOrder.count({
-        where: {
-          facilityId,
-          expectedDeliveryDate: { gte: dayStart, lt: dayEnd },
-          status: { not: "RECEIVED" },
-        },
-      }),
-      prisma.purchaseOrder.count({
-        where: {
-          facilityId,
-          expectedDeliveryDate: { lt: dayStart },
-          status: { in: ["ISSUED", "ACKNOWLEDGED"] },
-        },
-      }),
-      prisma.qualityIssue.count({
-        where: {
-          purchaseOrderLine: { purchaseOrder: { facilityId } },
-          status: { in: ["OPEN", "UNDER_REVIEW"] },
-        },
-      }),
-      prisma.auditEvent.findMany({
-        where: { organizationId, actorUserId: userId },
-        orderBy: { createdAt: "desc" },
-        take: 100,
-      }),
-      prisma.purchaseRequisitionLine.groupBy({
-        by: ["canonicalProductId"],
-        where: { requisition: { facilityId, status: "APPROVED" } },
-        _count: true,
-        orderBy: { _count: { canonicalProductId: "desc" } },
-        take: 5,
-      }),
-    ]);
+      },
+    }),
+    prisma.purchaseRequisition.count({
+      where: { facilityId, status: "PENDING_APPROVAL" },
+    }),
+    prisma.purchaseOrder.count({
+      where: {
+        facilityId,
+        expectedDeliveryDate: { gte: dayStart, lt: dayEnd },
+        status: { not: "RECEIVED" },
+      },
+    }),
+    prisma.purchaseOrder.count({
+      where: {
+        facilityId,
+        expectedDeliveryDate: { lt: dayStart },
+        status: { in: ["ISSUED", "ACKNOWLEDGED"] },
+      },
+    }),
+    prisma.qualityIssue.count({
+      where: {
+        purchaseOrderLine: { purchaseOrder: { facilityId } },
+        status: { in: ["OPEN", "UNDER_REVIEW"] },
+      },
+    }),
+    prisma.auditEvent.findMany({
+      where: { organizationId, actorUserId: userId },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+    prisma.purchaseRequisitionLine.groupBy({
+      by: ["canonicalProductId"],
+      where: { requisition: { facilityId, status: "APPROVED" } },
+      _count: true,
+      orderBy: { _count: { canonicalProductId: "desc" } },
+      take: 5,
+    }),
+  ]);
   const recentUnique = recent
     .filter(
       (event, index, events) =>
         events.findIndex(
           (candidate) =>
-            candidate.action === event.action &&
-            candidate.entityType === event.entityType,
+            candidate.action === event.action && candidate.entityType === event.entityType,
         ) === index,
     )
     .slice(0, 6);
@@ -252,11 +230,7 @@ async function Director({
       <section className={`today-panel ${tasks.length ? "" : "all-clear"}`}>
         <header>
           <p className="eyebrow">Da gestire oggi</p>
-          <h2>
-            {tasks.length
-              ? "La tua giornata operativa"
-              : "Tutto sotto controllo"}
-          </h2>
+          <h2>{tasks.length ? "La tua giornata operativa" : "Tutto sotto controllo"}</h2>
         </header>
         {tasks.length ? (
           <div>
@@ -268,10 +242,7 @@ async function Director({
             ))}
           </div>
         ) : (
-          <p>
-            Non ci sono consegne, ritardi o problemi che richiedono un
-            intervento immediato.
-          </p>
+          <p>Non ci sono consegne, ritardi o problemi che richiedono un intervento immediato.</p>
         )}
       </section>
       <section className="budget-cockpit">
@@ -279,8 +250,8 @@ async function Director({
           <p>Budget disponibile</p>
           <strong>{formatMoney(budget.available)}</strong>
           <span>
-            su {formatMoney(budget.approved)} approvati ·{" "}
-            {budget.utilization.toFixed(1)}% utilizzato
+            su {formatMoney(budget.approved)} approvati · {budget.utilization.toFixed(1)}%
+            utilizzato
           </span>
           <i>
             <b style={{ width: `${Math.min(100, budget.utilization)}%` }} />
@@ -332,10 +303,7 @@ async function Director({
             const offer = product.offers[0];
             return (
               <article key={product.id}>
-                <ProductImage
-                  name={product.name}
-                  categoryCode={product.category.code}
-                />
+                <ProductImage name={product.name} categoryCode={product.category.code} />
                 <div>
                   <span>{product.brand}</span>
                   <Link href={`/products/${product.id}`}>
@@ -344,9 +312,7 @@ async function Director({
                   <p>{product.packageDescription}</p>
                 </div>
                 <footer>
-                  <strong>
-                    {offer ? formatMoney(Number(offer.unitPrice)) : "—"}
-                  </strong>
+                  <strong>{offer ? formatMoney(Number(offer.unitPrice)) : "—"}</strong>
                   {offer && (
                     <form action={addToCart}>
                       <input type="hidden" name="offerId" value={offer.id} />
@@ -381,15 +347,7 @@ async function Director({
   );
 }
 
-async function Area({
-  name,
-  ids,
-  label,
-}: {
-  name: string;
-  ids: string[];
-  label: string;
-}) {
+async function Area({ name, ids, label }: { name: string; ids: string[]; label: string }) {
   const [budgets, orders, approvals, issues, facilities] = await Promise.all([
     prisma.budget.findMany({
       where: { facilityId: { in: ids }, status: "ACTIVE" },
@@ -411,10 +369,7 @@ async function Area({
       include: { budgets: true, purchaseOrders: true },
     }),
   ]);
-  const approved = budgets.reduce(
-    (sum, budget) => sum + Number(budget.approvedAmount),
-    0,
-  );
+  const approved = budgets.reduce((sum, budget) => sum + Number(budget.approvedAmount), 0);
   const committed = orders.reduce((sum, order) => sum + Number(order.total), 0);
   return (
     <main>
@@ -473,11 +428,7 @@ async function Area({
             0,
           );
           return (
-            <Link
-              href={`/facilities/${facility.id}`}
-              className="facility-util"
-              key={facility.id}
-            >
+            <Link href={`/facilities/${facility.id}`} className="facility-util" key={facility.id}>
               <strong>{facility.name}</strong>
               <i>
                 <b
@@ -497,13 +448,7 @@ async function Area({
   );
 }
 
-async function Procurement({
-  name,
-  organizationId,
-}: {
-  name: string;
-  organizationId: string;
-}) {
+async function Procurement({ name, organizationId }: { name: string; organizationId: string }) {
   const [
     spend,
     requisitions,
@@ -519,7 +464,11 @@ async function Procurement({
     importQueue,
   ] = await Promise.all([
     prisma.purchaseOrder.findMany({
-      where: { organizationId, status: { not: "CANCELLED" }, issuedAt: { gte: new Date(new Date().getFullYear(), 0, 1) } },
+      where: {
+        organizationId,
+        status: { not: "CANCELLED" },
+        issuedAt: { gte: new Date(new Date().getFullYear(), 0, 1) },
+      },
       include: { lines: true },
     }),
     prisma.purchaseRequisition.count({ where: { status: "PENDING_APPROVAL" } }),
@@ -576,12 +525,7 @@ async function Procurement({
       where: {
         sourceDocument: { organizationId },
         status: {
-          in: [
-            "NEEDS_REVIEW",
-            "READY_TO_PUBLISH",
-            "FAILED",
-            "REQUIRES_PROVIDER",
-          ],
+          in: ["NEEDS_REVIEW", "READY_TO_PUBLISH", "FAILED", "REQUIRES_PROVIDER"],
         },
       },
       include: { sourceDocument: { include: { supplier: true } } },
@@ -591,8 +535,16 @@ async function Procurement({
   ]);
   const observedSpend = spend.reduce((sum, order) => sum + Number(order.total), 0);
   const compliance = preferredSpendShare(
-    spend.flatMap((order) => order.lines.map((line) => ({ supplierId: order.supplierId, canonicalProductId: line.canonicalProductId, amount: line.lineTotal }))),
-    offers.filter((offer) => offer.preferred).map((offer) => `${offer.supplierId}:${offer.canonicalProductId}`),
+    spend.flatMap((order) =>
+      order.lines.map((line) => ({
+        supplierId: order.supplierId,
+        canonicalProductId: line.canonicalProductId,
+        amount: line.lineTotal,
+      })),
+    ),
+    offers
+      .filter((offer) => offer.preferred)
+      .map((offer) => `${offer.supplierId}:${offer.canonicalProductId}`),
   );
   const offerGroups = new Map<string, typeof offers>();
   for (const offer of offers)
@@ -604,10 +556,7 @@ async function Procurement({
     (group) =>
       group.length > 1 &&
       Math.max(...group.map((offer) => Number(offer.normalizedUnitPrice))) /
-        Math.max(
-          0.0001,
-          Math.min(...group.map((offer) => Number(offer.normalizedUnitPrice))),
-        ) >
+        Math.max(0.0001, Math.min(...group.map((offer) => Number(offer.normalizedUnitPrice)))) >
         1.1,
   ).length;
   return (
@@ -640,13 +589,9 @@ async function Procurement({
           </Link>
           <Link href="/compare">
             <b>{priceAnomalies}</b>
-            <strong>
-              {priceAnomalies ? "Anomalie di prezzo" : "Prezzi sotto controllo"}
-            </strong>
+            <strong>{priceAnomalies ? "Anomalie di prezzo" : "Prezzi sotto controllo"}</strong>
             <span>
-              {priceAnomalies
-                ? "Spread superiore al 10%"
-                : "Nessuna anomalia significativa"}
+              {priceAnomalies ? "Spread superiore al 10%" : "Nessuna anomalia significativa"}
             </span>
           </Link>
           {importQueue.length > 0 && (
@@ -654,10 +599,8 @@ async function Procurement({
               <b>{importQueue.length}</b>
               <strong>Importazioni da verificare</strong>
               <span>
-                {importQueue.reduce(
-                  (sum, job) => sum + job.reviewRequiredRecords,
-                  0,
-                )} eccezioni nei documenti
+                {importQueue.reduce((sum, job) => sum + job.reviewRequiredRecords, 0)} eccezioni nei
+                documenti
               </span>
             </Link>
           )}
@@ -696,24 +639,17 @@ async function Procurement({
           <Link href="/non-conformita" key={issue.id}>
             <span>Non conformità</span>
             <strong>
-              {issue.purchaseOrderLine.purchaseOrder.supplier.name} ·{" "}
-              {statusLabel(issue.severity)}
+              {issue.purchaseOrderLine.purchaseOrder.supplier.name} · {statusLabel(issue.severity)}
             </strong>
             <b>{formatDate(issue.openedAt)}</b>
           </Link>
         ))}
       </div>
       <div className="metrics-grid four">
-        <Metric
-          label="Spesa osservata da inizio anno"
-          value={formatMoney(observedSpend)}
-        />
+        <Metric label="Spesa osservata da inizio anno" value={formatMoney(observedSpend)} />
         <Metric label="Ordini aperti" value={orders} />
         <Metric label="Fornitori attivi" value={suppliers} />
-        <Metric
-          label="Conformità ai convenzionati"
-          value={`${compliance.toFixed(1)}%`}
-        />
+        <Metric label="Conformità ai convenzionati" value={`${compliance.toFixed(1)}%`} />
       </div>
       <div className="opportunity-links">
         <Link href="/compare">

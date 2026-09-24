@@ -32,21 +32,44 @@ export default async function DemoRoadmapPage() {
   if (process.env.VIDEO_DEMO_MODE !== "1") notFound();
   await requireRoles(["EXECUTIVE_SPONSOR"]);
 
-  return <main className="video-roadmap">
-    <PageHeader eyebrow="Presentazione demo" title="Un core operativo pronto. Una roadmap dichiarata." description="Le capacità disponibili sono separate con chiarezza dalle evoluzioni successive." />
-    <div className="video-roadmap-grid">
-      <section className="video-roadmap-now">
-        <p className="eyebrow">Disponibile ora</p>
-        <h2>Dal bisogno alla decisione, con tracciabilità</h2>
-        <ul>{available.map((item) => <li key={item}><span aria-hidden="true">✓</span>{item}</li>)}</ul>
-      </section>
-      <section className="video-roadmap-next">
-        <p className="eyebrow">Prossimamente</p>
-        <h2>Estensioni pianificate, non ancora operative</h2>
-        <p>Queste capacità appartengono alla roadmap e non sono presentate come disponibili nella versione corrente.</p>
-        <ul>{next.map((item) => <li key={item}>{item}</li>)}</ul>
-      </section>
-    </div>
-    <footer className="video-roadmap-close"><strong>Joint Procurement OS</strong><span>Anteo × Coopselios · demo con dati interamente sintetici</span></footer>
-  </main>;
+  return (
+    <main className="video-roadmap">
+      <PageHeader
+        eyebrow="Presentazione demo"
+        title="Un core operativo pronto. Una roadmap dichiarata."
+        description="Le capacità disponibili sono separate con chiarezza dalle evoluzioni successive."
+      />
+      <div className="video-roadmap-grid">
+        <section className="video-roadmap-now">
+          <p className="eyebrow">Disponibile ora</p>
+          <h2>Dal bisogno alla decisione, con tracciabilità</h2>
+          <ul>
+            {available.map((item) => (
+              <li key={item}>
+                <span aria-hidden="true">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section className="video-roadmap-next">
+          <p className="eyebrow">Prossimamente</p>
+          <h2>Estensioni pianificate, non ancora operative</h2>
+          <p>
+            Queste capacità appartengono alla roadmap e non sono presentate come disponibili nella
+            versione corrente.
+          </p>
+          <ul>
+            {next.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </section>
+      </div>
+      <footer className="video-roadmap-close">
+        <strong>Joint Procurement OS</strong>
+        <span>Anteo × Coopselios · demo con dati interamente sintetici</span>
+      </footer>
+    </main>
+  );
 }

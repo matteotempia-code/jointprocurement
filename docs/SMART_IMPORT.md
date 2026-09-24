@@ -21,14 +21,14 @@ Il file originale non viene sovrascritto. Retry e futura rielaborazione creano v
 
 ## Formati supportati
 
-| Formato | Strategia attuale | Stato |
-| --- | --- | --- |
-| XLSX | `read-excel-file`, header detection, fogli e celle; diagnostica `XLSX_RUNTIME_DIAG_V1` | Implementato; PASS remoto richiesto dalla certificazione develop |
-| CSV / TSV / TXT | Delimitatore, quoted values, encoding UTF-8, decimal comma | Completo per il percorso MVP |
-| PDF nativo | Estrazione testo, righe delimitate | Supportato; layout complessi possono richiedere review |
-| DOCX | Mammoth, paragrafi e testo delle tabelle | Supporto strutturale iniziale |
-| XLS legacy | File conservato, parser locale non disponibile | Richiede conversione o provider futuro |
-| PDF scannerizzato / immagini | File conservato, nessun OCR locale configurato | Non interpretato automaticamente |
+| Formato                      | Strategia attuale                                                                      | Stato                                                            |
+| ---------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| XLSX                         | `read-excel-file`, header detection, fogli e celle; diagnostica `XLSX_RUNTIME_DIAG_V1` | Implementato; PASS remoto richiesto dalla certificazione develop |
+| CSV / TSV / TXT              | Delimitatore, quoted values, encoding UTF-8, decimal comma                             | Completo per il percorso MVP                                     |
+| PDF nativo                   | Estrazione testo, righe delimitate                                                     | Supportato; layout complessi possono richiedere review           |
+| DOCX                         | Mammoth, paragrafi e testo delle tabelle                                               | Supporto strutturale iniziale                                    |
+| XLS legacy                   | File conservato, parser locale non disponibile                                         | Richiede conversione o provider futuro                           |
+| PDF scannerizzato / immagini | File conservato, nessun OCR locale configurato                                         | Non interpretato automaticamente                                 |
 
 Dimensione massima: 8 MB. Estensione, MIME, nome e path vengono validati; macro e contenuto documento non vengono eseguiti.
 

@@ -47,14 +47,14 @@ Le fixture sintetiche restano in `demo-imports/`. Con `DOCUMENT_STORAGE_PROVIDER
 
 ## Demo users
 
-| Persona | Role | Scope |
-| --- | --- | --- |
-| Lucia Ferri | RSA Director | RSA Aurora |
-| Andrea Riva | Area Manager | Area Piemonte |
-| Giulia Bianchi | Joint Procurement Manager | Anteo Demo |
-| Marco Villa | Procurement Administrator | Anteo Demo |
-| Elena Conti | Finance Controller | Anteo Demo |
-| Davide Romano | Executive Sponsor | Anteo Demo |
+| Persona        | Role                      | Scope         |
+| -------------- | ------------------------- | ------------- |
+| Lucia Ferri    | RSA Director              | RSA Aurora    |
+| Andrea Riva    | Area Manager              | Area Piemonte |
+| Giulia Bianchi | Joint Procurement Manager | Anteo Demo    |
+| Marco Villa    | Procurement Administrator | Anteo Demo    |
+| Elena Conti    | Finance Controller        | Anteo Demo    |
+| Davide Romano  | Executive Sponsor         | Anteo Demo    |
 
 Use View as in the demo sidebar. Selection is an HTTP-only cookie validated by a Server Action.
 

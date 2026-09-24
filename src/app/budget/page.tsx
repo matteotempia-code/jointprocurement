@@ -6,22 +6,205 @@ import { resolveScope } from "@/lib/scope";
 
 const PAGE_SIZE = 20;
 
-export default async function Budget({ searchParams }: { searchParams: Promise<{ pagina?: string }> }) {
-  const context = await requireRoles(["RSA_DIRECTOR", "AREA_MANAGER", "PROCUREMENT_MANAGER"]), scope = await resolveScope(context.assignment), query = await searchParams;
-  const page = Math.max(1, Number(query.pagina ?? 1)), budgetWhere = { facilityId: { in: scope.facilityIds }, status: "ACTIVE" as const };
+export default async function Budget({
+  searchParams,
+}: {
+  searchParams: Promise<{ pagina?: string }>;
+}) {
+  const context = await requireRoles(["RSA_DIRECTOR", "AREA_MANAGER", "PROCUREMENT_MANAGER"]),
+    scope = await resolveScope(context.assignment),
+    query = await searchParams;
+  const page = Math.max(1, Number(query.pagina ?? 1)),
+    budgetWhere = { facilityId: { in: scope.facilityIds }, status: "ACTIVE" as const };
   const [totalBudgets, budgets, allBudgets, orders, pending, limits] = await Promise.all([
     prisma.budget.count({ where: budgetWhere }),
-    prisma.budget.findMany({ where: budgetWhere, include: { category: true, costCenter: true, facility: true }, orderBy: [{ facility: { name: "asc" } }, { periodStart: "desc" }], skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
-    prisma.budget.findMany({ where: budgetWhere, select: { approvedAmount: true, actualAmount: true } }),
-    prisma.purchaseOrder.findMany({ where: { facilityId: { in: scope.facilityIds }, status: { not: "CANCELLED" } }, select: { total: true } }),
-    prisma.purchaseRequisition.findMany({ where: { facilityId: { in: scope.facilityIds }, status: "PENDING_APPROVAL" }, select: { total: true } }),
-    prisma.procurementLimit.findMany({ where: { facilityId: { in: scope.facilityIds }, active: true }, include: { facility: true, canonicalProduct: true, category: true, costCenter: true }, orderBy: [{ periodEnd: "asc" }, { facility: { name: "asc" } }], take: 20 }),
+    prisma.budget.findMany({
+      where: budgetWhere,
+      include: { category: true, costCenter: true, facility: true },
+      orderBy: [{ facility: { name: "asc" } }, { periodStart: "desc" }],
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.budget.findMany({
+      where: budgetWhere,
+      select: { approvedAmount: true, actualAmount: true },
+    }),
+    prisma.purchaseOrder.findMany({
+      where: { facilityId: { in: scope.facilityIds }, status: { not: "CANCELLED" } },
+      select: { total: true },
+    }),
+    prisma.purchaseRequisition.findMany({
+      where: { facilityId: { in: scope.facilityIds }, status: "PENDING_APPROVAL" },
+      select: { total: true },
+    }),
+    prisma.procurementLimit.findMany({
+      where: { facilityId: { in: scope.facilityIds }, active: true },
+      include: { facility: true, canonicalProduct: true, category: true, costCenter: true },
+      orderBy: [{ periodEnd: "asc" }, { facility: { name: "asc" } }],
+      take: 20,
+    }),
   ]);
-  const approved = allBudgets.reduce((sum, item) => sum + Number(item.approvedAmount), 0), actual = allBudgets.reduce((sum, item) => sum + Number(item.actualAmount), 0), committed = orders.reduce((sum, item) => sum + Number(item.total), 0), reserved = pending.reduce((sum, item) => sum + Number(item.total), 0), available = approved - actual - committed - reserved, utilization = approved ? (actual + committed) / approved * 100 : 0;
+  const approved = allBudgets.reduce((sum, item) => sum + Number(item.approvedAmount), 0),
+    actual = allBudgets.reduce((sum, item) => sum + Number(item.actualAmount), 0),
+    committed = orders.reduce((sum, item) => sum + Number(item.total), 0),
+    reserved = pending.reduce((sum, item) => sum + Number(item.total), 0),
+    available = approved - actual - committed - reserved,
+    utilization = approved ? ((actual + committed) / approved) * 100 : 0;
   const pages = Math.max(1, Math.ceil(totalBudgets / PAGE_SIZE));
-  return <main className="phase2-page phase2-budget"><PageHeader eyebrow="Controllo economico" title="Budget e limiti" description={`${scope.label} · valori con scope e periodo espliciti`} />
-    <section className="phase2-summary-strip"><div><span>Approvato</span><strong><Num value={approved} kind="currency" /></strong><small>Perimetro corrente · 2026</small></div><div><span>Speso + impegnato</span><strong><Num value={actual + committed} kind="currency" /></strong><small>{utilization.toLocaleString("it-IT", { maximumFractionDigits: 1 })}% utilizzato</small></div><div><span>Riservato</span><strong><Num value={reserved} kind="currency" /></strong><small>Richieste in approvazione</small></div><div><span>Disponibile</span><strong><Num value={available} kind="currency" /></strong><small>Dopo impegni e riserve</small></div></section>
-    {limits.length > 0 && <section className="phase2-queue"><div className="section-heading"><div><h2>Limiti di acquisto applicabili</h2><p>Struttura × prodotto o categoria × periodo.</p></div><span>{limits.length} regole visibili</span></div><DataTable label="Limiti procurement"><thead><tr><th>Scope</th><th>Oggetto</th><th>Periodo</th><th>Tipo</th><th className="num-cell">Limite</th><th>Stato</th></tr></thead><tbody>{limits.map((limit) => <tr key={limit.id}><td>{limit.facility.name}<small className="cell-detail">{limit.costCenter?.name ?? "Tutti i servizi"}</small></td><td>{limit.canonicalProduct?.name ?? limit.category?.name ?? "Perimetro generale"}</td><td>{formatDate(limit.periodStart)}–{formatDate(limit.periodEnd)}</td><td>{limit.limitType === "MONETARY" ? "Valore" : "Quantità"}</td><td className="num-cell">{limit.limitType === "MONETARY" ? <Num value={Number(limit.maximumAmount ?? 0)} kind="currency" /> : `${Number(limit.maximumQuantity ?? 0).toLocaleString("it-IT")} ${limit.quantityUom ?? "unità"}`}</td><td><StatusChip variant="neutral">Attivo</StatusChip></td></tr>)}</tbody></DataTable></section>}
-    <section className="phase2-queue"><div className="section-heading"><div><h2>Budget per struttura</h2><p>Importi approvati e consuntivi del periodo associato.</p></div><span>{budgets.length} mostrati su {totalBudgets}</span></div><DataTable label="Dettaglio budget"><thead><tr><th>Scope</th><th>Periodo</th><th className="num-cell">Approvato</th><th className="num-cell">Speso</th><th className="num-cell">Residuo contabile</th><th>Utilizzo</th></tr></thead><tbody>{budgets.length ? budgets.map((budget) => { const used = Number(budget.actualAmount), max = Number(budget.approvedAmount), ratio = max ? used / max * 100 : 0; return <tr key={budget.id}><td>{budget.facility?.name}<small className="cell-detail">{budget.category?.name ?? "Tutte le categorie"} · {budget.costCenter?.name ?? "Tutti i centri"}</small></td><td>{formatDate(budget.periodStart)}–{formatDate(budget.periodEnd)}</td><td className="num-cell"><Num value={max} kind="currency" /></td><td className="num-cell"><Num value={used} kind="currency" /></td><td className="num-cell"><Num value={max - used} kind="currency" /></td><td><StatusChip variant={ratio >= 90 ? "danger" : ratio >= 80 ? "warn" : "ok"}>{ratio.toLocaleString("it-IT", { maximumFractionDigits: 1 })}%</StatusChip></td></tr>; }) : <EmptyRow colSpan={6}>Nessun budget attivo.</EmptyRow>}</tbody></DataTable><Pagination page={Math.min(page, pages)} pages={pages} pathname="/budget" /></section>
-  </main>;
+  return (
+    <main className="phase2-page phase2-budget">
+      <PageHeader
+        eyebrow="Controllo economico"
+        title="Budget e limiti"
+        description={`${scope.label} · valori con scope e periodo espliciti`}
+      />
+      <section className="phase2-summary-strip">
+        <div>
+          <span>Approvato</span>
+          <strong>
+            <Num value={approved} kind="currency" />
+          </strong>
+          <small>Perimetro corrente · 2026</small>
+        </div>
+        <div>
+          <span>Speso + impegnato</span>
+          <strong>
+            <Num value={actual + committed} kind="currency" />
+          </strong>
+          <small>
+            {utilization.toLocaleString("it-IT", { maximumFractionDigits: 1 })}% utilizzato
+          </small>
+        </div>
+        <div>
+          <span>Riservato</span>
+          <strong>
+            <Num value={reserved} kind="currency" />
+          </strong>
+          <small>Richieste in approvazione</small>
+        </div>
+        <div>
+          <span>Disponibile</span>
+          <strong>
+            <Num value={available} kind="currency" />
+          </strong>
+          <small>Dopo impegni e riserve</small>
+        </div>
+      </section>
+      {limits.length > 0 && (
+        <section className="phase2-queue">
+          <div className="section-heading">
+            <div>
+              <h2>Limiti di acquisto applicabili</h2>
+              <p>Struttura × prodotto o categoria × periodo.</p>
+            </div>
+            <span>{limits.length} regole visibili</span>
+          </div>
+          <DataTable label="Limiti procurement">
+            <thead>
+              <tr>
+                <th>Scope</th>
+                <th>Oggetto</th>
+                <th>Periodo</th>
+                <th>Tipo</th>
+                <th className="num-cell">Limite</th>
+                <th>Stato</th>
+              </tr>
+            </thead>
+            <tbody>
+              {limits.map((limit) => (
+                <tr key={limit.id}>
+                  <td>
+                    {limit.facility.name}
+                    <small className="cell-detail">
+                      {limit.costCenter?.name ?? "Tutti i servizi"}
+                    </small>
+                  </td>
+                  <td>
+                    {limit.canonicalProduct?.name ?? limit.category?.name ?? "Perimetro generale"}
+                  </td>
+                  <td>
+                    {formatDate(limit.periodStart)}–{formatDate(limit.periodEnd)}
+                  </td>
+                  <td>{limit.limitType === "MONETARY" ? "Valore" : "Quantità"}</td>
+                  <td className="num-cell">
+                    {limit.limitType === "MONETARY" ? (
+                      <Num value={Number(limit.maximumAmount ?? 0)} kind="currency" />
+                    ) : (
+                      `${Number(limit.maximumQuantity ?? 0).toLocaleString("it-IT")} ${limit.quantityUom ?? "unità"}`
+                    )}
+                  </td>
+                  <td>
+                    <StatusChip variant="neutral">Attivo</StatusChip>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
+        </section>
+      )}
+      <section className="phase2-queue">
+        <div className="section-heading">
+          <div>
+            <h2>Budget per struttura</h2>
+            <p>Importi approvati e consuntivi del periodo associato.</p>
+          </div>
+          <span>
+            {budgets.length} mostrati su {totalBudgets}
+          </span>
+        </div>
+        <DataTable label="Dettaglio budget">
+          <thead>
+            <tr>
+              <th>Scope</th>
+              <th>Periodo</th>
+              <th className="num-cell">Approvato</th>
+              <th className="num-cell">Speso</th>
+              <th className="num-cell">Residuo contabile</th>
+              <th>Utilizzo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {budgets.length ? (
+              budgets.map((budget) => {
+                const used = Number(budget.actualAmount),
+                  max = Number(budget.approvedAmount),
+                  ratio = max ? (used / max) * 100 : 0;
+                return (
+                  <tr key={budget.id}>
+                    <td>
+                      {budget.facility?.name}
+                      <small className="cell-detail">
+                        {budget.category?.name ?? "Tutte le categorie"} ·{" "}
+                        {budget.costCenter?.name ?? "Tutti i centri"}
+                      </small>
+                    </td>
+                    <td>
+                      {formatDate(budget.periodStart)}–{formatDate(budget.periodEnd)}
+                    </td>
+                    <td className="num-cell">
+                      <Num value={max} kind="currency" />
+                    </td>
+                    <td className="num-cell">
+                      <Num value={used} kind="currency" />
+                    </td>
+                    <td className="num-cell">
+                      <Num value={max - used} kind="currency" />
+                    </td>
+                    <td>
+                      <StatusChip variant={ratio >= 90 ? "danger" : ratio >= 80 ? "warn" : "ok"}>
+                        {ratio.toLocaleString("it-IT", { maximumFractionDigits: 1 })}%
+                      </StatusChip>
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <EmptyRow colSpan={6}>Nessun budget attivo.</EmptyRow>
+            )}
+          </tbody>
+        </DataTable>
+        <Pagination page={Math.min(page, pages)} pages={pages} pathname="/budget" />
+      </section>
+    </main>
+  );
 }

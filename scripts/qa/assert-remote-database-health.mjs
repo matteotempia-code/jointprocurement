@@ -13,7 +13,10 @@ const headers = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
   ? { "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET }
   : {};
 
-const response = await fetch(new URL("/api/health/database", baseUrl), { headers, redirect: "manual" });
+const response = await fetch(new URL("/api/health/database", baseUrl), {
+  headers,
+  redirect: "manual",
+});
 assert.equal(response.status, 200, `Database health endpoint returned HTTP ${response.status}`);
 const health = await response.json();
 assert.equal(
@@ -26,4 +29,10 @@ assert.equal(
   expectedMigration,
   `DEPLOYMENT MIGRATION MISMATCH: expected ${expectedMigration}, received ${health.latestMigration ?? "missing"}`,
 );
-console.log(JSON.stringify({ status: "PASS", databaseProjectRef: health.databaseProjectRef, latestMigration: health.latestMigration }));
+console.log(
+  JSON.stringify({
+    status: "PASS",
+    databaseProjectRef: health.databaseProjectRef,
+    latestMigration: health.latestMigration,
+  }),
+);

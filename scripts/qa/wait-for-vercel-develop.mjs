@@ -16,10 +16,12 @@ const outputFile = required("GITHUB_OUTPUT");
 const deadline = Date.now() + 12 * 60_000;
 
 function commitSha(deployment) {
-  return deployment.meta?.githubCommitSha
-    ?? deployment.meta?.gitCommitSha
-    ?? deployment.gitSource?.sha
-    ?? null;
+  return (
+    deployment.meta?.githubCommitSha ??
+    deployment.meta?.gitCommitSha ??
+    deployment.gitSource?.sha ??
+    null
+  );
 }
 
 async function deployments() {
@@ -33,8 +35,12 @@ async function deployments() {
 }
 
 while (Date.now() < deadline) {
-  const matching = (await deployments()).filter((deployment) => commitSha(deployment) === expectedSha);
-  const ready = matching.find((deployment) => deployment.readyState === "READY" || deployment.state === "READY");
+  const matching = (await deployments()).filter(
+    (deployment) => commitSha(deployment) === expectedSha,
+  );
+  const ready = matching.find(
+    (deployment) => deployment.readyState === "READY" || deployment.state === "READY",
+  );
   if (ready) {
     const url = `https://${ready.url}`;
     await appendFile(outputFile, `url=${url}\n`, "utf8");
@@ -42,8 +48,13 @@ while (Date.now() < deadline) {
     process.exit(0);
   }
 
-  const failed = matching.find((deployment) => (deployment.readyState ?? deployment.state) === "ERROR");
-  if (failed) throw new Error(`Vercel ${target} deployment for this commit ended in ${failed.readyState ?? failed.state}.`);
+  const failed = matching.find(
+    (deployment) => (deployment.readyState ?? deployment.state) === "ERROR",
+  );
+  if (failed)
+    throw new Error(
+      `Vercel ${target} deployment for this commit ended in ${failed.readyState ?? failed.state}.`,
+    );
 
   console.log(`Waiting for Vercel ${target} deployment for ${expectedSha.slice(0, 12)}...`);
   await new Promise((resolve) => setTimeout(resolve, 15_000));

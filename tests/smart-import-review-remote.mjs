@@ -6,22 +6,39 @@ import AdmZip from "adm-zip";
 import { chromium } from "playwright";
 
 const base = process.env.QA_BASE_URL;
-if (!base) throw new Error("QA_BASE_URL is required and must target the Vercel develop deployment.");
-const headers = process.env.VERCEL_AUTOMATION_BYPASS_SECRET ? { "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET } : {};
+if (!base)
+  throw new Error("QA_BASE_URL is required and must target the Vercel develop deployment.");
+const headers = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+  ? { "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET }
+  : {};
 const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, extraHTTPHeaders: headers });
+const page = await browser.newPage({
+  viewport: { width: 1440, height: 900 },
+  extraHTTPHeaders: headers,
+});
 const errors = [];
-page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+page.on("console", (message) => {
+  if (message.type() === "error") errors.push(message.text());
+});
 page.on("pageerror", (error) => errors.push(error.message));
 
 async function open(path) {
-  const response = await page.goto(new URL(path, base).toString(), { waitUntil: "networkidle", timeout: 60_000 });
+  const response = await page.goto(new URL(path, base).toString(), {
+    waitUntil: "networkidle",
+    timeout: 60_000,
+  });
   assert.equal(response?.status(), 200, `GET ${path}`);
 }
 async function switchTo(name) {
   await open("/");
   const select = page.getByLabel(/^(Persona demo|Visualizza come)$/);
-  const value = await select.locator("option").evaluateAll((options, expected) => options.find((option) => option.textContent?.includes(expected))?.value, name);
+  const value = await select
+    .locator("option")
+    .evaluateAll(
+      (options, expected) =>
+        options.find((option) => option.textContent?.includes(expected))?.value,
+      name,
+    );
   assert.ok(value, `persona ${name}`);
   await select.selectOption(value);
   await page.getByText(name, { exact: true }).last().waitFor();
@@ -29,48 +46,113 @@ async function switchTo(name) {
 async function counts() {
   const text = await page.locator(".review-toolbar nav").innerText();
   const read = (label) => Number(text.match(new RegExp(`${label}\\s+(\\d+)`, "i"))?.[1] ?? -1);
-  return { attention: read("Da verificare"), ready: read("Pronte"), newProducts: read("Nuovi prodotti"), nonComparable: read("Non confrontabili"), ignored: read("Ignorate"), total: read("Tutte") };
+  return {
+    attention: read("Da verificare"),
+    ready: read("Pronte"),
+    newProducts: read("Nuovi prodotti"),
+    nonComparable: read("Non confrontabili"),
+    ignored: read("Ignorate"),
+    total: read("Tutte"),
+  };
 }
 async function databaseDiagnostic() {
   if (!process.env.DATABASE_URL || (!jobPath && !uploadedFixture)) return { available: false };
   const jobId = jobPath?.split("/").filter(Boolean).at(-1);
   try {
-    const [{ PrismaPg }, clientModule] = await Promise.all([import("@prisma/adapter-pg"), import("@prisma/client")]);
+    const [{ PrismaPg }, clientModule] = await Promise.all([
+      import("@prisma/adapter-pg"),
+      import("@prisma/client"),
+    ]);
     const PrismaClient = clientModule.PrismaClient ?? clientModule.default?.PrismaClient;
     if (!PrismaClient) return { available: false, reason: "PrismaClient unavailable" };
-    const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+    const db = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+    });
     try {
-      const job = jobId ? await db.importJob.findUnique({
-        where: { id: jobId },
-        select: {
-          id: true, status: true, errorMessage: true, totalRecords: true, reviewRequiredRecords: true,
-          publishableRecords: true, interpretationProvider: true, externalProcessing: true, completedAt: true,
-          sourceDocument: { select: { status: true, storageProvider: true, storageBucket: true, storageObjectKey: true, fileSize: true, checksum: true } },
-          _count: { select: { records: true } },
-          procurementAICalls: { select: { operation: true, resultState: true, errorCode: true, latencyMs: true }, orderBy: { createdAt: "asc" } },
-        },
-      }) : await db.importJob.findFirst({
-        where: {
-          createdAt: { gte: certificationStartedAt },
-          sourceDocument: { originalFilename: uploadedFixture.name, checksum: uploadedFixture.checksum },
-        },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true, status: true, errorMessage: true, totalRecords: true, reviewRequiredRecords: true,
-          publishableRecords: true, interpretationProvider: true, externalProcessing: true, completedAt: true,
-          sourceDocument: { select: { status: true, storageProvider: true, storageBucket: true, storageObjectKey: true, fileSize: true, checksum: true } },
-          _count: { select: { records: true } },
-          procurementAICalls: { select: { operation: true, resultState: true, errorCode: true, latencyMs: true }, orderBy: { createdAt: "asc" } },
-        },
-      });
+      const job = jobId
+        ? await db.importJob.findUnique({
+            where: { id: jobId },
+            select: {
+              id: true,
+              status: true,
+              errorMessage: true,
+              totalRecords: true,
+              reviewRequiredRecords: true,
+              publishableRecords: true,
+              interpretationProvider: true,
+              externalProcessing: true,
+              completedAt: true,
+              sourceDocument: {
+                select: {
+                  status: true,
+                  storageProvider: true,
+                  storageBucket: true,
+                  storageObjectKey: true,
+                  fileSize: true,
+                  checksum: true,
+                },
+              },
+              _count: { select: { records: true } },
+              procurementAICalls: {
+                select: { operation: true, resultState: true, errorCode: true, latencyMs: true },
+                orderBy: { createdAt: "asc" },
+              },
+            },
+          })
+        : await db.importJob.findFirst({
+            where: {
+              createdAt: { gte: certificationStartedAt },
+              sourceDocument: {
+                originalFilename: uploadedFixture.name,
+                checksum: uploadedFixture.checksum,
+              },
+            },
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              status: true,
+              errorMessage: true,
+              totalRecords: true,
+              reviewRequiredRecords: true,
+              publishableRecords: true,
+              interpretationProvider: true,
+              externalProcessing: true,
+              completedAt: true,
+              sourceDocument: {
+                select: {
+                  status: true,
+                  storageProvider: true,
+                  storageBucket: true,
+                  storageObjectKey: true,
+                  fileSize: true,
+                  checksum: true,
+                },
+              },
+              _count: { select: { records: true } },
+              procurementAICalls: {
+                select: { operation: true, resultState: true, errorCode: true, latencyMs: true },
+                orderBy: { createdAt: "asc" },
+              },
+            },
+          });
       if (!job) return { available: true, jobFound: false };
-      const groups = await db.importedRecord.groupBy({ by: ["status"], where: { importJobId: job.id }, _count: { _all: true } });
+      const groups = await db.importedRecord.groupBy({
+        by: ["status"],
+        where: { importJobId: job.id },
+        _count: { _all: true },
+      });
       return {
-        available: true, jobFound: true, jobIdPresent: Boolean(job.id), status: job.status,
+        available: true,
+        jobFound: true,
+        jobIdPresent: Boolean(job.id),
+        status: job.status,
         error: job.errorMessage?.slice(0, 300) ?? null,
-        totalRecords: job.totalRecords, reviewRequiredRecords: job.reviewRequiredRecords,
-        publishableRecords: job.publishableRecords, persistedRecords: job._count.records,
-        interpretationProvider: job.interpretationProvider, externalProcessing: job.externalProcessing,
+        totalRecords: job.totalRecords,
+        reviewRequiredRecords: job.reviewRequiredRecords,
+        publishableRecords: job.publishableRecords,
+        persistedRecords: job._count.records,
+        interpretationProvider: job.interpretationProvider,
+        externalProcessing: job.externalProcessing,
         completed: Boolean(job.completedAt),
         aiCalls: job.procurementAICalls,
         storage: {
@@ -78,8 +160,12 @@ async function databaseDiagnostic() {
           provider: job.sourceDocument.storageProvider,
           bucketPresent: Boolean(job.sourceDocument.storageBucket),
           objectKeyPresent: Boolean(job.sourceDocument.storageObjectKey),
-          byteLengthMatches: uploadedFixture ? job.sourceDocument.fileSize === uploadedFixture.byteLength : null,
-          checksumMatches: uploadedFixture ? job.sourceDocument.checksum === uploadedFixture.checksum : null,
+          byteLengthMatches: uploadedFixture
+            ? job.sourceDocument.fileSize === uploadedFixture.byteLength
+            : null,
+          checksumMatches: uploadedFixture
+            ? job.sourceDocument.checksum === uploadedFixture.checksum
+            : null,
         },
         groups: Object.fromEntries(groups.map((group) => [group.status, group._count._all])),
       };
@@ -88,14 +174,23 @@ async function databaseDiagnostic() {
     }
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : null;
-    return { available: false, reason: error instanceof Error ? error.name : "unknown diagnostic error", code };
+    return {
+      available: false,
+      reason: error instanceof Error ? error.name : "unknown diagnostic error",
+      code,
+    };
   }
 }
 async function captureFailureEvidence() {
   const directory = path.join(process.cwd(), "artifacts", "remote-certification");
   await mkdir(directory, { recursive: true });
-  await page.screenshot({ path: path.join(directory, "smart-import-failure.png"), fullPage: true }).catch(() => undefined);
-  const alerts = await page.locator('[role="alert"], .error, .warning').allInnerTexts().catch(() => []);
+  await page
+    .screenshot({ path: path.join(directory, "smart-import-failure.png"), fullPage: true })
+    .catch(() => undefined);
+  const alerts = await page
+    .locator('[role="alert"], .error, .warning')
+    .allInnerTexts()
+    .catch(() => []);
   return {
     urlPath: new URL(page.url()).pathname,
     title: await page.title().catch(() => "unavailable"),
@@ -107,7 +202,11 @@ async function captureFailureEvidence() {
 }
 async function recordLinks(path, filter) {
   await open(`${path}?filtro=${filter}`);
-  return page.getByRole("link", { name: /^Riga \d+$/ }).evaluateAll((links) => [...new Set(links.map((link) => link.getAttribute("href")).filter(Boolean))]);
+  return page
+    .getByRole("link", { name: /^Riga \d+$/ })
+    .evaluateAll((links) => [
+      ...new Set(links.map((link) => link.getAttribute("href")).filter(Boolean)),
+    ]);
 }
 async function firstDecidableRecord(path, filter, button) {
   for (const href of await recordLinks(path, filter)) {
@@ -117,11 +216,24 @@ async function firstDecidableRecord(path, filter, button) {
   throw new Error(`Nessun record ${filter} con azione ${button}`);
 }
 async function uniqueFixture(file) {
-  const source = typeof file === "string"
-    ? { name: path.basename(file), mimeType: file.endsWith(".csv") ? "text/csv" : file.endsWith(".pdf") ? "application/pdf" : "application/octet-stream", buffer: await readFile(file) }
-    : file;
+  const source =
+    typeof file === "string"
+      ? {
+          name: path.basename(file),
+          mimeType: file.endsWith(".csv")
+            ? "text/csv"
+            : file.endsWith(".pdf")
+              ? "application/pdf"
+              : "application/octet-stream",
+          buffer: await readFile(file),
+        }
+      : file;
   const name = `remote-cert-${randomUUID()}${path.extname(source.name)}`;
-  uploadedFixture = { name, byteLength: source.buffer.length, checksum: createHash("sha256").update(source.buffer).digest("hex") };
+  uploadedFixture = {
+    name,
+    byteLength: source.buffer.length,
+    checksum: createHash("sha256").update(source.buffer).digest("hex"),
+  };
   return { ...source, name };
 }
 async function uploadAndVerify({ file, supplier, checkpointName }) {
@@ -130,7 +242,9 @@ async function uploadAndVerify({ file, supplier, checkpointName }) {
   await page.getByTestId("import-file").setInputFiles(await uniqueFixture(file));
   await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: supplier });
   await page.getByRole("button", { name: "Carica e interpreta" }).click({ timeout: 180_000 });
-  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 180_000 });
+  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), {
+    timeout: 180_000,
+  });
   const path = new URL(page.url()).pathname;
   const result = await counts();
   assert.ok(result.total > 0, `${checkpointName}: no persisted records`);
@@ -138,10 +252,29 @@ async function uploadAndVerify({ file, supplier, checkpointName }) {
 }
 function docxFixture() {
   const zip = new AdmZip();
-  zip.addFile("[Content_Types].xml", Buffer.from('<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'));
-  zip.addFile("_rels/.rels", Buffer.from('<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'));
-  zip.addFile("word/document.xml", Buffer.from('<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>sku;descrizione;prezzo;pezzi</w:t></w:r></w:p><w:p><w:r><w:t>REMOTE-DOCX-1;Guanto nitrile demo;2,50;100</w:t></w:r></w:p></w:body></w:document>'));
-  return { name: "remote-certification.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: zip.toBuffer() };
+  zip.addFile(
+    "[Content_Types].xml",
+    Buffer.from(
+      '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
+    ),
+  );
+  zip.addFile(
+    "_rels/.rels",
+    Buffer.from(
+      '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+    ),
+  );
+  zip.addFile(
+    "word/document.xml",
+    Buffer.from(
+      '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>sku;descrizione;prezzo;pezzi</w:t></w:r></w:p><w:p><w:r><w:t>REMOTE-DOCX-1;Guanto nitrile demo;2,50;100</w:t></w:r></w:p></w:body></w:document>',
+    ),
+  );
+  return {
+    name: "remote-certification.docx",
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    buffer: zip.toBuffer(),
+  };
 }
 let jobPath;
 let uploadedFixture;
@@ -151,13 +284,20 @@ try {
   checkpoint = "unauthorized-role";
   await switchTo("Lucia Ferri");
   await open("/imports");
-  assert.match(await page.locator("main").innerText(), /outside your current role|fuori dal perimetro/i);
+  assert.match(
+    await page.locator("main").innerText(),
+    /outside your current role|fuori dal perimetro/i,
+  );
   await switchTo("Giulia Bianchi");
   checkpoint = "xlsx-upload";
   await open("/imports/new");
   const xlsxBuffer = await readFile("demo-imports/listino-alfa-medical-2028.xlsx");
   const xlsxName = `remote-cert-${randomUUID()}.xlsx`;
-  uploadedFixture = { name: xlsxName, byteLength: xlsxBuffer.length, checksum: createHash("sha256").update(xlsxBuffer).digest("hex") };
+  uploadedFixture = {
+    name: xlsxName,
+    byteLength: xlsxBuffer.length,
+    checksum: createHash("sha256").update(xlsxBuffer).digest("hex"),
+  };
   await page.getByTestId("import-file").setInputFiles({
     name: xlsxName,
     mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -165,7 +305,9 @@ try {
   });
   await page.getByRole("combobox", { name: /^Fornitore/ }).selectOption({ label: "Alfa Medical" });
   await page.getByRole("button", { name: "Carica e interpreta" }).click();
-  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), { timeout: 60_000 });
+  await page.waitForURL((url) => /^\/imports\/(?!new(?:\/|$))[^/]+$/.test(url.pathname), {
+    timeout: 60_000,
+  });
   jobPath = new URL(page.url()).pathname;
   checkpoint = "xlsx-initial-counts";
   const initial = await counts();
@@ -183,7 +325,11 @@ try {
   // Confirm an existing-product match on the supplied review fixture.
   checkpoint = "xlsx-confirm-match";
   const confirmJobPath = process.env.QA_CONFIRM_JOB_PATH ?? jobPath;
-  const confirmHref = await firstDecidableRecord(confirmJobPath, "attention", "Conferma associazione");
+  const confirmHref = await firstDecidableRecord(
+    confirmJobPath,
+    "attention",
+    "Conferma associazione",
+  );
   await open(`${confirmJobPath}?filtro=attention`);
   const beforeConfirm = await counts();
   await open(confirmHref);
@@ -228,7 +374,11 @@ try {
     assert.match(await page.locator("main").innerText(), /Nuovo prodotto confermato/i);
   } else {
     const current = await counts();
-    assert.equal(current.attention, 0, "no unresolved review record when product memory resolves the fixture");
+    assert.equal(
+      current.attention,
+      0,
+      "no unresolved review record when product memory resolves the fixture",
+    );
   }
 
   // Single-row ignore through the bulk form.
@@ -251,8 +401,9 @@ try {
   await open(`${decisionJobPath}?filtro=ready`);
   const beforeMulti = await counts();
   const boxes = page.locator('input[name="recordId"]');
-  assert.ok(await boxes.count() >= 2, "two compatible rows for bulk decision");
-  await boxes.nth(0).check(); await boxes.nth(1).check();
+  assert.ok((await boxes.count()) >= 2, "two compatible rows for bulk decision");
+  await boxes.nth(0).check();
+  await boxes.nth(1).check();
   await page.locator("select[name=bulkAction]").selectOption("NON_COMPARABLE");
   await page.getByRole("button", { name: "Applica decisione" }).click();
   await page.waitForURL(/batch=2/);
@@ -267,33 +418,71 @@ try {
   const confirmAll = page.getByRole("button", { name: "Conferma tutte le proposte affidabili" });
   if (await confirmAll.count()) {
     await confirmAll.click();
-    await page.waitForURL((url) => url.pathname === jobPath && url.searchParams.get("alta") === "approvata", { timeout: 60_000 });
+    await page.waitForURL(
+      (url) => url.pathname === jobPath && url.searchParams.get("alta") === "approvata",
+      { timeout: 60_000 },
+    );
   }
   await open(`${jobPath}/summary`);
   await page.getByRole("button", { name: "Pubblica importazione" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Pubblica", exact: true }).click();
-  await page.waitForURL((url) => url.pathname === jobPath && url.searchParams.has("pubblicato"), { timeout: 60_000 });
+  await page.waitForURL((url) => url.pathname === jobPath && url.searchParams.has("pubblicato"), {
+    timeout: 60_000,
+  });
   await open(`${jobPath}/summary`);
-  assert.match(await page.locator("main").innerText(), /Importazione completata|offerte pubblicate/i);
-  assert.ok(await page.getByRole("link", { name: "Apri listino" }).count(), "published price-list link");
+  assert.match(
+    await page.locator("main").innerText(),
+    /Importazione completata|offerte pubblicate/i,
+  );
+  assert.ok(
+    await page.getByRole("link", { name: "Apri listino" }).count(),
+    "published price-list link",
+  );
   await open(confirmHref);
   assert.match(await page.locator("main").innerText(), /Provenienza|Riga \d+|Documento/i);
 
-  const csv = await uploadAndVerify({ file: "demo-imports/offerta-caresupply-sporca.csv", supplier: "CareSupply", checkpointName: "csv-upload" });
-  const docx = await uploadAndVerify({ file: docxFixture(), supplier: "Alfa Medical", checkpointName: "docx-upload" });
-  const pdf = await uploadAndVerify({ file: "demo-imports/listino-medika-testuale.pdf", supplier: "Medika Network", checkpointName: "pdf-upload" });
+  const csv = await uploadAndVerify({
+    file: "demo-imports/offerta-caresupply-sporca.csv",
+    supplier: "CareSupply",
+    checkpointName: "csv-upload",
+  });
+  const docx = await uploadAndVerify({
+    file: docxFixture(),
+    supplier: "Alfa Medical",
+    checkpointName: "docx-upload",
+  });
+  const pdf = await uploadAndVerify({
+    file: "demo-imports/listino-medika-testuale.pdf",
+    supplier: "Medika Network",
+    checkpointName: "pdf-upload",
+  });
 
   await switchTo("Marco Villa");
   checkpoint = "admin-readback";
   await open("/imports");
   assert.match(await page.locator("main").innerText(), /Importazioni/i);
   assert.deepEqual(errors, []);
-  console.log(JSON.stringify({ status: "PASS", jobPath, initial, afterConfirm, afterIgnore, afterMulti, formats: { csv, docx, pdf } }));
+  console.log(
+    JSON.stringify({
+      status: "PASS",
+      jobPath,
+      initial,
+      afterConfirm,
+      afterIgnore,
+      afterMulti,
+      formats: { csv, docx, pdf },
+    }),
+  );
 } catch (error) {
-  const safeMessage = (error instanceof Error ? error.message : String(error)).replace(/https?:\/\/\S+/g, "[url]").slice(0, 500);
+  const safeMessage = (error instanceof Error ? error.message : String(error))
+    .replace(/https?:\/\/\S+/g, "[url]")
+    .slice(0, 500);
   const evidence = await captureFailureEvidence().catch(() => ({ unavailable: true }));
-  if (process.env.GITHUB_ACTIONS === "true") console.error(`::error title=Remote Smart Import ${checkpoint}::${safeMessage} | ${JSON.stringify(evidence).slice(0, 1800)}`);
+  if (process.env.GITHUB_ACTIONS === "true")
+    console.error(
+      `::error title=Remote Smart Import ${checkpoint}::${safeMessage} | ${JSON.stringify(evidence).slice(0, 1800)}`,
+    );
   throw error;
 } finally {
   await browser.close();

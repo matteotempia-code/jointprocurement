@@ -21,8 +21,14 @@ export interface DocumentInterpretationProvider {
   readonly modelVersion: string | null;
   readonly schemaVersion: string;
   readonly capabilities: ProviderCapabilities;
-  mapFields(rows: ParsedRow[]): { mapping: ReturnType<typeof suggestColumnMapping>; confidence: number };
-  interpretRows(rows: ParsedRow[], mapping: ReturnType<typeof suggestColumnMapping>): ReturnType<typeof applyColumnMapping>[];
+  mapFields(rows: ParsedRow[]): {
+    mapping: ReturnType<typeof suggestColumnMapping>;
+    confidence: number;
+  };
+  interpretRows(
+    rows: ParsedRow[],
+    mapping: ReturnType<typeof suggestColumnMapping>,
+  ): ReturnType<typeof applyColumnMapping>[];
 }
 
 export class LocalHeuristicProvider implements DocumentInterpretationProvider {
@@ -44,12 +50,21 @@ export class LocalHeuristicProvider implements DocumentInterpretationProvider {
   mapFields(rows: ParsedRow[]) {
     const headers = Object.keys(rows[0]?.values ?? {});
     const mapping = suggestColumnMapping(headers);
-    return { mapping, confidence: headers.length ? Math.min(1, Object.keys(mapping).length / Math.max(1, Math.min(headers.length, 9))) : 0 };
+    return {
+      mapping,
+      confidence: headers.length
+        ? Math.min(1, Object.keys(mapping).length / Math.max(1, Math.min(headers.length, 9)))
+        : 0,
+    };
   }
-  interpretRows(rows: ParsedRow[], mapping: ReturnType<typeof suggestColumnMapping>) { return rows.map((row) => applyColumnMapping(row.values, mapping)); }
+  interpretRows(rows: ParsedRow[], mapping: ReturnType<typeof suggestColumnMapping>) {
+    return rows.map((row) => applyColumnMapping(row.values, mapping));
+  }
 }
 
-const configuredProvider = (process.env.DOCUMENT_INTELLIGENCE_PROVIDER ?? "local").trim().toLocaleLowerCase("en-US");
+const configuredProvider = (process.env.DOCUMENT_INTELLIGENCE_PROVIDER ?? "local")
+  .trim()
+  .toLocaleLowerCase("en-US");
 const localProvider = new LocalHeuristicProvider();
 
 // Provider esterni entrano qui solo con adapter e credenziali esplicite. Il
@@ -59,13 +74,16 @@ export const providerRuntimeStatus = {
   activeProvider: localProvider.id,
   fallbackActive: configuredProvider !== "local" && configuredProvider !== "local_heuristic",
   externalProcessing: false,
-  message: configuredProvider === "local" || configuredProvider === "local_heuristic"
-    ? "Elaborazione locale: nessun documento viene inviato a servizi esterni."
-    : `Il provider “${configuredProvider}” non è configurato: viene usata l’interpretazione locale.`,
+  message:
+    configuredProvider === "local" || configuredProvider === "local_heuristic"
+      ? "Elaborazione locale: nessun documento viene inviato a servizi esterni."
+      : `Il provider “${configuredProvider}” non è configurato: viene usata l’interpretazione locale.`,
 } as const;
 
 export const activeInterpretationProvider: DocumentInterpretationProvider = localProvider;
 
 export function providerSupportsScannedDocuments(provider = activeInterpretationProvider) {
-  return provider.capabilities.ocr && (provider.capabilities.scannedPdf || provider.capabilities.images);
+  return (
+    provider.capabilities.ocr && (provider.capabilities.scannedPdf || provider.capabilities.images)
+  );
 }

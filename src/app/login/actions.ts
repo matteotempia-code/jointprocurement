@@ -6,11 +6,17 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { demoModeEnabled } from "@/lib/demo-session";
 
-const credentialsSchema = z.object({ email: z.email().trim(), password: z.string().min(8).max(256) });
+const credentialsSchema = z.object({
+  email: z.email().trim(),
+  password: z.string().min(8).max(256),
+});
 
 export async function login(formData: FormData) {
   if (demoModeEnabled()) redirect("/");
-  const credentials = credentialsSchema.safeParse({ email: formData.get("email"), password: formData.get("password") });
+  const credentials = credentialsSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
   if (!credentials.success) redirect("/login?error=credentials");
 
   const supabase = await createSupabaseServerClient();

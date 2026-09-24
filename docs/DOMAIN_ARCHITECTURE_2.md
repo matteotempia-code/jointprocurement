@@ -60,14 +60,14 @@ The immutable response from the ERP adapter: posting/registration ID, journal or
 
 The initial taxonomy is:
 
-| Archetype | Typical commitment/evidence | Example matching basis |
-| --- | --- | --- |
-| Catalog / facility-directed | requisition, approval, PO, receipt | PO + receipt + invoice + facility/cost center |
-| Contract-based / utilities | contract, site/POD, tariff, consumption | contract + site + tariff + consumption + period + invoice |
-| Kitchen / food ordering | menu/need, order, delivery | order + delivered quantity + agreed price + period |
-| Executive delegated purchase | authority grant, receipt/claim, purpose | delegated authority + evidence + category + amount |
-| Professional services | contract/engagement, service acceptance | tariff + validated hours/shifts/prestations + period + facility + invoice |
-| Recurring / non-PO spend | recurring mandate, allocation, service evidence | mandate/contract + period + allocation + invoice |
+| Archetype                    | Typical commitment/evidence                     | Example matching basis                                                    |
+| ---------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------- |
+| Catalog / facility-directed  | requisition, approval, PO, receipt              | PO + receipt + invoice + facility/cost center                             |
+| Contract-based / utilities   | contract, site/POD, tariff, consumption         | contract + site + tariff + consumption + period + invoice                 |
+| Kitchen / food ordering      | menu/need, order, delivery                      | order + delivered quantity + agreed price + period                        |
+| Executive delegated purchase | authority grant, receipt/claim, purpose         | delegated authority + evidence + category + amount                        |
+| Professional services        | contract/engagement, service acceptance         | tariff + validated hours/shifts/prestations + period + facility + invoice |
+| Recurring / non-PO spend     | recurring mandate, allocation, service evidence | mandate/contract + period + allocation + invoice                          |
 
 Archetype-specific rules are strategies attached to the canonical lifecycle. They do not replace the common objects.
 
@@ -210,13 +210,13 @@ The adapter returns a persisted `AccountingPostingResult` with posting/registrat
 
 ## 12. Automation levels
 
-| Level | Meaning |
-| --- | --- |
-| L0 Manual | Human performs and verifies each step. |
-| L1 Assisted | System proposes matches, evidence requests, and accounting treatment. |
-| L2 Human-on-exception | Deterministic routine cases flow; humans resolve exceptions. |
-| L3 Straight-through accounting | Eligible proposals are posted automatically to the ERP. |
-| L4 Straight-through payable/scadenziario | Eligible postings also create/update payable and due-date records. |
+| Level                                    | Meaning                                                               |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| L0 Manual                                | Human performs and verifies each step.                                |
+| L1 Assisted                              | System proposes matches, evidence requests, and accounting treatment. |
+| L2 Human-on-exception                    | Deterministic routine cases flow; humans resolve exceptions.          |
+| L3 Straight-through accounting           | Eligible proposals are posted automatically to the ERP.               |
+| L4 Straight-through payable/scadenziario | Eligible postings also create/update payable and due-date records.    |
 
 Actual payment execution remains governed by treasury and payment-authorization policies. Automation level may vary by legal entity, category, amount, archetype, risk, supplier, and evidence quality.
 

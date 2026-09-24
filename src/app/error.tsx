@@ -1,2 +1,18 @@
 "use client";
-export default function ErrorPage({ reset }: { error: Error & { digest?: string }; reset: () => void }) { return <main className="not-found"><p className="eyebrow">Si è verificato un problema</p><h1>Non è stato possibile caricare questa area.</h1><p>La connessione ai dati potrebbe essere temporaneamente non disponibile.</p><button className="primary-cta" onClick={reset}>Riprova</button></main>; }
+export default function ErrorPage({
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  return (
+    <main className="not-found">
+      <p className="eyebrow">Si è verificato un problema</p>
+      <h1>Non è stato possibile caricare questa area.</h1>
+      <p>La connessione ai dati potrebbe essere temporaneamente non disponibile.</p>
+      <button className="primary-cta" onClick={reset}>
+        Riprova
+      </button>
+    </main>
+  );
+}

@@ -21,17 +21,31 @@ function productVisual(name: string, categoryCode: string) {
 }
 
 const positions = [
-  ["0%", "0%"], ["33.333%", "0%"], ["66.667%", "0%"], ["100%", "0%"],
-  ["0%", "50%"], ["33.333%", "50%"], ["66.667%", "50%"], ["100%", "50%"],
-  ["0%", "100%"], ["33.333%", "100%"], ["66.667%", "100%"], ["100%", "100%"],
+  ["0%", "0%"],
+  ["33.333%", "0%"],
+  ["66.667%", "0%"],
+  ["100%", "0%"],
+  ["0%", "50%"],
+  ["33.333%", "50%"],
+  ["66.667%", "50%"],
+  ["100%", "50%"],
+  ["0%", "100%"],
+  ["33.333%", "100%"],
+  ["66.667%", "100%"],
+  ["100%", "100%"],
 ];
 
 export function ProductImage({ name, categoryCode, className = "" }: ProductImageProps) {
   const [x, y] = positions[productVisual(name, categoryCode)];
-  return <div
-    className={`product-packshot ${className}`}
-    role="img"
-    aria-label={`Immagine dimostrativa di ${name}`}
-    style={{ backgroundImage: "url('/products/catalog-packshots-v2.png')", backgroundPosition: `${x} ${y}` }}
-  />;
+  return (
+    <div
+      className={`product-packshot ${className}`}
+      role="img"
+      aria-label={`Immagine dimostrativa di ${name}`}
+      style={{
+        backgroundImage: "url('/products/catalog-packshots-v2.png')",
+        backgroundPosition: `${x} ${y}`,
+      }}
+    />
+  );
 }

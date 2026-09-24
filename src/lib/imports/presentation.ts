@@ -105,7 +105,13 @@ export function confidenceClass(value: number | null | undefined) {
 }
 
 export function sourceLocatorLabel(locator: unknown) {
-  const value = (locator ?? {}) as { sheet?: string; row?: number; column?: string; page?: number; paragraph?: number };
+  const value = (locator ?? {}) as {
+    sheet?: string;
+    row?: number;
+    column?: string;
+    page?: number;
+    paragraph?: number;
+  };
   const segments: string[] = [];
   if (value.sheet) segments.push(`Foglio “${value.sheet}”`);
   if (value.page) segments.push(`pagina ${value.page}`);

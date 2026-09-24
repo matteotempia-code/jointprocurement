@@ -36,6 +36,7 @@
 - Primitive visuali non ancora adottate in tutte le route.
 - Suggerimenti di completamento ordine, reconciliation Supplier 360, glossario budget, keyboard UX e undo restano aperti.
 - “Impatto € annuo” resta intenzionalmente incompleto fino al Consumption & Demand Ledger; nessun saving annualizzato viene inventato.
+
 # M11 final — operational director procurement
 
 - Added private Supabase-backed attachments for out-of-catalog requests, goods receipts and nonconformity evidence, including checksum, MIME/size validation, scoped signed access and compensating cleanup.

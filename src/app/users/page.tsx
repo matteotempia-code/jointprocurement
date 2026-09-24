@@ -1,14 +1,199 @@
 import { manageUser } from "@/app/admin-actions";
 import { AdminFeedback, AdminPanel } from "@/components/admin-crud";
-import { DataTable, EmptyRow, PageHeader, Pagination, ScopeBadge, SearchField, StatusIndicator } from "@/components/ui";
+import {
+  DataTable,
+  EmptyRow,
+  PageHeader,
+  Pagination,
+  ScopeBadge,
+  SearchField,
+  StatusIndicator,
+} from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 const PAGE_SIZE = 20;
-export default async function UsersPage({ searchParams }: { searchParams: Promise<{ q?: string; stato?: string; pagina?: string; esito?: string }> }) {
- const context=await requireRoles(["PROCUREMENT_ADMIN"]),query=await searchParams,page=Math.max(1,Number(query.pagina??1));
- const where={organizationId:context.organization.id,...(query.stato==="active"?{active:true}:query.stato==="inactive"?{active:false}:{}),...(query.q?{OR:[{user:{name:{contains:query.q,mode:"insensitive" as const}}},{user:{email:{contains:query.q,mode:"insensitive" as const}}}]}:{})};
- const [total,assignments,roles,facilities,areas]=await Promise.all([prisma.userAssignment.count({where}),prisma.userAssignment.findMany({where,include:{user:true,role:true},orderBy:{user:{name:"asc"}},skip:(page-1)*PAGE_SIZE,take:PAGE_SIZE}),prisma.role.findMany({orderBy:{name:"asc"}}),prisma.facility.findMany({where:{area:{legalEntity:{organizationId:context.organization.id}}},orderBy:{name:"asc"}}),prisma.area.findMany({where:{legalEntity:{organizationId:context.organization.id}},orderBy:{name:"asc"}})]);
- const scopes=[...areas.map(x=>({id:x.id,name:x.name,type:"AREA"})),...facilities.map(x=>({id:x.id,name:x.name,type:"FACILITY"}))],pages=Math.max(1,Math.ceil(total/PAGE_SIZE));
- const fields=(values?:typeof assignments[number])=><><label>Nome<input name="name" defaultValue={values?.user.name} required minLength={3}/></label><label>Email<input name="email" defaultValue={values?.user.email} type="email" required/></label><label>Ruolo<select name="roleId" defaultValue={values?.roleId}>{roles.map(role=><option key={role.id} value={role.id}>{role.name}</option>)}</select></label><label>Scope<select name="scopeType" defaultValue={values?.scopeType??"ORGANIZATION"}><option value="ORGANIZATION">Organizzazione</option><option value="AREA">Area</option><option value="FACILITY">Struttura</option></select></label><label>Perimetro<select name="scopeId" defaultValue={values?.scopeId??""}><option value="">Intera organizzazione</option>{scopes.map(scope=><option key={scope.id} value={scope.id}>{scope.type} - {scope.name}</option>)}</select></label></>;
- return <main className="phase2-page phase2-admin"><PageHeader eyebrow="Identita e poteri" title="Utenti" description="Anagrafica applicativa, ruolo e perimetro operativo nel tenant corrente." action={<AdminPanel label="Nuovo utente"><form action={manageUser} className="admin-crud-form"><input type="hidden" name="intent" value="create"/>{fields()}<button className="primary-cta">Crea utente</button></form></AdminPanel>}/><AdminFeedback result={query.esito}/><form className="phase2-control-bar"><SearchField defaultValue={query.q} placeholder="Persona o email"/><select name="stato" defaultValue={query.stato??"all"}><option value="all">Tutti</option><option value="active">Attivi</option><option value="inactive">Non attivi</option></select><button>Applica</button></form><DataTable label="Assegnazioni utente"><thead><tr><th>Persona</th><th>Ruolo</th><th>Scope</th><th>Stato</th><th>Gestione</th></tr></thead><tbody>{assignments.length?assignments.map(assignment=><tr key={assignment.id}><td><strong>{assignment.user.name}</strong><small className="cell-detail">{assignment.user.email}</small></td><td>{assignment.role.name}</td><td><ScopeBadge type={assignment.scopeType} label={scopes.find(x=>x.id===assignment.scopeId)?.name??context.organization.name}/></td><td><StatusIndicator active={assignment.active} label={assignment.active?"Attivo":"Non attivo"}/></td><td><details className="row-more"><summary>Modifica</summary><form action={manageUser} className="admin-crud-form"><input type="hidden" name="assignmentId" value={assignment.id}/>{fields(assignment)}<button name="intent" value="update">Salva</button>{assignment.active&&<button className="danger-secondary" name="intent" value="deactivate">Disattiva</button>}<button className="danger-secondary" name="intent" value="delete">Elimina se inutilizzato</button></form></details></td></tr>):<EmptyRow colSpan={5}>Nessun utente.</EmptyRow>}</tbody></DataTable><Pagination page={Math.min(page,pages)} pages={pages} pathname="/users" params={{q:query.q,stato:query.stato}}/></main>;
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; stato?: string; pagina?: string; esito?: string }>;
+}) {
+  const context = await requireRoles(["PROCUREMENT_ADMIN"]),
+    query = await searchParams,
+    page = Math.max(1, Number(query.pagina ?? 1));
+  const where = {
+    organizationId: context.organization.id,
+    ...(query.stato === "active"
+      ? { active: true }
+      : query.stato === "inactive"
+        ? { active: false }
+        : {}),
+    ...(query.q
+      ? {
+          OR: [
+            { user: { name: { contains: query.q, mode: "insensitive" as const } } },
+            { user: { email: { contains: query.q, mode: "insensitive" as const } } },
+          ],
+        }
+      : {}),
+  };
+  const [total, assignments, roles, facilities, areas] = await Promise.all([
+    prisma.userAssignment.count({ where }),
+    prisma.userAssignment.findMany({
+      where,
+      include: { user: true, role: true },
+      orderBy: { user: { name: "asc" } },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.role.findMany({ orderBy: { name: "asc" } }),
+    prisma.facility.findMany({
+      where: { area: { legalEntity: { organizationId: context.organization.id } } },
+      orderBy: { name: "asc" },
+    }),
+    prisma.area.findMany({
+      where: { legalEntity: { organizationId: context.organization.id } },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+  const scopes = [
+      ...areas.map((x) => ({ id: x.id, name: x.name, type: "AREA" })),
+      ...facilities.map((x) => ({ id: x.id, name: x.name, type: "FACILITY" })),
+    ],
+    pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const fields = (values?: (typeof assignments)[number]) => (
+    <>
+      <label>
+        Nome
+        <input name="name" defaultValue={values?.user.name} required minLength={3} />
+      </label>
+      <label>
+        Email
+        <input name="email" defaultValue={values?.user.email} type="email" required />
+      </label>
+      <label>
+        Ruolo
+        <select name="roleId" defaultValue={values?.roleId}>
+          {roles.map((role) => (
+            <option key={role.id} value={role.id}>
+              {role.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Scope
+        <select name="scopeType" defaultValue={values?.scopeType ?? "ORGANIZATION"}>
+          <option value="ORGANIZATION">Organizzazione</option>
+          <option value="AREA">Area</option>
+          <option value="FACILITY">Struttura</option>
+        </select>
+      </label>
+      <label>
+        Perimetro
+        <select name="scopeId" defaultValue={values?.scopeId ?? ""}>
+          <option value="">Intera organizzazione</option>
+          {scopes.map((scope) => (
+            <option key={scope.id} value={scope.id}>
+              {scope.type} - {scope.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    </>
+  );
+  return (
+    <main className="phase2-page phase2-admin">
+      <PageHeader
+        eyebrow="Identita e poteri"
+        title="Utenti"
+        description="Anagrafica applicativa, ruolo e perimetro operativo nel tenant corrente."
+        action={
+          <AdminPanel label="Nuovo utente">
+            <form action={manageUser} className="admin-crud-form">
+              <input type="hidden" name="intent" value="create" />
+              {fields()}
+              <button className="primary-cta">Crea utente</button>
+            </form>
+          </AdminPanel>
+        }
+      />
+      <AdminFeedback result={query.esito} />
+      <form className="phase2-control-bar">
+        <SearchField defaultValue={query.q} placeholder="Persona o email" />
+        <select name="stato" defaultValue={query.stato ?? "all"}>
+          <option value="all">Tutti</option>
+          <option value="active">Attivi</option>
+          <option value="inactive">Non attivi</option>
+        </select>
+        <button>Applica</button>
+      </form>
+      <DataTable label="Assegnazioni utente">
+        <thead>
+          <tr>
+            <th>Persona</th>
+            <th>Ruolo</th>
+            <th>Scope</th>
+            <th>Stato</th>
+            <th>Gestione</th>
+          </tr>
+        </thead>
+        <tbody>
+          {assignments.length ? (
+            assignments.map((assignment) => (
+              <tr key={assignment.id}>
+                <td>
+                  <strong>{assignment.user.name}</strong>
+                  <small className="cell-detail">{assignment.user.email}</small>
+                </td>
+                <td>{assignment.role.name}</td>
+                <td>
+                  <ScopeBadge
+                    type={assignment.scopeType}
+                    label={
+                      scopes.find((x) => x.id === assignment.scopeId)?.name ??
+                      context.organization.name
+                    }
+                  />
+                </td>
+                <td>
+                  <StatusIndicator
+                    active={assignment.active}
+                    label={assignment.active ? "Attivo" : "Non attivo"}
+                  />
+                </td>
+                <td>
+                  <details className="row-more">
+                    <summary>Modifica</summary>
+                    <form action={manageUser} className="admin-crud-form">
+                      <input type="hidden" name="assignmentId" value={assignment.id} />
+                      {fields(assignment)}
+                      <button name="intent" value="update">
+                        Salva
+                      </button>
+                      {assignment.active && (
+                        <button className="danger-secondary" name="intent" value="deactivate">
+                          Disattiva
+                        </button>
+                      )}
+                      <button className="danger-secondary" name="intent" value="delete">
+                        Elimina se inutilizzato
+                      </button>
+                    </form>
+                  </details>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <EmptyRow colSpan={5}>Nessun utente.</EmptyRow>
+          )}
+        </tbody>
+      </DataTable>
+      <Pagination
+        page={Math.min(page, pages)}
+        pages={pages}
+        pathname="/users"
+        params={{ q: query.q, stato: query.stato }}
+      />
+    </main>
+  );
 }
