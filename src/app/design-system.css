@@ -355,7 +355,7 @@
 }
 .inline-meta i {
   font-style: normal;
-  color: var(--muted, #6d665e);
+  color: var(--muted);
 }
 .status-chip {
   display: inline-flex;
@@ -369,7 +369,7 @@
   font-weight: 600;
 }
 .status-chip-neutral {
-  color: #625d56;
+  color: var(--text-secondary);
 }
 .status-chip-ok {
   color: var(--state-ok);
@@ -394,7 +394,7 @@
   font-variant-numeric: tabular-nums;
 }
 .price-block small {
-  color: var(--muted, #6d665e);
+  color: var(--muted);
   font-weight: 400;
 }
 .price-block-table strong,
@@ -417,9 +417,9 @@
   gap: 1rem;
   margin-top: 1.5rem;
   padding: 0.8rem 1rem;
-  border: 1px solid #d8d1c7;
-  background: #fffdf8;
-  box-shadow: 0 -4px 18px rgb(42 35 27 / 8%);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--elev-1);
 }
 .sticky-action-buttons {
   display: flex;
@@ -428,14 +428,14 @@
 }
 .empty-row {
   text-align: center !important;
-  color: var(--muted, #6d665e);
+  color: var(--muted);
   padding: 1rem !important;
 }
 .table-wrap th {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #fffdf8;
+  background: var(--surface);
 }
 .table-wrap td,
 .table-wrap th {
@@ -716,7 +716,7 @@ h3 {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgb(255 255 255 / 94%);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -897,16 +897,16 @@ button:not(.primary-cta):not(.danger-button):not(.icon-button):not(.text-button)
   ) {
   background: var(--surface);
   color: var(--accent);
-  border-color: #d5cdc1;
+  border-color: var(--border);
 }
 .secondary-cta:hover {
   background: var(--surface-alt);
-  border-color: #c4baac;
+  border-color: var(--border-strong);
 }
 .danger-button {
   color: var(--danger);
   background: var(--surface);
-  border-color: #dfc6bc;
+  border-color: var(--border);
 }
 .text-button,
 .favorite-button,
@@ -964,7 +964,7 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid rgb(79 107 74 / 22%);
+  outline: 2px solid color-mix(in srgb, var(--focus) 22%, transparent);
   outline-offset: 1px;
   border-color: var(--accent);
 }
@@ -1108,14 +1108,14 @@ label {
 .severity-high,
 .severity-critical {
   color: var(--danger);
-  background: #f6e9e4;
+  background: var(--danger-soft);
 }
 .warning,
 .success {
   padding: 12px 14px;
   border-left: 3px solid var(--warn);
-  background: #f7f0e1;
-  color: #6b521e;
+  background: var(--warn-soft);
+  color: var(--warn);
   font-size: 11px;
 }
 .success {
@@ -2013,7 +2013,7 @@ tbody tr:hover {
 }
 .quick-actions a:hover,
 .opportunity-links a:hover {
-  border-color: #c4baac;
+  border-color: var(--border-strong);
   background: var(--surface-alt);
 }
 .frequent-section {
@@ -2565,13 +2565,13 @@ tbody tr:hover {
 }
 .comparison-strip > div {
   padding: 18px;
-  border-right: 1px solid #6b6255;
+  border-right: 1px solid color-mix(in srgb, var(--on-accent) 35%, transparent);
   display: flex;
   flex-direction: column;
 }
 .comparison-strip span,
 .comparison-strip small {
-  color: #ded7cd;
+  color: var(--on-accent);
   font-size: 9px;
 }
 .comparison-strip strong {
@@ -2627,7 +2627,7 @@ tbody tr:hover {
   font-size: 9px;
 }
 .comparison-row.different {
-  background: #fbf8f3;
+  background: var(--surface-alt);
 }
 .opportunity-list {
   border-top: 1px solid var(--text);
@@ -2889,9 +2889,9 @@ tbody tr:hover {
 }
 .phase1-supplier-group {
   margin: 7px 0;
-  border: 1px solid var(--p1-line);
+  border: 1px solid var(--border);
   border-left: 3px solid var(--border);
-  background: #fff;
+  background: var(--surface);
 }
 .phase1-supplier-group.state-warn {
   border-left-color: var(--state-warn);
@@ -2900,7 +2900,7 @@ tbody tr:hover {
   border-left-color: var(--state-danger);
 }
 .phase1-supplier-group[open] {
-  box-shadow: 0 3px 12px rgb(42 35 27 / 5%);
+  box-shadow: var(--elev-1);
 }
 .phase1-supplier-group > summary {
   min-height: 64px;
@@ -2919,7 +2919,7 @@ tbody tr:hover {
   transform: rotate(45deg) translate(-2px, -2px);
 }
 .phase1-supplier-group > summary:hover {
-  background: var(--p1-soft);
+  background: var(--surface-alt);
 }
 .phase1-limit {
   display: block;
@@ -2964,14 +2964,14 @@ tbody tr:hover {
 }
 .phase1-reliability-strip {
   margin: -7px 0 14px;
-  border-bottom: 1px solid var(--p1-line);
+  border-bottom: 1px solid var(--border);
   display: flex;
 }
 .phase1-reliability-strip > div {
   min-width: 0;
   flex: 1;
   padding: 9px 14px;
-  border-right: 1px solid var(--p1-line);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
 }
@@ -2990,7 +2990,7 @@ tbody tr:hover {
 .phase1-approval-row:hover,
 .phase1-approval-row:focus-visible {
   border-left-color: var(--accent);
-  background: var(--p1-soft);
+  background: var(--surface-alt);
   outline: none;
 }
 .row-disclosure {
@@ -3048,11 +3048,6 @@ tbody tr:hover {
   font-size: 10px;
   font-weight: 600;
 }
-.phase1-page {
-  --p1-line: #d9d2c8;
-  --p1-soft: #f6f2eb;
-  --p1-ink: #29251f;
-}
 .phase1-page .page-header {
   margin-bottom: 18px;
 }
@@ -3065,13 +3060,13 @@ tbody tr:hover {
   justify-content: center;
   gap: 18px;
   padding: 16px 0;
-  border-top: 1px solid var(--p1-line);
+  border-top: 1px solid var(--border);
   font-size: 11px;
 }
 .phase1-pagination a {
   padding: 7px 10px;
-  border: 1px solid var(--p1-line);
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--surface);
 }
 .phase1-pagination a[aria-disabled="true"] {
   pointer-events: none;
@@ -3098,9 +3093,9 @@ tbody tr:hover {
 }
 .active-filter-row a {
   padding: 5px 9px;
-  border: 1px solid var(--p1-line);
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   font-size: 10px;
 }
 .phase1-catalog .refined-catalog > article {
@@ -3129,7 +3124,7 @@ tbody tr:hover {
 .phase1-catalog .catalog-commercial > .price-block,
 .phase1-catalog .catalog-supplier {
   padding-left: 14px;
-  border-left: 1px solid var(--p1-line);
+  border-left: 1px solid var(--border);
 }
 .catalog-supplier {
   display: flex;
@@ -3157,7 +3152,7 @@ tbody tr:hover {
 
 .phase1-list-command {
   padding: 10px 2px;
-  border-block: 1px solid var(--p1-line);
+  border-block: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -3213,9 +3208,9 @@ tbody tr:hover {
 .phase1-evidence-band {
   margin: 10px 0 16px;
   padding: 12px 15px;
-  border: 1px solid #dbcba9;
+  border: 1px solid var(--border);
   border-left: 3px solid var(--state-warn);
-  background: #fbf5e8;
+  background: var(--warn-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3238,10 +3233,10 @@ tbody tr:hover {
   gap: 24px;
 }
 .phase1-supplier-list {
-  border-top: 1px solid var(--p1-ink);
+  border-top: 1px solid var(--text);
 }
 .phase1-supplier-group {
-  border-bottom: 1px solid var(--p1-line);
+  border-bottom: 1px solid var(--border);
 }
 .phase1-supplier-group > summary {
   min-height: 76px;
@@ -3276,7 +3271,7 @@ tbody tr:hover {
 }
 .supplier-threshold i {
   height: 4px;
-  background: #e4ddd2;
+  background: var(--border);
 }
 .supplier-threshold i b {
   display: block;
@@ -3289,7 +3284,7 @@ tbody tr:hover {
 }
 .phase1-threshold-detail {
   padding: 7px 12px;
-  background: var(--p1-soft);
+  background: var(--surface-alt);
   display: flex;
   gap: 24px;
   font-size: 9px;
@@ -3311,7 +3306,7 @@ tbody tr:hover {
 .phase1-completion {
   margin: 8px 10px 12px;
   padding: 10px 12px;
-  border: 1px solid var(--p1-line);
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3329,8 +3324,8 @@ tbody tr:hover {
   position: sticky;
   top: 74px;
   padding: 16px;
-  border-top: 2px solid var(--p1-ink);
-  background: var(--p1-soft);
+  border-top: 2px solid var(--text);
+  background: var(--surface-alt);
 }
 .phase1-checkout > h2 {
   margin-top: 0;
@@ -3347,7 +3342,7 @@ tbody tr:hover {
 .phase1-checkout dl .total {
   margin-top: 5px;
   padding-top: 9px;
-  border-top: 1px solid var(--p1-line);
+  border-top: 1px solid var(--border);
   font-size: 13px;
 }
 .phase1-checkout h3 {
@@ -3357,7 +3352,7 @@ tbody tr:hover {
 .phase1-limit,
 .phase1-budget-row {
   padding: 7px 0;
-  border-top: 1px solid var(--p1-line);
+  border-top: 1px solid var(--border);
   display: grid;
   grid-template-columns: 1fr auto;
 }
@@ -3381,15 +3376,15 @@ tbody tr:hover {
   margin-top: 7px;
 }
 .phase1-cart .sticky-action-bar {
-  background: var(--p1-ink);
-  color: #fff;
-  border-color: var(--p1-ink);
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
 }
 
 .phase1-summary-strip,
 .phase1-cockpit-metrics {
   margin: 12px 0 18px;
-  border-block: 1px solid var(--p1-line);
+  border-block: 1px solid var(--border);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
 }
@@ -3397,7 +3392,7 @@ tbody tr:hover {
 .phase1-cockpit-metrics > div {
   min-height: 68px;
   padding: 11px 14px;
-  border-right: 1px solid var(--p1-line);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -3421,7 +3416,7 @@ tbody tr:hover {
 }
 .phase1-queue-toolbar {
   padding: 9px 2px;
-  border-bottom: 1px solid var(--p1-ink);
+  border-bottom: 1px solid var(--text);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3447,7 +3442,7 @@ tbody tr:hover {
 }
 .phase1-approval-head {
   padding: 8px 10px;
-  background: var(--p1-soft);
+  background: var(--surface-alt);
   font-size: 8.5px;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -3456,10 +3451,10 @@ tbody tr:hover {
 .phase1-approval-row {
   min-height: 65px;
   padding: 8px 10px;
-  border-bottom: 1px solid var(--p1-line);
+  border-bottom: 1px solid var(--border);
 }
 .phase1-approval-row:hover {
-  background: var(--p1-soft);
+  background: var(--surface-alt);
 }
 .phase1-approval-row > div {
   display: flex;
@@ -3483,7 +3478,7 @@ tbody tr:hover {
 }
 .phase1-archive {
   margin-top: 18px;
-  border-top: 1px solid var(--p1-line);
+  border-top: 1px solid var(--border);
 }
 .phase1-archive > summary {
   padding: 11px 2px;
@@ -3496,7 +3491,7 @@ tbody tr:hover {
   padding: 7px;
   display: flex;
   justify-content: space-between;
-  border-bottom: 1px solid var(--p1-line);
+  border-bottom: 1px solid var(--border);
   font-size: 9px;
 }
 
@@ -3504,14 +3499,14 @@ tbody tr:hover {
   margin-bottom: 18px;
   padding: 13px 16px;
   border-left: 3px solid var(--state-warn);
-  background: #fbf5e8;
+  background: var(--warn-soft);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .phase1-decision-reason.is-ok {
   border-color: var(--state-ok);
-  background: #edf5ef;
+  background: var(--ok-soft);
 }
 .phase1-decision-reason span {
   font-size: 9px;
@@ -3532,8 +3527,8 @@ tbody tr:hover {
 }
 .phase1-budget-impact {
   padding: 14px;
-  border-top: 2px solid var(--p1-ink);
-  background: var(--p1-soft);
+  border-top: 2px solid var(--text);
+  background: var(--surface-alt);
 }
 .phase1-budget-impact > span,
 .phase1-budget-impact small {
@@ -3552,13 +3547,13 @@ tbody tr:hover {
   font-variant-numeric: tabular-nums;
 }
 .phase1-budget-impact .total {
-  border-top: 1px solid var(--p1-line);
+  border-top: 1px solid var(--border);
   font-weight: 600;
 }
 .phase1-budget-impact > i {
   display: block;
   height: 5px;
-  background: #ddd4c8;
+  background: var(--border);
 }
 .phase1-budget-impact > i b {
   display: block;
@@ -3576,8 +3571,8 @@ tbody tr:hover {
 }
 .phase1-context-cards > section {
   padding: 13px 15px;
-  border-top: 1px solid var(--p1-ink);
-  background: #fff;
+  border-top: 1px solid var(--text);
+  background: var(--surface);
 }
 .phase1-context-cards > section > span {
   font-size: 9px;
@@ -3590,7 +3585,7 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   padding: 5px 0;
-  border-top: 1px solid var(--p1-line);
+  border-top: 1px solid var(--border);
 }
 .phase1-decision-form {
   margin-top: 12px;
@@ -3601,9 +3596,9 @@ tbody tr:hover {
   gap: 4px;
 }
 .phase1-cockpit .sticky-action-bar {
-  background: var(--p1-ink);
-  color: #fff;
-  border-color: var(--p1-ink);
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
 }
 
 .phase1-supplier-insight {
@@ -3611,7 +3606,7 @@ tbody tr:hover {
 }
 .phase1-tabs {
   margin: 18px 0;
-  border-bottom: 1px solid var(--p1-line);
+  border-bottom: 1px solid var(--border);
   display: flex;
   gap: 20px;
   overflow-x: auto;
@@ -3623,8 +3618,8 @@ tbody tr:hover {
   color: var(--text-secondary);
 }
 .phase1-tabs a.active {
-  border-bottom: 2px solid var(--p1-ink);
-  color: var(--p1-ink);
+  border-bottom: 2px solid var(--text);
+  color: var(--text);
   font-weight: 600;
 }
 .phase1-supplier-overview {
@@ -3634,7 +3629,7 @@ tbody tr:hover {
 }
 .phase1-supplier-overview > section {
   padding-top: 12px;
-  border-top: 1px solid var(--p1-ink);
+  border-top: 1px solid var(--text);
 }
 .phase1-commercial-card dl {
   display: grid;
@@ -3642,7 +3637,7 @@ tbody tr:hover {
 }
 .phase1-commercial-card dl > div {
   padding: 8px;
-  border-bottom: 1px solid var(--p1-line);
+  border-bottom: 1px solid var(--border);
 }
 .phase1-commercial-card dd {
   margin: 3px 0;
@@ -3655,7 +3650,7 @@ tbody tr:hover {
 .phase1-overview-products > a {
   min-height: 55px;
   padding: 7px;
-  border-bottom: 1px solid var(--p1-line);
+  border-bottom: 1px solid var(--border);
   display: grid;
   grid-template-columns: 1fr 240px 120px;
   align-items: center;
@@ -3680,7 +3675,7 @@ tbody tr:hover {
 }
 .phase1-two-column > section {
   padding-top: 12px;
-  border-top: 1px solid var(--p1-ink);
+  border-top: 1px solid var(--text);
 }
 
 .phase1-home .director-welcome {
@@ -3887,7 +3882,7 @@ tbody tr:hover {
 }
 .category-grid > a:hover,
 .facility-card:hover {
-  border-color: #c4baac;
+  border-color: var(--border-strong);
   background: var(--surface-alt);
 }
 .category-grid h2,
@@ -4306,7 +4301,7 @@ tbody tr:hover {
   font-weight: 600;
 }
 .review-row {
-  background: #fdf9f0;
+  background: var(--warn-soft);
 }
 .bulk-review-action,
 .publish-gate,
@@ -4351,7 +4346,7 @@ tbody tr:hover {
 .publish-blocked {
   padding: var(--space-5);
   border-left: 3px solid var(--danger);
-  background: #f8ece8;
+  background: var(--danger-soft);
 }
 .import-failure h2 {
   margin: 0 0 6px;
@@ -4376,7 +4371,7 @@ tbody tr:hover {
 .drop-zone {
   min-height: 210px;
   padding: var(--space-6);
-  border: 1px dashed #c8beb0;
+  border: 1px dashed var(--border-strong);
   background: var(--surface);
   display: flex;
   flex-direction: column;
@@ -4452,7 +4447,7 @@ tbody tr:hover {
   margin: 0;
   padding: 10px 12px;
   color: var(--danger);
-  background: #f8ece8;
+  background: var(--danger-soft);
   font-size: 10px;
 }
 .import-guidance {
@@ -4469,7 +4464,7 @@ tbody tr:hover {
 }
 .import-guidance li {
   padding: 10px 0;
-  border-bottom: 1px solid #dfd6c9;
+  border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
 }
@@ -4484,8 +4479,8 @@ tbody tr:hover {
   display: grid;
   gap: 3px;
   padding: 10px 0;
-  border-top: 1px solid #dfd6c9;
-  border-bottom: 1px solid #dfd6c9;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 .provider-runtime-status strong {
   font-size: 11px;
@@ -4729,7 +4724,7 @@ tbody tr:hover {
 .normalization-truth > div {
   min-height: 52px;
   padding: 4px var(--space-4);
-  border-right: 1px solid #dfd6c9;
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
 }
@@ -5315,7 +5310,7 @@ tbody tr:hover {
   box-shadow: var(--elev-1);
 }
 .publish-confirm-dialog::backdrop {
-  background: rgb(28 25 21 / 0.38);
+  background: color-mix(in srgb, var(--text) 38%, transparent);
 }
 .publish-confirm-dialog h2 {
   margin: 3px 0 var(--space-3);
@@ -5524,7 +5519,7 @@ tbody tr:hover {
   margin-bottom: var(--space-5);
   padding: var(--space-5);
   border-left: 3px solid var(--warn);
-  background: #fdf9f0;
+  background: var(--warn-soft);
   display: grid;
   grid-template-columns: 1fr 260px auto;
   align-items: end;
@@ -5586,7 +5581,7 @@ tbody tr:hover {
     z-index: 29;
     border: 0;
     border-radius: 0;
-    background: rgb(28 25 21 / 46%);
+    background: color-mix(in srgb, var(--text) 46%, transparent);
   }
   .mobile-header {
     height: 58px;
@@ -5923,8 +5918,8 @@ tbody tr:hover {
     margin: 0;
     padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
-    background: rgb(255 255 255 / 97%);
-    box-shadow: 0 -8px 24px rgb(34 29 22 / 8%);
+    background: color-mix(in srgb, var(--surface) 97%, transparent);
+    box-shadow: var(--elev-1);
     display: grid;
     grid-template-columns: 1fr auto;
     align-items: center;
@@ -5996,8 +5991,8 @@ tbody tr:hover {
     z-index: 8;
     margin-inline: -16px;
     padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
-    background: rgb(255 255 255 / 96%);
-    box-shadow: 0 -8px 24px rgb(34 29 22 / 8%);
+    background: color-mix(in srgb, var(--surface) 96%, transparent);
+    box-shadow: var(--elev-1);
   }
   .approval-inbox-table {
     display: none;
@@ -6936,9 +6931,9 @@ tbody tr:hover {
 }
 .phase1-supplier-group {
   margin: 7px 0;
-  border: 1px solid var(--p1-line);
+  border: 1px solid var(--border);
   border-left: 3px solid var(--border);
-  background: #fff;
+  background: var(--surface);
 }
 .phase1-supplier-group.state-warn {
   border-left-color: var(--state-warn);
@@ -6985,14 +6980,14 @@ tbody tr:hover {
 }
 .phase1-reliability-strip {
   margin: -7px 0 14px;
-  border-bottom: 1px solid var(--p1-line);
+  border-bottom: 1px solid var(--border);
   display: flex;
 }
 .phase1-reliability-strip > div {
   min-width: 0;
   flex: 1;
   padding: 9px 14px;
-  border-right: 1px solid var(--p1-line);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
 }
@@ -7142,7 +7137,7 @@ tbody tr:hover {
   padding: 16px;
   background: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: 0 16px 40px rgb(20 25 30/0.15);
+  box-shadow: var(--elev-2);
 }
 .admin-crud-form {
   display: grid;
@@ -7172,7 +7167,7 @@ tbody tr:hover {
 .admin-feedback {
   margin: 10px 0;
   padding: 9px 12px;
-  border-left: 3px solid var(--state-success);
+  border-left: 3px solid var(--state-ok);
   background: var(--surface-alt);
   font-size: 11px;
 }

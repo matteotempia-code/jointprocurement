@@ -288,9 +288,9 @@ Immagini ammesse solo nella scheda prodotto, mai nelle righe di tabella né nell
 
 Su fondo grigio e sotto un'ombra, il testo colorato perde contrasto. Il chip no. E porta l'etichetta, che soddisfa anche la regola 5.1.
 
-### 5.5 — I due prezzi sempre entrambi presenti
+### 5.5 — I due livelli di prezzo hanno un'area propria
 
-Prezzo d'acquisto e prezzo normalizzato vanno **sempre** mostrati insieme, in una cella con area propria — non due `span` accostati.
+Prezzo d'acquisto e prezzo normalizzato vanno mostrati in una cella con area propria — non due `span` accostati. Il prezzo normalizzato compare solo quando differisce dal prezzo della confezione, come specificato nella regola 5.7.
 
 ```css
 .price-block {
@@ -311,6 +311,24 @@ Prezzo d'acquisto e prezzo normalizzato vanno **sempre** mostrati insieme, in un
 ```
 
 La distinzione fra i due è il primo principio del prodotto e oggi vive in un `<small>` da 7,5px.
+
+### 5.6 — Le colonne di confronto hanno una griglia fissa
+
+Nel catalogo e nelle altre superfici di confronto prezzi, ogni colonna deve partire dalla stessa ascissa in tutte le righe. Nome prodotto, prezzo, fornitore, stato e azioni usano una griglia a colonne fisse; un layout `flex` che sposta le colonne in base alla lunghezza del contenuto non è ammesso.
+
+L'occhio deve poter scorrere verticalmente prezzi e fornitori senza ricercarne ogni volta la posizione.
+
+### 5.7 — Il prezzo normalizzato compare solo quando aggiunge informazione
+
+Quando prezzo della confezione e prezzo normalizzato coincidono, il numero si mostra una sola volta. Il prezzo normalizzato compare soltanto quando cambia l'unità economica o il valore rispetto alla confezione.
+
+La precisione decimale segue l'ordine di grandezza e la precisione reale del dato. Non mostrare quattro decimali su importi nell'ordine delle decine di euro: suggeriscono una precisione che il dato commerciale non possiede.
+
+### 5.8 — Le immagini prodotto richiedono una fonte reale
+
+La regola 5.3 si applica anche quando esiste un packshot dimostrativo: le immagini generate per parola chiave non compaiono nelle righe dati. Nelle schede prodotto sono ammesse solo immagini realmente associate al prodotto; finché non esistono, usare una superficie neutra o rimuovere l'immagine.
+
+Le immagini non devono introdurre un fondo chiaro fisso che interrompe il tema scuro.
 
 ---
 
