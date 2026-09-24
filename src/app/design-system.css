@@ -24,23 +24,23 @@
   --radius-md: 12px;
   --radius-lg: 16px;
 
-  --color-bg: #f4f5f7;
-  --color-surface: #ffffff;
-  --color-surface-alt: #edeff3;
-  --color-text: #16181d;
-  --color-text-secondary: #5a606e;
-  --color-border: #dcdfe6;
-  --color-border-strong: #8b909c;
-  --color-accent: #00696e;
-  --color-accent-soft: #ddf0ed;
-  --color-ok: #2c7a3f;
-  --color-warn: #9a5b00;
-  --color-danger: #b3261e;
-  --color-info: #1f5fa8;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
 
-  --shadow-elev-1: 0 1px 2px rgb(22 24 29 / 6%), 0 1px 3px rgb(22 24 29 / 8%);
-  --shadow-elev-2: 0 4px 8px rgb(22 24 29 / 6%), 0 8px 16px rgb(22 24 29 / 8%);
-  --shadow-elev-3: 0 12px 24px rgb(22 24 29 / 10%), 0 24px 48px rgb(22 24 29 / 12%);
+  --shadow-elev-1: var(--elev-1);
+  --shadow-elev-2: var(--elev-2);
+  --shadow-elev-3: var(--elev-3);
 }
 
 /* Joint Procurement OS — single visual grammar derived from the canonical reference. */

@@ -330,6 +330,8 @@ La regola 5.3 si applica anche quando esiste un packshot dimostrativo: le immagi
 
 Le immagini non devono introdurre un fondo chiaro fisso che interrompe il tema scuro.
 
+Quando un'immagine viene rimossa da una riga dati, anche il suo contenitore deve collassare. Non lasciare rettangoli vuoti né riservare spazio a un packshot assente.
+
 ---
 
 ## 5B. GLI STATI DI ATTESA
