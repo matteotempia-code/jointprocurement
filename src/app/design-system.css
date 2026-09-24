@@ -190,13 +190,13 @@
   text-decoration: none;
 }
 .technical-summary strong {
-  font-size: 1.5rem;
+  font-size: var(--fs-500);
   font-variant-numeric: tabular-nums;
 }
 .technical-summary span,
 .technical-document-hero span {
   color: var(--text-secondary);
-  font-size: 0.82rem;
+  font-size: var(--fs-200);
 }
 .technical-upload,
 .technical-requirement-form {
@@ -213,7 +213,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 0.82rem;
+  font-size: var(--fs-200);
   font-weight: 650;
 }
 .technical-upload p {
@@ -247,7 +247,7 @@
 }
 .technical-metadata dt {
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: var(--fs-200);
 }
 .technical-metadata dd {
   margin: 4px 0 0;
@@ -266,7 +266,7 @@
 .technical-missing span {
   display: block;
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--fs-200);
 }
 .association-candidate form {
   display: flex;
@@ -296,7 +296,7 @@
   margin: 12px 0;
 }
 .technical-comparison-head h2 {
-  font-size: 1.05rem;
+  font-size: var(--fs-300);
   margin: 0;
 }
 .technical-comparison-head strong {
@@ -348,7 +348,7 @@
   border: 1px solid currentColor;
   border-radius: 999px;
   padding: 0.2rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--fs-100);
   line-height: 1.2;
   font-weight: 600;
 }
@@ -384,12 +384,12 @@
 .price-block-table strong,
 .price-block-compact strong,
 .price-block-mobile strong {
-  font-size: 0.875rem;
+  font-size: var(--fs-200);
 }
 .price-block-table small,
 .price-block-compact small,
 .price-block-mobile small {
-  font-size: 0.75rem;
+  font-size: var(--fs-100);
 }
 .sticky-action-bar {
   position: sticky;
@@ -440,7 +440,7 @@
     flex-wrap: nowrap;
   }
   .supplier-group > h2 {
-    font-size: 1rem;
+    font-size: var(--fs-300);
   }
   .table-wrap td,
   .table-wrap th {
@@ -507,13 +507,13 @@ p {
   text-wrap: pretty;
 }
 h2 {
-  font-size: 19px;
+  font-size: var(--fs-400);
   line-height: 1.22;
   font-weight: 500;
   letter-spacing: -0.018em;
 }
 h3 {
-  font-size: 15px;
+  font-size: var(--fs-300);
   font-weight: 500;
 }
 .sr-only {
@@ -532,7 +532,7 @@ h3 {
 }
 .mono {
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 
 /* Shell */
@@ -566,7 +566,7 @@ h3 {
   color: var(--bg);
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: var(--fs-100);
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -576,20 +576,20 @@ h3 {
   line-height: 1.25;
 }
 .brand b {
-  font-size: 13px;
+  font-size: var(--fs-200);
   font-weight: 500;
 }
 .brand small {
   margin-top: 3px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .demo-label {
   margin: 28px 8px 8px;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  font-size: 9px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .role-switcher {
@@ -599,7 +599,7 @@ h3 {
   display: block;
   margin-bottom: 5px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .role-switcher select {
   width: 100%;
@@ -608,7 +608,7 @@ h3 {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .sidebar nav {
   flex: 1;
@@ -625,7 +625,7 @@ h3 {
   padding: 9px 11px;
   border-radius: var(--radius-md);
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: var(--fs-200);
   font-weight: 500;
   transition:
     background 0.14s ease,
@@ -656,7 +656,7 @@ h3 {
   place-items: center;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 10px;
+  font-size: var(--fs-100);
   font-weight: 600;
 }
 .identity > div:last-child {
@@ -665,13 +665,13 @@ h3 {
   flex-direction: column;
 }
 .identity b {
-  font-size: 11.5px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .identity span:not(.scope-badge) {
   margin-top: 1px;
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .scope-badge {
   margin-top: 7px;
@@ -680,11 +680,11 @@ h3 {
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .scope-badge small {
   color: var(--text-secondary);
-  font-size: 7.5px;
+  font-size: var(--fs-100);
   line-height: 1.2;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -721,7 +721,7 @@ h3 {
   border-right: 0;
   border-radius: var(--radius-md) 0 0 var(--radius-md);
   background: var(--bg);
-  font-size: 12px;
+  font-size: var(--fs-100);
 }
 .global-bar button {
   height: 38px;
@@ -731,12 +731,12 @@ h3 {
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   background: var(--bg);
   color: var(--accent);
-  font-size: 11px;
+  font-size: var(--fs-100);
   font-weight: 600;
 }
 .global-bar > span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
   letter-spacing: 0.04em;
 }
 .main-content > main {
@@ -765,14 +765,14 @@ h3 {
   color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  font-size: 9px;
+  font-size: var(--fs-100);
   line-height: 1.2;
   font-weight: 600;
 }
 .page-header h1 {
   max-width: 900px;
   margin: 0;
-  font-size: clamp(27px, 3vw, 36px);
+  font-size: var(--fs-600);
   line-height: 1.08;
   letter-spacing: -0.035em;
   font-weight: 500;
@@ -781,7 +781,7 @@ h3 {
   max-width: 680px;
   margin: 10px 0 0;
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: var(--fs-200);
   line-height: 1.55;
 }
 .page-action {
@@ -801,7 +801,7 @@ h3 {
 }
 .section-heading > span {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .workspace-section,
 .detail-section {
@@ -822,12 +822,12 @@ section > h2 {
 }
 .editorial h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--fs-400);
 }
 .editorial > p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: var(--fs-200);
   line-height: 1.65;
 }
 .editorial dl {
@@ -839,12 +839,12 @@ section > h2 {
 .editorial dt,
 .commercial-terms dt {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .editorial dd,
 .commercial-terms dd {
   margin: 4px 0;
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 
 /* Primitives */
@@ -860,7 +860,7 @@ button:not(.icon-button):not(.text-button):not(.favorite-button) {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 11.5px;
+  font-size: var(--fs-100);
   line-height: 1.2;
   font-weight: 500;
   transition:
@@ -900,7 +900,7 @@ button:not(.primary-cta):not(.danger-button):not(.icon-button):not(.text-button)
   border: 0;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 10.5px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .text-button:hover,
@@ -954,7 +954,7 @@ textarea:focus {
 }
 label {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .search-field {
   min-width: 220px;
@@ -977,7 +977,7 @@ label {
   padding: 0;
   border: 0;
   outline: 0;
-  font-size: 11.5px;
+  font-size: var(--fs-100);
 }
 .filter-bar,
 .catalog-filters {
@@ -1034,11 +1034,11 @@ label {
 .metric p {
   margin: 0 0 9px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .metric strong {
   display: block;
-  font-size: clamp(21px, 2.1vw, 28px);
+  font-size: var(--fs-600);
   line-height: 1.05;
   letter-spacing: -0.035em;
   font-weight: 500;
@@ -1047,14 +1047,14 @@ label {
   display: block;
   margin-top: 6px;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
   white-space: nowrap;
 }
 .status i {
@@ -1086,7 +1086,7 @@ label {
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 8.5px;
+  font-size: var(--fs-100);
   font-style: normal;
 }
 .severity-high,
@@ -1100,7 +1100,7 @@ label {
   border-left: 3px solid var(--warn);
   background: var(--warn-soft);
   color: var(--warn);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .success {
   border-color: var(--ok);
@@ -1118,7 +1118,7 @@ table {
   width: 100%;
   min-width: 720px;
   border-collapse: collapse;
-  font-size: 11.5px;
+  font-size: var(--fs-100);
 }
 th {
   height: 38px;
@@ -1128,7 +1128,7 @@ th {
   text-align: left;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  font-size: 8px;
+  font-size: var(--fs-100);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -1153,7 +1153,7 @@ tbody tr:hover {
 }
 .product-link strong,
 .table-link {
-  font-size: 11.5px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .product-link span,
@@ -1161,7 +1161,7 @@ tbody tr:hover {
   display: block;
   margin-top: 3px;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .table-link:hover {
   text-decoration: underline;
@@ -1199,19 +1199,19 @@ tbody tr:hover {
   color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 8.5px;
+  font-size: var(--fs-100);
 }
 .product-identity h2,
 .favorite-copy h2 {
   margin: 4px 0;
-  font-size: 13px;
+  font-size: var(--fs-200);
   font-weight: 500;
 }
 .product-identity p,
 .favorite-copy p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .catalog-result-head {
   padding: 10px 3px;
@@ -1220,7 +1220,7 @@ tbody tr:hover {
   justify-content: space-between;
   gap: var(--space-4);
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .refined-catalog > article {
   padding: 18px 4px;
@@ -1245,15 +1245,15 @@ tbody tr:hover {
 .favorite-commercial small,
 .favorite-commercial span {
   color: var(--text-secondary);
-  font-size: 8.5px;
+  font-size: var(--fs-100);
 }
 .catalog-commercial strong {
-  font-size: 13px;
+  font-size: var(--fs-200);
   font-weight: 500;
 }
 .catalog-commercial em {
   color: var(--warn);
-  font-size: 8.5px;
+  font-size: var(--fs-100);
 }
 .refined-catalog footer {
   grid-column: 1 / -1;
@@ -1283,7 +1283,7 @@ tbody tr:hover {
   background: var(--surface);
   cursor: pointer;
   list-style: none;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .product-actions-menu > summary::-webkit-details-marker,
 .row-more > summary::-webkit-details-marker {
@@ -1304,11 +1304,11 @@ tbody tr:hover {
 .product-actions-popover > strong {
   display: block;
   margin-bottom: var(--space-2);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .product-actions-popover p {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .list-choice {
   display: grid;
@@ -1332,7 +1332,7 @@ tbody tr:hover {
 .create-list-choice summary {
   cursor: pointer;
   color: var(--accent);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .create-list-choice form {
   margin-top: var(--space-2);
@@ -1345,7 +1345,7 @@ tbody tr:hover {
   border-top: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .add-control {
   height: 36px;
@@ -1377,23 +1377,23 @@ tbody tr:hover {
 }
 .hero-copy > span {
   color: var(--accent);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .hero-copy h2 {
   margin: 7px 0 12px;
-  font-size: 24px;
+  font-size: var(--fs-500);
   font-weight: 500;
 }
 .hero-copy h2 small {
   display: block;
   margin-top: 4px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
   font-weight: 400;
 }
 .hero-copy p {
   color: var(--text-secondary);
-  font-size: 11.5px;
+  font-size: var(--fs-100);
   line-height: 1.6;
 }
 .hero-copy dl {
@@ -1403,11 +1403,11 @@ tbody tr:hover {
 }
 .hero-copy dt {
   color: var(--text-secondary);
-  font-size: 8px;
+  font-size: var(--fs-100);
 }
 .hero-copy dd {
   margin: 3px 0;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .buy-box {
   padding: 20px;
@@ -1420,14 +1420,14 @@ tbody tr:hover {
   margin-top: 0;
 }
 .buy-box > strong {
-  font-size: 27px;
+  font-size: var(--fs-600);
   font-weight: 500;
 }
 .buy-box > span,
 .buy-box > small {
   margin-top: 4px;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .buy-box form,
 .buy-actions form {
@@ -1458,7 +1458,7 @@ tbody tr:hover {
 .anchor-nav a,
 .segmented a {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
   white-space: nowrap;
 }
 .spec-grid,
@@ -1480,12 +1480,12 @@ tbody tr:hover {
 .document-list span,
 .alternative-grid span {
   color: var(--text-secondary);
-  font-size: 8.5px;
+  font-size: var(--fs-100);
 }
 .spec-grid strong,
 .document-list a,
 .alternative-grid a {
-  font-size: 10.5px;
+  font-size: var(--fs-100);
 }
 .alternative-grid .product-packshot {
   width: 100%;
@@ -1510,7 +1510,7 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   color: var(--text-secondary);
-  font-size: 8px;
+  font-size: var(--fs-100);
 }
 .disclosure-section {
   margin-top: 8px;
@@ -1530,17 +1530,17 @@ tbody tr:hover {
   display: none;
 }
 .disclosure-section summary span {
-  font-size: 14px;
+  font-size: var(--fs-200);
   font-weight: 500;
 }
 .disclosure-section summary small {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .disclosure-section summary::after {
   content: "+";
   color: var(--text-secondary);
-  font-size: 17px;
+  font-size: var(--fs-300);
 }
 .disclosure-section[open] summary::after {
   content: "−";
@@ -1581,7 +1581,7 @@ tbody tr:hover {
 .context-action-bar span,
 .list-command small {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .favorite-grid,
 .list-detail-items {
@@ -1655,17 +1655,17 @@ tbody tr:hover {
 }
 .list-overview header h2 {
   margin: 5px 0;
-  font-size: 17px;
+  font-size: var(--fs-300);
 }
 .list-overview header span,
 .list-overview header p,
 .list-overview header small,
 .list-overview footer > span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .list-overview header > strong {
-  font-size: 17px;
+  font-size: var(--fs-300);
   text-align: right;
   font-weight: 500;
 }
@@ -1678,7 +1678,7 @@ tbody tr:hover {
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .list-overview footer {
   display: flex;
@@ -1693,7 +1693,7 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .row-more > form {
   width: 150px;
@@ -1713,14 +1713,14 @@ tbody tr:hover {
 }
 .list-detail-items h2 {
   margin: 3px 0;
-  font-size: 12.5px;
+  font-size: var(--fs-200);
 }
 .list-detail-items span,
 .list-detail-items p,
 .list-detail-items small {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .list-detail-items form,
 .reorder-actions {
@@ -1741,7 +1741,7 @@ tbody tr:hover {
 .reorder-actions button {
   min-height: 26px;
   padding: 4px 6px;
-  font-size: 8px;
+  font-size: var(--fs-100);
 }
 .list-settings {
   margin-top: var(--space-6);
@@ -1753,7 +1753,7 @@ tbody tr:hover {
 }
 .new-list-inline {
   position: relative;
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .new-list-inline summary {
   padding: 7px 2px;
@@ -1786,7 +1786,7 @@ tbody tr:hover {
   border-top: 1px solid var(--text);
 }
 .supplier-group h2 {
-  font-size: 13px;
+  font-size: var(--fs-200);
 }
 .cart-line {
   padding: 13px 8px;
@@ -1806,7 +1806,7 @@ tbody tr:hover {
 }
 .cart-line span {
   color: var(--text-secondary);
-  font-size: 8.5px;
+  font-size: var(--fs-100);
 }
 .cart-line form,
 .cart-tools form {
@@ -1827,12 +1827,12 @@ tbody tr:hover {
 .checkout dl div {
   display: flex;
   justify-content: space-between;
-  font-size: 10.5px;
+  font-size: var(--fs-100);
 }
 .checkout .total {
   padding-top: 8px;
   border-top: 1px solid var(--border);
-  font-size: 13px;
+  font-size: var(--fs-200);
 }
 .submit-form label,
 .approval-actions label,
@@ -1865,7 +1865,7 @@ tbody tr:hover {
 }
 .director-welcome h1 {
   margin: 4px 0 8px;
-  font-size: 30px;
+  font-size: var(--fs-600);
   font-weight: 500;
   letter-spacing: -0.03em;
 }
@@ -1906,11 +1906,11 @@ tbody tr:hover {
 }
 .director-welcome nav span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .director-welcome nav strong {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .catalog-tabs {
@@ -1923,7 +1923,7 @@ tbody tr:hover {
 .catalog-tabs a {
   padding: 7px 0;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
   white-space: nowrap;
 }
 .catalog-tabs a:hover {
@@ -1961,13 +1961,13 @@ tbody tr:hover {
 }
 .today-panel strong,
 .attention-command strong {
-  font-size: 22px;
+  font-size: var(--fs-500);
   font-weight: 500;
 }
 .today-panel span,
 .attention-command span {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .today-panel.all-clear {
   grid-template-columns: 220px 1fr;
@@ -1993,7 +1993,7 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .quick-actions a:hover,
 .opportunity-links a:hover {
@@ -2028,7 +2028,7 @@ tbody tr:hover {
 .frequent-products p,
 .frequent-products span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .budget-cockpit {
   margin: var(--space-6) 0;
@@ -2046,13 +2046,13 @@ tbody tr:hover {
   flex-direction: column;
 }
 .budget-cockpit strong {
-  font-size: 27px;
+  font-size: var(--fs-600);
   font-weight: 500;
 }
 .budget-cockpit span,
 .budget-cockpit dt {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .budget-cockpit dl {
   margin: 0;
@@ -2062,7 +2062,7 @@ tbody tr:hover {
 }
 .budget-cockpit dd {
   margin: 3px 0;
-  font-size: 12px;
+  font-size: var(--fs-100);
 }
 .budget-cockpit i,
 .facility-util i,
@@ -2090,7 +2090,7 @@ tbody tr:hover {
   grid-template-columns: 10px 90px 1fr auto;
   align-items: center;
   gap: 10px;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .activity-row {
   padding: 11px 2px;
@@ -2099,7 +2099,7 @@ tbody tr:hover {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .activity-row > div {
   min-width: 0;
@@ -2109,11 +2109,11 @@ tbody tr:hover {
 .activity-row > div span,
 .activity-row > span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .activity-row > b {
   flex: none;
-  font-size: 12px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .recent-timeline i,
@@ -2156,17 +2156,17 @@ tbody tr:hover {
 .definition-grid small,
 .issue-summary span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .budget-decision strong,
 .price-truth-grid strong,
 .approval-header strong,
 .definition-grid strong {
-  font-size: 16px;
+  font-size: var(--fs-300);
   font-weight: 500;
 }
 .issue-summary strong {
-  font-size: 23px;
+  font-size: var(--fs-500);
   font-weight: 500;
 }
 .dashboard-columns,
@@ -2204,7 +2204,7 @@ tbody tr:hover {
 .budget-context dd,
 .commercial-terms dd {
   margin: 3px 0;
-  font-size: 11.5px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .context-row,
@@ -2216,13 +2216,13 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .context-row span,
 .contact-row span,
 .receipt-row span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 
 /* Receiving is an operational form, not a compressed data table. */
@@ -2243,7 +2243,7 @@ tbody tr:hover {
 .receive-head {
   padding: 0 0 var(--space-2);
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -2279,7 +2279,7 @@ tbody tr:hover {
   display: grid;
   gap: var(--space-1);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .receive-form .notes {
   max-width: 640px;
@@ -2296,7 +2296,7 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .dependency-note {
   display: flex;
@@ -2305,11 +2305,11 @@ tbody tr:hover {
 }
 .dependency-note span {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .signal-list {
   padding-left: 18px;
-  font-size: 10px;
+  font-size: var(--fs-100);
   line-height: 1.65;
 }
 .approval-actions {
@@ -2341,7 +2341,7 @@ tbody tr:hover {
 }
 .decision-intro h2 {
   margin: 4px 0;
-  font-size: 22px;
+  font-size: var(--fs-500);
 }
 .decision-intro p:last-child {
   color: var(--text-secondary);
@@ -2367,10 +2367,10 @@ tbody tr:hover {
 .approval-inbox-cards p,
 .approval-inbox-cards dt {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .approval-inbox-cards header > strong {
-  font-size: 18px;
+  font-size: var(--fs-400);
   font-weight: 500;
 }
 .approval-inbox-cards dl {
@@ -2380,7 +2380,7 @@ tbody tr:hover {
 }
 .approval-inbox-cards dd {
   margin: 2px 0;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 
 /* Orders, deliveries, suppliers and intelligence */
@@ -2400,10 +2400,10 @@ tbody tr:hover {
 }
 .order-command > div > span:first-child {
   color: var(--text-secondary);
-  font-size: 8.5px;
+  font-size: var(--fs-100);
 }
 .order-command > div > strong {
-  font-size: 11.5px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .order-command nav {
@@ -2424,7 +2424,7 @@ tbody tr:hover {
 }
 .po-delivery span {
   color: var(--text-secondary);
-  font-size: 8.5px;
+  font-size: var(--fs-100);
 }
 .acknowledge-form {
   display: flex;
@@ -2443,7 +2443,7 @@ tbody tr:hover {
 }
 .policy-preview p {
   margin-bottom: 0;
-  font-size: 9.5px;
+  font-size: var(--fs-100);
   line-height: 1.5;
 }
 .delivery-board {
@@ -2473,7 +2473,7 @@ tbody tr:hover {
 .delivery-board article small,
 .quiet-empty {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .issue-list article {
   padding: 14px 4px;
@@ -2485,12 +2485,12 @@ tbody tr:hover {
 }
 .issue-list h2 {
   margin: 4px 0;
-  font-size: 12px;
+  font-size: var(--fs-100);
 }
 .issue-list p,
 .issue-list small {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .issue-list form {
   display: grid;
@@ -2530,7 +2530,7 @@ tbody tr:hover {
 .mini-bars span,
 .mini-bars small {
   color: var(--text-secondary);
-  font-size: 7px;
+  font-size: var(--fs-100);
 }
 .share-row {
   padding: 7px 0;
@@ -2538,7 +2538,7 @@ tbody tr:hover {
   grid-template-columns: 125px 1fr 45px;
   align-items: center;
   gap: 9px;
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .comparison-strip {
   margin: var(--space-5) 0;
@@ -2556,11 +2556,11 @@ tbody tr:hover {
 .comparison-strip span,
 .comparison-strip small {
   color: var(--on-accent);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .comparison-strip strong {
   margin: 4px 0;
-  font-size: 18px;
+  font-size: var(--fs-400);
   font-weight: 500;
 }
 .comparison-result {
@@ -2604,11 +2604,11 @@ tbody tr:hover {
 .comparison-row > strong {
   padding: 11px;
   border-left: 1px solid var(--border);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .comparison-row > strong {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .comparison-row.different {
   background: var(--surface-alt);
@@ -2631,7 +2631,7 @@ tbody tr:hover {
 .attention-details a::after {
   content: "›";
   color: var(--text-secondary);
-  font-size: 16px;
+  font-size: var(--fs-300);
 }
 .attention-details a:hover {
   padding-left: 8px;
@@ -2639,16 +2639,16 @@ tbody tr:hover {
 }
 .attention-details span {
   color: var(--accent);
-  font-size: 8.5px;
+  font-size: var(--fs-100);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .attention-details strong {
-  font-size: 10.5px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .attention-details b {
-  font-size: 10px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .opportunity-list article {
@@ -2670,16 +2670,16 @@ tbody tr:hover {
   flex-direction: column;
 }
 .opportunity-list a {
-  font-size: 12px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .opportunity-list small,
 .opportunity-list div:last-child span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .opportunity-list div:last-child strong {
-  font-size: 17px;
+  font-size: var(--fs-300);
   font-weight: 500;
 }
 .category-grid,
@@ -2714,13 +2714,13 @@ tbody tr:hover {
   background: var(--surface-alt);
 }
 .decision-signals strong {
-  font-size: 21px;
+  font-size: var(--fs-500);
   font-weight: 500;
 }
 .decision-signals span,
 .decision-signals small {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .decision-signals small {
   margin-top: 7px;
@@ -2752,10 +2752,10 @@ tbody tr:hover {
 }
 .executive-brief article small {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .executive-brief article b {
-  font-size: 17px;
+  font-size: var(--fs-300);
   font-weight: 500;
 }
 .organization-comparison {
@@ -2771,11 +2771,11 @@ tbody tr:hover {
 }
 .organization-comparison span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .organization-comparison strong {
   margin: 4px 0;
-  font-size: 23px;
+  font-size: var(--fs-500);
   font-weight: 500;
 }
 .organization-comparison i {
@@ -2790,7 +2790,7 @@ tbody tr:hover {
 .table-note {
   margin: 8px 0 0;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
   text-align: right;
 }
 .supplier-performance-strip,
@@ -2816,18 +2816,18 @@ tbody tr:hover {
 .supplier-performance-strip span,
 .commercial-summary span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .supplier-performance-strip strong,
 .commercial-summary strong {
   margin: 5px 0;
-  font-size: 20px;
+  font-size: var(--fs-400);
   font-weight: 500;
 }
 .supplier-performance-strip small,
 .commercial-summary small {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .commercial-summary {
   grid-template-columns: repeat(3, 1fr);
@@ -2926,7 +2926,7 @@ tbody tr:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .phase1-limit > dl {
   margin: 6px 0 3px;
@@ -2961,7 +2961,7 @@ tbody tr:hover {
 }
 .phase1-reliability-strip span,
 .phase1-reliability-strip small {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-reliability-strip strong {
@@ -2979,7 +2979,7 @@ tbody tr:hover {
 }
 .row-disclosure {
   justify-self: end;
-  font-size: 16px !important;
+  font-size: var(--fs-300) !important;
   color: var(--text) !important;
 }
 .phase1-catalog .price-block strong {
@@ -3029,7 +3029,7 @@ tbody tr:hover {
 }
 .phase1-selection-count {
   padding: 7px 2px 0;
-  font-size: 10px;
+  font-size: var(--fs-100);
   font-weight: 600;
 }
 .phase1-page .page-header {
@@ -3045,7 +3045,7 @@ tbody tr:hover {
   gap: 18px;
   padding: 16px 0;
   border-top: 1px solid var(--border);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .phase1-pagination a {
   padding: 7px 10px;
@@ -3080,7 +3080,7 @@ tbody tr:hover {
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .phase1-catalog .refined-catalog > article {
   min-height: 98px;
@@ -3116,7 +3116,7 @@ tbody tr:hover {
   gap: 3px;
 }
 .catalog-supplier span {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-catalog .refined-catalog footer {
@@ -3131,7 +3131,7 @@ tbody tr:hover {
   margin: 0;
 }
 .phase1-catalog .price-block strong {
-  font-size: 14px;
+  font-size: var(--fs-200);
 }
 
 .phase1-list-command {
@@ -3146,7 +3146,7 @@ tbody tr:hover {
   flex-direction: column;
 }
 .phase1-list-command span {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-favorites .selection-toolbar {
@@ -3183,7 +3183,7 @@ tbody tr:hover {
   gap: 10px;
 }
 .phase1-favorites .price-block strong {
-  font-size: 13px;
+  font-size: var(--fs-200);
 }
 
 .phase1-commercial-alert,
@@ -3208,7 +3208,7 @@ tbody tr:hover {
 .phase1-commercial-alert span,
 .phase1-supplier-insight span,
 .phase1-evidence-band span {
-  font-size: 10px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-cart-layout {
@@ -3237,10 +3237,10 @@ tbody tr:hover {
 }
 .phase1-supplier-group > summary h2 {
   margin: 0 0 4px;
-  font-size: 14px;
+  font-size: var(--fs-200);
 }
 .phase1-supplier-group > summary span {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .supplier-threshold {
@@ -3250,7 +3250,7 @@ tbody tr:hover {
 }
 .supplier-threshold > strong {
   text-align: right;
-  font-size: 15px;
+  font-size: var(--fs-300);
   font-variant-numeric: tabular-nums;
 }
 .supplier-threshold i {
@@ -3271,7 +3271,7 @@ tbody tr:hover {
   background: var(--surface-alt);
   display: flex;
   gap: 24px;
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-cart-lines .cart-line.enriched {
@@ -3300,7 +3300,7 @@ tbody tr:hover {
   flex-direction: column;
 }
 .phase1-completion span {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-checkout {
@@ -3318,7 +3318,7 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   padding: 4px 0;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .phase1-checkout dl dd {
   font-variant-numeric: tabular-nums;
@@ -3327,11 +3327,11 @@ tbody tr:hover {
   margin-top: 5px;
   padding-top: 9px;
   border-top: 1px solid var(--border);
-  font-size: 13px;
+  font-size: var(--fs-200);
 }
 .phase1-checkout h3 {
   margin: 13px 0 7px;
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .phase1-limit,
 .phase1-budget-row {
@@ -3344,7 +3344,7 @@ tbody tr:hover {
 .phase1-limit small,
 .phase1-budget-row span,
 .phase1-budget-row small {
-  font-size: 8.5px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-limit small,
@@ -3353,7 +3353,7 @@ tbody tr:hover {
 }
 .phase1-save-list {
   margin-top: 10px;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .phase1-save-list form {
   display: flex;
@@ -3384,18 +3384,18 @@ tbody tr:hover {
 .phase1-summary-strip span,
 .phase1-cockpit-metrics span,
 .phase1-cockpit-metrics small {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-summary-strip strong,
 .phase1-cockpit-metrics strong {
   margin-top: 4px;
-  font-size: 19px;
+  font-size: var(--fs-400);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 .phase1-sla-alert a {
-  font-size: 10px;
+  font-size: var(--fs-100);
   text-decoration: underline;
 }
 .phase1-queue-toolbar {
@@ -3410,7 +3410,7 @@ tbody tr:hover {
   flex-direction: column;
 }
 .phase1-queue-toolbar span {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-queue-toolbar form {
@@ -3427,7 +3427,7 @@ tbody tr:hover {
 .phase1-approval-head {
   padding: 8px 10px;
   background: var(--surface-alt);
-  font-size: 8.5px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -3446,14 +3446,14 @@ tbody tr:hover {
   gap: 2px;
 }
 .phase1-approval-row span {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-approval-row > .secondary-cta {
   justify-self: end;
 }
 .sla-cell strong {
-  font-size: 15px;
+  font-size: var(--fs-300);
   font-variant-numeric: tabular-nums;
 }
 .sla-overdue .sla-cell strong,
@@ -3467,7 +3467,7 @@ tbody tr:hover {
 .phase1-archive > summary {
   padding: 11px 2px;
   cursor: pointer;
-  font-size: 10px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-archive > div > a,
@@ -3476,7 +3476,7 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   border-bottom: 1px solid var(--border);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 
 .phase1-decision-reason {
@@ -3493,16 +3493,16 @@ tbody tr:hover {
   background: var(--ok-soft);
 }
 .phase1-decision-reason span {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-decision-reason h2 {
   margin: 3px 0;
-  font-size: 15px;
+  font-size: var(--fs-300);
 }
 .phase1-decision-reason p {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .phase1-decision-grid {
   display: grid;
@@ -3516,11 +3516,11 @@ tbody tr:hover {
 }
 .phase1-budget-impact > span,
 .phase1-budget-impact small {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-budget-impact h2 {
-  font-size: 13px;
+  font-size: var(--fs-200);
 }
 .phase1-budget-impact dl > div {
   display: flex;
@@ -3559,7 +3559,7 @@ tbody tr:hover {
   background: var(--surface);
 }
 .phase1-context-cards > section > span {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-context-cards h3 {
@@ -3598,7 +3598,7 @@ tbody tr:hover {
 .phase1-tabs a {
   padding: 9px 1px;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-tabs a.active {
@@ -3625,7 +3625,7 @@ tbody tr:hover {
 }
 .phase1-commercial-card dd {
   margin: 3px 0;
-  font-size: 17px;
+  font-size: var(--fs-300);
   font-variant-numeric: tabular-nums;
 }
 .phase1-overview-products {
@@ -3645,7 +3645,7 @@ tbody tr:hover {
   flex-direction: column;
 }
 .phase1-overview-products span {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .phase1-overview-products > a > strong {
@@ -3872,12 +3872,12 @@ tbody tr:hover {
 .category-grid h2,
 .facility-card h2 {
   margin: 5px 0;
-  font-size: 16px;
+  font-size: var(--fs-300);
 }
 .category-grid span,
 .facility-card span {
   color: var(--accent);
-  font-size: 8px;
+  font-size: var(--fs-100);
 }
 .category-grid dl {
   display: flex;
@@ -3885,11 +3885,11 @@ tbody tr:hover {
 }
 .category-grid dt {
   color: var(--text-secondary);
-  font-size: 8px;
+  font-size: var(--fs-100);
 }
 .category-grid dd {
   margin: 3px 0;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .facility-card {
   display: grid;
@@ -3900,7 +3900,7 @@ tbody tr:hover {
 .facility-card p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .facility-index {
   color: var(--text-secondary);
@@ -3915,7 +3915,7 @@ tbody tr:hover {
   grid-template-columns: 180px 1fr 150px;
   align-items: center;
   gap: var(--space-4);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 
 /* Organization, timelines and states */
@@ -3929,7 +3929,7 @@ tbody tr:hover {
 }
 .org-tree span {
   color: var(--text-secondary);
-  font-size: 8px;
+  font-size: var(--fs-100);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -3959,7 +3959,7 @@ tbody tr:hover {
 .tree-facilities li {
   margin: 5px 0;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .principle-note {
   margin-bottom: var(--space-5);
@@ -3970,7 +3970,7 @@ tbody tr:hover {
 }
 .principle-note span {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .timeline,
 .compact-timeline {
@@ -3985,7 +3985,7 @@ tbody tr:hover {
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .timeline li::before,
 .compact-timeline li::before {
@@ -4001,7 +4001,7 @@ tbody tr:hover {
 .timeline span,
 .compact-timeline span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .empty-state {
   padding: var(--space-7) var(--space-5);
@@ -4011,13 +4011,13 @@ tbody tr:hover {
 }
 .empty-state h2 {
   margin: 0 0 8px;
-  font-size: 18px;
+  font-size: var(--fs-400);
 }
 .empty-state p {
   max-width: 480px;
   margin: 0 auto;
   color: var(--text-secondary);
-  font-size: 11.5px;
+  font-size: var(--fs-100);
 }
 .empty-state-action {
   margin-top: var(--space-4);
@@ -4055,7 +4055,7 @@ tbody tr:hover {
   padding-top: 15vh;
 }
 .not-found h1 {
-  font-size: 32px;
+  font-size: var(--fs-600);
 }
 .skeleton {
   border-radius: var(--radius-sm);
@@ -4099,7 +4099,7 @@ tbody tr:hover {
   position: relative;
   padding-top: 17px;
   color: var(--text-secondary);
-  font-size: 8.5px;
+  font-size: var(--fs-100);
   text-align: center;
 }
 .import-progress li::before {
@@ -4157,7 +4157,7 @@ tbody tr:hover {
   padding: 10px 1px 8px;
   border-bottom: 2px solid transparent;
   color: var(--text-secondary);
-  font-size: 10.5px;
+  font-size: var(--fs-100);
   white-space: nowrap;
 }
 .import-tabs a.active {
@@ -4171,7 +4171,7 @@ tbody tr:hover {
   align-items: center;
   gap: 6px;
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
   white-space: nowrap;
 }
 .import-status i,
@@ -4215,7 +4215,7 @@ tbody tr:hover {
   display: block;
   margin-top: 4px;
   color: var(--text-secondary);
-  font-size: 8.5px;
+  font-size: var(--fs-100);
   line-height: 1.4;
 }
 .document-facts {
@@ -4240,10 +4240,10 @@ tbody tr:hover {
 .document-facts span,
 .document-facts small {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .document-facts strong {
-  font-size: 11.5px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .review-toolbar {
@@ -4260,13 +4260,13 @@ tbody tr:hover {
   flex-direction: column;
 }
 .review-toolbar strong {
-  font-size: 15px;
+  font-size: var(--fs-300);
   font-weight: 500;
 }
 .review-toolbar span {
   margin-top: 3px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .review-toolbar nav {
   display: flex;
@@ -4277,7 +4277,7 @@ tbody tr:hover {
   padding: 6px 8px;
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .review-toolbar nav a.active {
   background: var(--surface-alt);
@@ -4311,7 +4311,7 @@ tbody tr:hover {
 .publish-blocked p {
   margin: 3px 0 0;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .publish-gate {
   margin-top: var(--space-6);
@@ -4366,12 +4366,12 @@ tbody tr:hover {
 }
 .drop-zone-title {
   color: var(--text);
-  font-size: 16px;
+  font-size: var(--fs-300);
   font-weight: 500;
 }
 .drop-zone > span:not(.drop-zone-title) {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .import-file-picker {
   width: min(100%, 360px);
@@ -4387,14 +4387,14 @@ tbody tr:hover {
   padding: 9px 12px;
   border-right: 1px solid var(--border);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--fs-100);
   font-weight: 600;
 }
 .drop-zone .import-file-picker > span {
   padding: 9px 12px;
   overflow: hidden;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-100);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4421,18 +4421,18 @@ tbody tr:hover {
   gap: 3px;
 }
 .import-honesty-note strong {
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .import-honesty-note span {
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .form-error {
   margin: 0;
   padding: 10px 12px;
   color: var(--danger);
   background: var(--danger-soft);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .import-guidance {
   padding: var(--space-5);
@@ -4453,11 +4453,11 @@ tbody tr:hover {
   flex-direction: column;
 }
 .import-guidance li strong {
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .import-guidance li span {
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .provider-runtime-status {
   display: grid;
@@ -4467,12 +4467,12 @@ tbody tr:hover {
   border-bottom: 1px solid var(--border);
 }
 .provider-runtime-status strong {
-  font-size: 11px;
+  font-size: var(--fs-100);
   letter-spacing: 0.03em;
 }
 .provider-runtime-status span {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
   line-height: 1.45;
 }
 .sheet-selection {
@@ -4494,7 +4494,7 @@ tbody tr:hover {
 .sheet-selection span,
 .sheet-selection small {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .mapping-list {
   border-top: 1px solid var(--border);
@@ -4514,7 +4514,7 @@ tbody tr:hover {
 }
 .mapping-list label strong {
   color: var(--text);
-  font-size: 11px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .mapping-list label small {
@@ -4535,7 +4535,7 @@ tbody tr:hover {
 .mapping-footer p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .import-summary-hero {
   margin-bottom: var(--space-5);
@@ -4548,7 +4548,7 @@ tbody tr:hover {
 }
 .import-summary-hero h2 {
   margin: 0;
-  font-size: 25px;
+  font-size: var(--fs-500);
 }
 .import-summary-hero p:last-child {
   max-width: 600px;
@@ -4568,10 +4568,10 @@ tbody tr:hover {
 .import-summary-list span,
 .import-summary-list small {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .import-summary-list strong {
-  font-size: 16px;
+  font-size: var(--fs-300);
   font-weight: 500;
 }
 .publish-ready {
@@ -4590,7 +4590,7 @@ tbody tr:hover {
   padding-left: 18px;
   columns: 2;
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .price-change-principle {
   margin-bottom: var(--space-5);
@@ -4602,7 +4602,7 @@ tbody tr:hover {
 }
 .price-change-principle span {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .record-review-status {
   margin: calc(var(--space-4) * -1) 0 var(--space-5);
@@ -4616,7 +4616,7 @@ tbody tr:hover {
 }
 .warning-inline {
   color: var(--warn);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .confidence-breakdown {
   margin-bottom: var(--space-5);
@@ -4637,7 +4637,7 @@ tbody tr:hover {
 }
 .confidence-breakdown > div > span:first-child {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .record-three-way {
   display: grid;
@@ -4683,19 +4683,19 @@ tbody tr:hover {
 .record-three-way dt,
 .match-candidate-grid dt {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .record-three-way dt small {
   display: block;
   margin-top: 2px;
   color: var(--accent);
-  font-size: 7.5px;
+  font-size: var(--fs-100);
 }
 .record-three-way dd,
 .match-candidate-grid dd {
   margin: 0;
   text-align: right;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .normalization-truth {
   margin: var(--space-5) 0 var(--space-6);
@@ -4720,11 +4720,11 @@ tbody tr:hover {
 }
 .normalization-truth span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .normalization-truth strong {
   margin-top: 6px;
-  font-size: 13px;
+  font-size: var(--fs-200);
   font-weight: 500;
 }
 .match-candidate-grid {
@@ -4748,7 +4748,7 @@ tbody tr:hover {
 }
 .match-candidate-grid header span {
   color: var(--accent);
-  font-size: 8.5px;
+  font-size: var(--fs-100);
 }
 .match-candidate-grid h3 {
   margin: 4px 0 0;
@@ -4757,7 +4757,7 @@ tbody tr:hover {
   min-height: 62px;
   padding-left: 16px;
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .match-candidate-grid form {
   margin-top: var(--space-3);
@@ -4791,11 +4791,11 @@ tbody tr:hover {
 .import-work-list article span,
 .import-work-list article small {
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .import-work-priority strong {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--fs-100);
   font-weight: 500;
 }
 .import-history {
@@ -4813,7 +4813,7 @@ tbody tr:hover {
   padding: 9px 1px;
   border-bottom: 2px solid transparent;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
   white-space: nowrap;
 }
 .state-tabs a.active {
@@ -4838,11 +4838,11 @@ tbody tr:hover {
 .import-detail-facts span,
 .import-detail-facts small {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .import-detail-facts strong {
   overflow: hidden;
-  font-size: 10.5px;
+  font-size: var(--fs-100);
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4888,11 +4888,11 @@ tbody tr:hover {
   flex-direction: column;
 }
 .bulk-review-bar strong {
-  font-size: 10.5px;
+  font-size: var(--fs-100);
 }
 .bulk-review-bar span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .pagination {
   margin-top: var(--space-3);
@@ -4904,7 +4904,7 @@ tbody tr:hover {
 }
 .pagination > span {
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .pagination > div {
   display: flex;
@@ -4918,7 +4918,7 @@ tbody tr:hover {
   padding: var(--space-3) 0;
   cursor: pointer;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .compact-audit ul {
   margin: 0;
@@ -4930,7 +4930,7 @@ tbody tr:hover {
   border-top: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .compact-audit li span {
   color: var(--text-secondary);
@@ -4950,11 +4950,11 @@ tbody tr:hover {
   gap: 3px;
 }
 .mapping-summary strong {
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .mapping-summary span {
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .mapping-list label.unmapped {
   border-left: 2px solid var(--warn);
@@ -4984,7 +4984,7 @@ tbody tr:hover {
 }
 .record-decision-hero h2 {
   margin: 3px 0 var(--space-3);
-  font-size: 15px;
+  font-size: var(--fs-300);
   line-height: 1.3;
 }
 .record-decision-hero pre {
@@ -5003,7 +5003,7 @@ tbody tr:hover {
 .record-decision-hero article > span {
   display: block;
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .record-decision-hero dl {
   margin: 0;
@@ -5017,12 +5017,12 @@ tbody tr:hover {
 }
 .record-decision-hero dt {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .record-decision-hero dd {
   margin: 0;
   text-align: right;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .confidence-inline {
   margin-top: var(--space-3);
@@ -5032,7 +5032,7 @@ tbody tr:hover {
 }
 .confidence-inline > span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .recommended-match {
   background: var(--surface);
@@ -5041,7 +5041,7 @@ tbody tr:hover {
   margin: var(--space-3) 0;
   padding-left: 16px;
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .recommended-match form {
   margin-top: var(--space-4);
@@ -5062,7 +5062,7 @@ tbody tr:hover {
   margin: 0;
   padding-left: 17px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .match-recommendation {
   margin-bottom: var(--space-5);
@@ -5079,7 +5079,7 @@ tbody tr:hover {
   grid-template-columns: 120px 1fr 24px 1fr;
   align-items: center;
   gap: var(--space-3);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .match-differences span {
   color: var(--text-secondary);
@@ -5106,7 +5106,7 @@ tbody tr:hover {
   min-height: 45px;
   padding: 12px var(--space-4);
   cursor: pointer;
-  font-size: 10.5px;
+  font-size: var(--fs-100);
   font-weight: 600;
 }
 .match-alternatives article {
@@ -5123,7 +5123,7 @@ tbody tr:hover {
 }
 .match-alternatives article span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .compact-correction form {
   padding: var(--space-4);
@@ -5141,7 +5141,7 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .new-product-review {
   margin-bottom: var(--space-5);
@@ -5184,7 +5184,7 @@ tbody tr:hover {
 .non-comparable-decision p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .non-comparable-decision > div:last-child {
   display: flex;
@@ -5209,7 +5209,7 @@ tbody tr:hover {
   border-top: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .correction-history article span {
   color: var(--text-secondary);
@@ -5255,12 +5255,12 @@ tbody tr:hover {
 .publish-counts span,
 .price-intelligence-summary span {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--fs-100);
 }
 .publish-counts strong,
 .price-intelligence-summary strong {
   margin-top: 5px;
-  font-size: 22px;
+  font-size: var(--fs-500);
   font-weight: 500;
 }
 .publish-counts .blocking strong {
@@ -5329,7 +5329,7 @@ tbody tr:hover {
   height: 32px;
   border: 0;
   background: transparent;
-  font-size: 20px;
+  font-size: var(--fs-400);
 }
 .dialog-actions {
   display: flex;
@@ -5358,12 +5358,12 @@ tbody tr:hover {
   flex-direction: column;
 }
 .old-new-overview > div:not(:first-child) strong {
-  font-size: 20px;
+  font-size: var(--fs-400);
   font-weight: 500;
 }
 .old-new-overview > div:not(:first-child) span {
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .top-change-grid {
   margin-bottom: var(--space-5);
@@ -5381,7 +5381,7 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   gap: var(--space-3);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .top-change-grid a strong {
   font-weight: 600;
@@ -5406,13 +5406,13 @@ tbody tr:hover {
 }
 .packaging-change-section article span {
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .check-filter {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .human-review-panel {
   margin-top: var(--space-7);
@@ -5455,7 +5455,7 @@ tbody tr:hover {
 }
 .exception-actions span {
   color: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: var(--fs-100);
 }
 .new-product-confirm {
   display: flex;
@@ -5470,7 +5470,7 @@ tbody tr:hover {
   border-bottom: 1px solid var(--border);
   display: grid;
   grid-template-columns: 1fr 1fr 1.5fr;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .correction-history span,
 .correction-history small {
@@ -5492,7 +5492,7 @@ tbody tr:hover {
 .price-list-provenance p:last-child {
   margin: 5px 0 0;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .contact-grid {
   display: grid;
@@ -5515,7 +5515,7 @@ tbody tr:hover {
 .supplier-confirmation p:last-child {
   margin: 5px 0 0;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .supplier-confirmation label {
   display: flex;
@@ -5587,7 +5587,7 @@ tbody tr:hover {
     height: 30px;
   }
   .brand-mark b {
-    font-size: 12px;
+    font-size: var(--fs-100);
   }
   .main-content {
     width: 100%;
@@ -5614,7 +5614,7 @@ tbody tr:hover {
     align-items: flex-start;
   }
   .page-header h1 {
-    font-size: 29px;
+    font-size: var(--fs-600);
   }
   .refined-catalog > article {
     grid-template-columns: 1fr;
@@ -5670,7 +5670,7 @@ tbody tr:hover {
 
 @media (max-width: 760px) {
   body {
-    font-size: 13px;
+    font-size: var(--fs-200);
   }
   .main-content > main {
     padding-inline: 16px;
@@ -5679,7 +5679,7 @@ tbody tr:hover {
     display: block;
   }
   .page-header h1 {
-    font-size: 27px;
+    font-size: var(--fs-600);
   }
   .page-action {
     margin-top: var(--space-4);
@@ -5704,7 +5704,7 @@ tbody tr:hover {
     padding: 14px 11px;
   }
   .metric strong {
-    font-size: 20px;
+    font-size: var(--fs-400);
   }
   .director-welcome,
   .today-panel,
@@ -5724,7 +5724,7 @@ tbody tr:hover {
     padding: 20px;
   }
   .director-welcome h1 {
-    font-size: 25px;
+    font-size: var(--fs-500);
   }
   .director-welcome form {
     flex-direction: column;
@@ -5917,13 +5917,13 @@ tbody tr:hover {
   .mobile-cart-action span,
   .mobile-cart-action small {
     color: var(--text-secondary);
-    font-size: 9px;
+    font-size: var(--fs-100);
   }
   .mobile-cart-action small {
     grid-column: 1 / -1;
   }
   .mobile-cart-action strong {
-    font-size: 18px;
+    font-size: var(--fs-400);
   }
   .new-list-inline form {
     position: static;
@@ -6211,7 +6211,7 @@ tbody tr:hover {
   display: grid;
   gap: 5px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .phase2-control-bar input,
 .phase2-control-bar select {
@@ -6236,13 +6236,13 @@ tbody tr:hover {
 .phase2-summary-strip small {
   display: block;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .phase2-summary-strip strong {
   display: block;
   margin-top: 2px;
   font-variant-numeric: tabular-nums;
-  font-size: 18px;
+  font-size: var(--fs-400);
 }
 .phase2-summary-strip .num {
   text-align: left;
@@ -6324,7 +6324,7 @@ tbody tr:hover {
 }
 .phase2-issue-list > article h2 {
   margin: 2px 0;
-  font-size: 15px;
+  font-size: var(--fs-300);
 }
 .phase2-issue-list > article p {
   margin: 3px 0 0;
@@ -6335,12 +6335,12 @@ tbody tr:hover {
   flex-wrap: wrap;
   gap: 8px 18px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .phase2-resolution > summary {
   cursor: pointer;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--fs-100);
   font-weight: 600;
 }
 .phase2-resolution form {
@@ -6383,11 +6383,11 @@ tbody tr:hover {
   display: grid;
   gap: 2px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .phase2-row-meta strong {
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--fs-200);
 }
 .phase2-row-actions {
   display: flex;
@@ -6497,7 +6497,7 @@ tbody tr:hover {
   gap: 12px;
   padding: 12px 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--fs-100);
 }
 .pagination > div {
   display: flex;
@@ -6521,7 +6521,7 @@ tbody tr:hover {
 .phase2-attachments a {
   padding: 5px 8px;
   border: 1px solid var(--border);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .phase2-receiving {
   display: grid;
@@ -6613,7 +6613,7 @@ tbody tr:hover {
     padding: 10px;
   }
   .phase2-summary-strip strong {
-    font-size: 16px;
+    font-size: var(--fs-300);
   }
   .phase2-guided-form {
     grid-template-columns: 1fr;
@@ -6660,7 +6660,7 @@ tbody tr:hover {
   padding: 11px 2px 9px;
   color: var(--text-secondary);
   text-decoration: none;
-  font-size: 12px;
+  font-size: var(--fs-100);
 }
 .phase2-anchor-tabs a.active,
 .phase2-anchor-tabs a:hover {
@@ -6691,11 +6691,11 @@ tbody tr:hover {
 .phase2-po-overview small,
 .phase2-facility-overview small {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .phase2-po-overview strong,
 .phase2-facility-overview strong {
-  font-size: 14px;
+  font-size: var(--fs-200);
 }
 .phase2-split {
   display: grid;
@@ -6750,7 +6750,7 @@ tbody tr:hover {
 }
 .phase2-org-tree summary span {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .phase2-org-tree details > div {
   padding: 0 0 10px 18px;
@@ -6798,7 +6798,7 @@ tbody tr:hover {
 }
 .phase2-search-groups section > a span {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .phase2-comparison-list {
   display: grid;
@@ -6828,7 +6828,7 @@ tbody tr:hover {
   gap: 12px;
   padding: 7px 0;
   border-top: 1px solid var(--border);
-  font-size: 12px;
+  font-size: var(--fs-100);
 }
 .phase2-comparison-list .is-best {
   font-weight: 600;
@@ -6882,7 +6882,7 @@ tbody tr:hover {
   .phase2-mobile-technical span,
   .phase2-mobile-technical small {
     color: var(--text-secondary);
-    font-size: 11px;
+    font-size: var(--fs-100);
   }
   .phase2-import-detail .import-progress {
     display: none;
@@ -6948,7 +6948,7 @@ tbody tr:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-  font-size: 10px;
+  font-size: var(--fs-100);
 }
 .phase1-limit > dl {
   margin: 6px 0 3px;
@@ -6977,7 +6977,7 @@ tbody tr:hover {
 }
 .phase1-reliability-strip span,
 .phase1-reliability-strip small {
-  font-size: 9px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 @media (max-width: 700px) {
@@ -7131,7 +7131,7 @@ tbody tr:hover {
 .admin-inline-editor label {
   display: grid;
   gap: 4px;
-  font-size: 10px;
+  font-size: var(--fs-100);
   color: var(--text-secondary);
 }
 .admin-crud-form input,
@@ -7153,7 +7153,7 @@ tbody tr:hover {
   padding: 9px 12px;
   border-left: 3px solid var(--ok);
   background: var(--surface-alt);
-  font-size: 11px;
+  font-size: var(--fs-100);
 }
 .admin-feedback.is-error {
   border-color: var(--danger);
