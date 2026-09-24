@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans, Public_Sans } from "next/font/google";
 import "./design-system.css";
 import { AppShell } from "@/components/app-shell";
 import { DemoRoleSwitcher } from "@/components/demo-role-switcher";
@@ -9,6 +10,20 @@ import { navigationByRole } from "@/lib/roles";
 import { roleNameLabel } from "@/lib/presentation/role";
 import { resolveScope } from "@/lib/scope";
 import { logout } from "@/app/login/actions";
+
+const display = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  display: "swap",
+  variable: "--font-display-loaded",
+});
+
+const body = Public_Sans({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  display: "swap",
+  variable: "--font-body-loaded",
+});
 
 export const metadata: Metadata = {
   title: "Joint Procurement OS",
@@ -21,7 +36,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const context = await getCurrentUserOrNull();
   if (!context)
     return (
-      <html lang="it">
+      <html lang="it" className={`${display.variable} ${body.variable}`}>
         <body>{children}</body>
       </html>
     );
@@ -29,7 +44,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const demoMode = demoModeEnabled();
   const users = demoMode ? await getDemoUsers() : [];
   return (
-    <html lang="it" data-scroll-behavior="smooth">
+    <html
+      lang="it"
+      className={`${display.variable} ${body.variable}`}
+      data-scroll-behavior="smooth"
+    >
       <body>
         <AppShell
           navigation={navigationByRole[context.roleCode]}
