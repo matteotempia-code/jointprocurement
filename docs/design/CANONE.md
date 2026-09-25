@@ -172,6 +172,12 @@ Ombre — **una regola, non un gusto**: il bordo sta sotto l'ombra, non al suo p
 --shadow-2: 0 8px 24px rgba(20, 22, 24, 0.10);  /* solo menu, popover, dialoghi */
 ```
 
+In codice gli slot esistenti si chiamano `--elev-1` e `--elev-2` e portano questi due valori.
+Esiste anche `--elev-3`, usato in cinque punti: durante la transizione è un **alias di
+`--elev-2`**, perché un terzo livello non c'è. Quei cinque punti perdono l'alias quando la loro
+pagina passa dalla riprogettazione — non prima, per non cambiare in silenzio pagine che nessuno
+ha ancora guardato.
+
 Movimento:
 
 ```css

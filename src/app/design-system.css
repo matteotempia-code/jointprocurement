@@ -10,6 +10,7 @@
   --text-fs-400: 18px;
   --text-fs-500: 23px;
   --text-fs-600: 30px;
+  --text-fs-700: 42px;
 
   --spacing-1: 4px;
   --spacing-2: 8px;
@@ -23,6 +24,7 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
+  --radius-full: 999px;
 
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -37,6 +39,10 @@
   --color-warn: var(--warn);
   --color-danger: var(--danger);
   --color-info: var(--info);
+  --color-surface-ink: var(--surface-ink);
+  --color-text-muted: var(--text-muted);
+  --color-text-on-ink: var(--text-on-ink);
+  --color-accent-hover: var(--accent-hover);
 
   --shadow-elev-1: var(--elev-1);
   --shadow-elev-2: var(--elev-2);
@@ -55,6 +61,7 @@
   --fs-400: 18px;
   --fs-500: 23px;
   --fs-600: 30px;
+  --fs-700: 42px;
 
   --lh-tight: 1.25;
   --lh-body: 1.55;
@@ -73,97 +80,143 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
+  --radius-full: 999px;
   --border-width: 1px;
   --row-height: 48px;
 
-  /* —— Colore ———————————————————————————————————————— */
-  --bg: #f4f5f7;
+  /* —— Movimento ————————————————————————————————————— */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* —— Colore — CANONE.md §2.1, tema chiaro ——————————— */
+  --bg: #fbfaf7;
   --surface: #ffffff;
-  --surface-alt: #edeff3;
-  --text: #16181d;
-  --text-secondary: #5a606e;
-  --border: #dcdfe6;
-  --border-strong: #8b909c;
-  --accent: #00696e;
-  --accent-soft: #ddf0ed;
-  --on-accent: #ffffff;
-  --focus: #00696e;
+  --surface-alt: #f4f1ea;
+  --surface-ink: #141618;
+  --text: #141618;
+  --text-secondary: #545b63;
+  --text-muted: #6e767e;
+  --text-on-ink: #fbfaf7;
+  --text-on-ink-2: #c9c5bc;
+  --border: #e6e2da;
+  --border-strong: #d5cfc4;
+  --accent: #0b5d51;
+  --accent-hover: #094c43;
+  --accent-soft: #e7f0ed;
+  --accent-on-soft: #0b5d51;
+  --on-accent: #fbfaf7;
+  --focus: #0b5d51;
 
-  --ok: #2c7a3f;
-  --ok-soft: #deefe2;
-  --warn: #9a5b00;
-  --warn-soft: #f8eedc;
-  --danger: #b3261e;
-  --danger-soft: #f8e2e0;
-  --info: #1f5fa8;
-  --info-soft: #dfe9f7;
+  --ok: #1f6b45;
+  --ok-soft: #e4f0e8;
+  --warn: #8a4b0f;
+  --warn-soft: #f7ede0;
+  --danger: #8c2f23;
+  --danger-soft: #f8e9e6;
+  --info: #1b4d7a;
+  --info-soft: #e5edf5;
 
-  /* —— Elevazione ———————————————————————————————————— */
+  /* —— Elevazione — CANONE.md §2.3: due livelli, non tre.
+     --elev-3 resta come alias di --elev-2 finché le 5 righe che lo usano
+     non passano dalla riprogettazione della loro pagina. ———————————— */
   --elev-0: none;
-  --elev-1: 0 1px 2px rgb(22 24 29 / 6%), 0 1px 3px rgb(22 24 29 / 8%);
-  --elev-2: 0 4px 8px rgb(22 24 29 / 6%), 0 8px 16px rgb(22 24 29 / 8%);
-  --elev-3: 0 12px 24px rgb(22 24 29 / 10%), 0 24px 48px rgb(22 24 29 / 12%);
+  --elev-1: 0 1px 2px rgb(20 22 24 / 4%);
+  --elev-2: 0 8px 24px rgb(20 22 24 / 10%);
+  --elev-3: 0 8px 24px rgb(20 22 24 / 10%);
 
   color-scheme: light;
 }
 
+/* CANONE.md §2.2, tema scuro. Questo blocco e quello dentro
+   @media (prefers-color-scheme: dark) devono restare identici valore per valore. */
 :root[data-theme="dark"] {
-  --bg: #14161a;
-  --surface: #1c1f25;
-  --surface-alt: #23272f;
-  --text: #eceef2;
-  --text-secondary: #a0a6b2;
-  --border: #30353e;
-  --border-strong: #6b7280;
-  --accent: #5fd4d6;
-  --accent-soft: #0c2e30;
-  --on-accent: #14161a;
-  --focus: #5fd4d6;
+  --bg: #141310;
+  --surface: #1c1a17;
+  --surface-alt: #24221e;
+  --surface-ink: #f2f0ea;
+  --text: #f2f0ea;
+  --text-secondary: #a8a49b;
+  --text-muted: #8b877e;
+  --text-on-ink: #141310;
+  --text-on-ink-2: #4a463f;
+  --border: #302d28;
+  --border-strong: #4a463f;
+  --accent: #5fc8b4;
+  --accent-hover: #7bd8c6;
+  --accent-soft: #0e2b26;
+  --accent-on-soft: #5fc8b4;
+  --on-accent: #062b25;
+  --focus: #5fc8b4;
 
-  --ok: #5ac47a;
-  --ok-soft: #122c1b;
-  --warn: #e0a445;
-  --warn-soft: #2d2312;
-  --danger: #f2796d;
-  --danger-soft: #331917;
-  --info: #74aef0;
-  --info-soft: #132538;
+  --ok: #6fcb8e;
+  --ok-soft: #10281a;
+  --warn: #e3a867;
+  --warn-soft: #2c2013;
+  --danger: #f08a7d;
+  --danger-soft: #301a17;
+  --info: #7fb4ee;
+  --info-soft: #12253a;
 
-  --elev-1: 0 1px 2px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 30%);
-  --elev-2: 0 4px 8px rgb(0 0 0 / 40%), 0 8px 16px rgb(0 0 0 / 32%);
-  --elev-3: 0 12px 24px rgb(0 0 0 / 48%), 0 24px 48px rgb(0 0 0 / 40%);
+  --elev-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --elev-2: 0 8px 24px rgb(0 0 0 / 48%);
+  --elev-3: 0 8px 24px rgb(0 0 0 / 48%);
 
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #14161a;
-    --surface: #1c1f25;
-    --surface-alt: #23272f;
-    --text: #eceef2;
-    --text-secondary: #a0a6b2;
-    --border: #30353e;
-    --border-strong: #6b7280;
-    --accent: #5fd4d6;
-    --accent-soft: #0c2e30;
-    --on-accent: #14161a;
-    --focus: #5fd4d6;
+    --bg: #141310;
+    --surface: #1c1a17;
+    --surface-alt: #24221e;
+    --surface-ink: #f2f0ea;
+    --text: #f2f0ea;
+    --text-secondary: #a8a49b;
+    --text-muted: #8b877e;
+    --text-on-ink: #141310;
+    --text-on-ink-2: #4a463f;
+    --border: #302d28;
+    --border-strong: #4a463f;
+    --accent: #5fc8b4;
+    --accent-hover: #7bd8c6;
+    --accent-soft: #0e2b26;
+    --accent-on-soft: #5fc8b4;
+    --on-accent: #062b25;
+    --focus: #5fc8b4;
 
-    --ok: #5ac47a;
-    --ok-soft: #122c1b;
-    --warn: #e0a445;
-    --warn-soft: #2d2312;
-    --danger: #f2796d;
-    --danger-soft: #331917;
-    --info: #74aef0;
-    --info-soft: #132538;
+    --ok: #6fcb8e;
+    --ok-soft: #10281a;
+    --warn: #e3a867;
+    --warn-soft: #2c2013;
+    --danger: #f08a7d;
+    --danger-soft: #301a17;
+    --info: #7fb4ee;
+    --info-soft: #12253a;
 
-    --elev-1: 0 1px 2px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 30%);
-    --elev-2: 0 4px 8px rgb(0 0 0 / 40%), 0 8px 16px rgb(0 0 0 / 32%);
-    --elev-3: 0 12px 24px rgb(0 0 0 / 48%), 0 24px 48px rgb(0 0 0 / 40%);
+    --elev-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --elev-2: 0 8px 24px rgb(0 0 0 / 48%);
+    --elev-3: 0 8px 24px rgb(0 0 0 / 48%);
 
     color-scheme: dark;
+  }
+}
+
+/* CANONE.md §2.3: nessuna transizione oltre 300 ms, e chi chiede meno movimento
+   non ne riceve nessuno. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -180,7 +233,7 @@
 .technical-document-hero > div,
 .technical-comparison-head > div {
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 14px;
   background: var(--surface);
   display: flex;
@@ -214,7 +267,7 @@
   flex-direction: column;
   gap: 6px;
   font-size: var(--fs-200);
-  font-weight: 650;
+  font-weight: 600;
 }
 .technical-upload p {
   color: var(--text-secondary);
@@ -227,7 +280,7 @@
 .technical-manual-link select {
   min-height: 40px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 8px;
   background: var(--surface);
 }
@@ -251,7 +304,7 @@
 }
 .technical-metadata dd {
   margin: 4px 0 0;
-  font-weight: 650;
+  font-weight: 600;
 }
 .association-candidate {
   border-bottom: 1px solid var(--border);
@@ -346,7 +399,7 @@
   align-items: center;
   width: max-content;
   border: 1px solid currentColor;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0.2rem 0.55rem;
   font-size: var(--fs-100);
   line-height: 1.2;
@@ -651,7 +704,7 @@ h3 {
 .avatar {
   flex: 0 0 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   display: grid;
   place-items: center;
   background: var(--accent-soft);
@@ -1060,7 +1113,7 @@ label {
 .status i {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--text-secondary);
 }
 .status-active {
@@ -1083,7 +1136,7 @@ label {
   display: inline-flex;
   width: max-content;
   padding: 3px 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--accent-soft);
   color: var(--accent);
   font-size: var(--fs-100);
@@ -2120,7 +2173,7 @@ tbody tr:hover {
 .timeline i {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--accent);
 }
 .recent-timeline small {
@@ -2332,7 +2385,7 @@ tbody tr:hover {
   margin-bottom: var(--space-4);
   color: var(--text-secondary);
   font-size: var(--fs-100);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.12em;
 }
 .approval-actions > .decision-intro {
@@ -2983,7 +3036,7 @@ tbody tr:hover {
   color: var(--text) !important;
 }
 .phase1-catalog .price-block strong {
-  font-weight: 650;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .phase1-catalog .price-block small {
@@ -3078,7 +3131,7 @@ tbody tr:hover {
 .active-filter-row a {
   padding: 5px 9px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--surface);
   font-size: var(--fs-100);
 }
@@ -3995,7 +4048,7 @@ tbody tr:hover {
   top: 15px;
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--accent);
 }
 .timeline span,
@@ -4125,7 +4178,7 @@ tbody tr:hover {
   width: 10px;
   height: 10px;
   border: 2px solid var(--surface);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--border);
   box-shadow: 0 0 0 1px var(--border);
 }
@@ -4178,7 +4231,7 @@ tbody tr:hover {
 .confidence i {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--text-secondary);
 }
 .import-status-published,
@@ -7071,7 +7124,7 @@ tbody tr:hover {
 }
 .video-roadmap-now li span {
   color: var(--ok);
-  font-weight: 700;
+  font-weight: 600;
 }
 .video-roadmap-next {
   background: var(--surface-alt) !important;

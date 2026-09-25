@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Public_Sans } from "next/font/google";
+import { IBM_Plex_Sans, Instrument_Serif } from "next/font/google";
 import "./design-system.css";
 import { AppShell } from "@/components/app-shell";
 import { DemoRoleSwitcher } from "@/components/demo-role-switcher";
@@ -11,16 +11,19 @@ import { roleNameLabel } from "@/lib/presentation/role";
 import { resolveScope } from "@/lib/scope";
 import { logout } from "@/app/login/actions";
 
-const display = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["600", "700"],
+// CANONE.md §3: due caratteri e nessun altro peso oltre questi.
+// Instrument Serif esiste solo nel peso 400: è un serif ottico, e il canone lo
+// usa per i numeri che decidono e per una frase per schermata.
+const display = Instrument_Serif({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400"],
   display: "swap",
   variable: "--font-display-loaded",
 });
 
-const body = Public_Sans({
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
+const body = IBM_Plex_Sans({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600"],
   display: "swap",
   variable: "--font-body-loaded",
 });
