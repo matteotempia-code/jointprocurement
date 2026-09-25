@@ -8,6 +8,20 @@
 > Se ti arriva una versione ridotta di questo file, fermati e chiedi l'originale:
 > una palette incompleta produce un tema inventato, non «Quadro».
 
+> ## ⚠️ I VALORI DELLA §2 SONO SUPERATI — 25 settembre 2026
+>
+> `docs/design/CANONE.md` è il documento vincolante. Ha sostituito **i valori** dei token
+> della §2 qui sotto: la palette non è più la grigia fredda di «Quadro» ma l'avorio caldo del
+> canone, e i gradini tipografici passano da sei a sette.
+>
+> **L'architettura resta questa e non va toccata:** gli stessi slot, la stessa mappatura di
+> `@theme` su variabili, lo stesso numero di passi di spazio e di raggi. Il lavoro già
+> eseguito sugli step 1–4 non va rifatto: vanno sostituiti i valori nei due blocchi di token.
+>
+> Restano pienamente in vigore: §3 caratteri, §4 mappatura tipografica, §5 regole 5.1–5.8,
+> §5B stati di attesa, §6 Tailwind, §7 guardie automatiche, §10 criteri di accettazione.
+> Il canone li richiama, non li riscrive.
+
 ---
 
 ## 0. QUANDO ESEGUIRE

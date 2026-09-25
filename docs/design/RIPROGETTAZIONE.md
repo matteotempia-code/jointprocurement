@@ -2,7 +2,21 @@
 
 **Base:** rilevamento del 24/09/2026 (`docs/design/RILEVAMENTO.md`), 135 schermate, 70 pagine HTML renderizzate, 26 difetti registrati.
 **Sistema visivo:** «Quadro», definito in `docs/design/QUADRO.md`. Questo documento non lo sostituisce: gli dà una struttura su cui posarsi.
-**Stato:** proposta. Da approvare prima dell'esecuzione.
+**Stato:** **assorbito da `docs/design/CANONE.md` il 25 settembre 2026. Non eseguire da qui.**
+
+> ## ⚠️ QUESTO DOCUMENTO È SUPERATO
+>
+> L'impostazione era sbagliata, e il committente lo ha rilevato: questo file era una
+> **bonifica** del prodotto esistente — dodici componenti per sistemare quello che c'era — non
+> una riprogettazione. La richiesta era un'altra: come sarebbe Sorgence se lo disegnasse
+> qualcuno partendo dal lavoro reale di chi lo usa.
+>
+> La risposta sta nella tela «Sorgence ripensato» (dodici schermate, nove archetipi) e nella
+> legge scritta in `docs/design/CANONE.md`.
+>
+> **Cosa resta utile qui:** l'elenco dei dodici componenti come promemoria di lavoro, che il
+> canone §4 riprende e amplia a diciotto. **Cosa non vale più:** l'impostazione, le priorità,
+> e l'idea di ridisegnare due schermate invece di tutte.
 
 > **Contiene decisioni e valori esatti. Non va riassunto.**
 

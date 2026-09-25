@@ -476,6 +476,55 @@ Tre soglie, tre comportamenti distinti:
 
 ---
 
+### Regola di prodotto: il canone di interfaccia
+
+Decisa il 25/09/2026, dopo che il committente ha rilevato che l'interfaccia non andava
+aggiustata ma riprogettata. Vincolante per ogni pagina esistente e futura.
+Documento integrale e valori esatti: **`docs/design/CANONE.md`**.
+Riferimento visivo: tela «Sorgence ripensato», dodici schermate.
+
+> **Sei leggi, e ognuna ha un divieto e una prova. Se non si può verificare, non è una legge.**
+
+| # | Legge                                                                 | Prova verificabile                                                                    |
+| - | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 1 | Una schermata, una cosa da fare                                       | esattamente un `data-primary="true"` per rotta renderizzata                            |
+| 2 | Prima la proposta, poi la ricerca                                     | il compito ricorrente si chiude in ≤ 2 clic dalla home, senza passare da una ricerca  |
+| 3 | Ogni numero dice da dove viene                                        | ogni `Metric` ha una provenienza non vuota entro 40 px                                 |
+| 4 | Ogni attesa dice cosa fa, quanto manca, e lascia lavorare su altro    | i tre componenti di `QUADRO.md` §5B coprono il 100% delle attese                       |
+| 5 | Niente cambi di profilo per finire una cosa cominciata                | nessun percorso attraversa un confine di ruolo senza dichiararlo all'inizio            |
+| 6 | Si può sempre tornare indietro, e il prodotto lo dice prima           | ogni azione che scrive dichiara la finestra di reversibilità **prima** del clic        |
+
+La legge 4 non sostituisce la regola «ogni attesa è spiegata e stimata» qui sopra: la richiama
+e le aggiunge un obbligo, cioè dire anche **cosa si può fare nel frattempo**.
+
+**Le 47 pagine si riducono a nove archetipi.** Nessuna pagina sta fuori, e ogni pagina futura
+dichiara il suo archetipo prima di essere scritta.
+
+| Archetipo | Cosa fa | Pagine |
+| --------- | ------- | ------ |
+| A · Proposta | la home di ogni profilo: ciò che ti tocca fare, già preparato | 1 |
+| B1 · Ricerca | cerchi una cosa fra tante e sai più o meno cosa | 7 |
+| B2 · Coda di lavoro | un elenco di cose che aspettano una tua decisione | 6 |
+| B3 · Registro | amministri un insieme finito e lo tieni in ordine | 7 |
+| C · Scheda | il passaporto di una entità | 8 |
+| D · Decisione | una cosa, due risposte, una schermata | 3 |
+| E · Confronto | due o più cose, attributo per attributo, differenze prima | 4 |
+| F · Procedura | più passi, e alla fine si scrive qualcosa | 7 |
+| G · Quadro | si legge, non si clicca: un verdetto e una porta | 3 |
+| H · Accesso | `/login` | 1 |
+
+**Quattro decisioni restano del committente** (canone §7, con una raccomandazione ciascuna):
+il perimetro di `FINANCE_CONTROLLER`, che oggi ha una sola voce di navigazione
+([roles.ts:67](src/lib/roles.ts:67)); se la ricerca globale di `EXECUTIVE_SPONSOR` possa
+restituire cose che il profilo non può aprire; se `/catalog` e `/cerca` restino due porte per
+la stessa stanza; e lo stesso per `/liste` e `/preferiti`.
+
+**Perché è una regola e non uno stile:** le otto varianti di bottone, le 29 misure di testo e i
+tre vocabolari di colore che il rilevamento ha trovato non sono nati da una scelta sbagliata,
+sono nati dall'**assenza di una legge scritta**. Senza questa sezione si riformano in sei mesi.
+
+---
+
 ## V. M11.5 — Impegni di architettura enterprise
 
 Trasferita da `docs/FEATURE_REGISTER.md` il 22/09/2026 per eliminare la duplicazione.
@@ -566,7 +615,8 @@ Ogni milestone deve:
 2. aggiungere eventuali nuove feature emerse durante il lavoro;
 3. aggiornare percentuale e motivazione quando `<100%`;
 4. non promuovere una feature al 100% senza prova di implementazione, persistenza, test e certificazione remota nel perimetro definito;
-5. includere l'aggiornamento del registro nello stesso commit/PR della milestone o in un commit immediatamente collegato.
+5. includere l'aggiornamento del registro nello stesso commit/PR della milestone o in un commit immediatamente collegato;
+6. per ogni pagina nuova o rifatta: **dichiarare il suo archetipo** fra i nove del canone di interfaccia, e passare i criteri di accettazione di `docs/design/CANONE.md` §8. Una pagina che non sta in nessun archetipo non è un archetipo nuovo: è una pagina da ripensare.
 
 ## Aggiornamento M11.7
 
