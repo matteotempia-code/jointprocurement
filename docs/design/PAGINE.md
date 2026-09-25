@@ -1,6 +1,13 @@
-# Sorgence — Le 47 pagine, una per una
+# Sorgence — Le pagine, una per una
 
-**Stato: vincolante.** Attuazione di `docs/design/CANONE.md`. Scritto il 25 settembre 2026.
+**Stato: vincolante.** Attuazione di `docs/design/CANONE.md`. Scritto il 25 settembre 2026,
+aggiornato lo stesso giorno con le cinque decisioni del committente (canone §7).
+
+**Perimetro: 42 pagine**, dalle 47 di partenza. `/catalog` resta come redirect; `/preferiti`,
+`/compare`, `/compare-products`, `/technical-compare` e `/technical-requirements` non esistono
+più come pagine. Le voci che le riguardano sono rimaste qui, marcate, perché dicono **cosa va
+portato dentro e cosa si perde** — una fusione fatta senza quell'elenco toglie funzioni invece
+di spostarle.
 
 Per ogni pagina: il suo archetipo, **l'unica azione primaria**, cosa sparisce, cosa appare, lo
 stato vuoto. Una pagina non si dichiara finita se non passa i criteri del canone §8.
@@ -53,7 +60,7 @@ prodotto sa cosa ricompri. Non va aggiunta: va **promossa a protagonista**.
 | AREA_MANAGER | Approva le N decisioni delle tue strutture |
 | PROCUREMENT_MANAGER | Accetta le variazioni dei listini scaduti |
 | PROCUREMENT_ADMIN | Sblocca le N deleghe scadute |
-| FINANCE_CONTROLLER | **decisione aperta** — canone §7.1 |
+| FINANCE_CONTROLLER | nessuna: la sua `/` è **archetipo G** (§7.1), vedi in fondo |
 
 **Sparisce:** «Prossima attivazione» (è marketing dentro il prodotto), «Ultimi aggiornamenti»
 (un registro di eventi non è un compito), la griglia di riquadri.
@@ -66,7 +73,7 @@ profilo. Un cruscotto condiviso è il motivo per cui nessuno dei cinque è buono
 
 ---
 
-## B1 · Ricerca — 6 pagine
+## B1 · Ricerca — 5 pagine, più un redirect
 
 ### `/cerca` — RSA_DIRECTOR · 214 righe, 0 form, 0 `<details>`, 0 tabelle
 
@@ -77,12 +84,16 @@ normalizzato all'unità su ogni riga; filtri come pillole su una riga.
 **Vuoto:** nessun risultato → «Descrivilo a parole tue, lo cerchiamo nei listini dei vostri
 fornitori» + il bottone «Chiedi a Sorgence».
 
-### `/catalog` — RSA_DIRECTOR, AREA_MANAGER · 278 righe, 3 form, 2 azioni
+### `/catalog` — **redirect verso `/cerca`**, deciso il 25/09/2026 (§7.3)
 
-**Destinazione: reindirizzare a `/cerca`** — decisione §7.3. Due porte per la stessa stanza
-sono due manutenzioni e due grafiche che divergono.
-**Finché resta:** stessa forma di `/cerca`, identica, così la fusione costa un redirect.
-**Sparisce:** 43 form e 23 campi misurati sul renderizzato; la paginazione a 98 pagine.
+Le 278 righe, i 3 form e le 2 azioni sono da cancellare, non da riprogettare. Con loro
+sparisce quello che il rilevamento aveva misurato sul renderizzato: **43 form e 23 campi** in
+una pagina, e la paginazione a 98 pagine.
+
+**Attenzione in attuazione:** `addToCart` e `toggleFavorite` vivono anche qui. Prima del
+redirect va verificato che le due azioni siano raggiungibili da `/cerca` con la stessa
+semantica — altrimenti il redirect toglie una funzione invece di spostarla.
+⟨da verificare in attuazione⟩
 
 ### `/products` — PROCUREMENT_MANAGER, PROCUREMENT_ADMIN · 191 righe, `manageProduct`
 
@@ -140,7 +151,7 @@ ordina per completezza crescente. È una coda.
 
 ---
 
-## B3 · Registro — 7 pagine
+## B3 · Registro — 6 pagine
 
 Forma comune: `DataTable` vero, colonne fisse, ordinamento sul database, **le righe non in
 ordine per prime**, una sola primaria in testa, azioni di riga in un `Menu` vero.
@@ -153,16 +164,26 @@ ordine per prime**, una sola primaria in testa, azioni di riga in un `Menu` vero
 | `/deleghe` | 145 | Nuova delega | deleghe scadute o che scadono entro 30 giorni |
 | `/organization` | 129 | Aggiungi un ente giuridico | enti senza partita IVA o senza sede |
 | `/liste` | 128 | Nuova lista | liste mai usate da oltre 6 mesi |
-| `/preferiti` | 170 | Aggiungi i selezionati al riordino | prodotti preferiti usciti dai listini |
 
 **`/organization` ha 2 azioni** (`updateOrganization`, `manageLegalEntity`): la pagina è il
 registro degli enti giuridici, primaria «Aggiungi un ente giuridico»; i dati dell'organizzazione
 si modificano in uno `Sheet` aperto dall'intestazione, non in un secondo form a pari livello.
 
-**`/liste` ha 3 azioni e `/preferiti` 3:** le aggiunte al carrello diventano azioni di riga,
-non primarie. **`/preferiti` va fuso in `/liste`** — decisione §7.4.
+### `/preferiti` — **fuso in `/liste`**, deciso il 25/09/2026 (§7.5)
 
-**Vuoto, per tutti e sette:** le tre parti obbligatorie. Esempio: «Nessuna delega. Finché non
+Le 170 righe e le 3 azioni spariscono: «Preferiti» diventa **una lista come le altre**, con
+un'icona diversa e un posto fisso in testa all'elenco.
+
+**Cosa va portato dentro `/liste`, non perso:** il filtro «prodotti preferiti usciti dai
+listini», che è l'unica cosa che questa pagina faceva e che una lista normale non fa. Diventa
+la riga di attenzione in testa al registro.
+**Debito da chiudere insieme:** la struttura dati. Finché `toggleFavorite` scrive in un posto e
+le liste in un altro, la fusione è solo grafica. ⟨da verificare in attuazione⟩
+
+**`/liste` ha 3 azioni, `/liste/[id]` ne ha 4:** le aggiunte al carrello diventano azioni di
+riga, non primarie.
+
+**Vuoto, per tutte e sei:** le tre parti obbligatorie. Esempio: «Nessuna delega. Finché non
 ce n'è una, le richieste sopra € 500 restano ferme in attesa del direttore. Crea la prima.»
 
 ---
@@ -242,28 +263,38 @@ conta: ogni scelta insegna, alla prossima importazione righe così si abbinano d
 
 ---
 
-## E · Confronto — 4 pagine
+## E · Confronto — 1 pagina, dove c'erano quattro
 
-Forma comune: `CompareGrid` a colonne di larghezza **fissa**, righe che differiscono in testa,
-le identiche compresse in una riga sola, una colonna dichiarata riferimento.
+### `/confronto` — deciso il 25/09/2026 (§7.4)
 
-| Pagina | Righe | Primaria |
-| --- | --- | --- |
-| `/compare` | 99 | Sostituisci nei riordini |
-| `/compare-products` | 156 | Sostituisci nei riordini |
-| `/technical-compare` | 229 | Conferma l'equivalenza |
-| `/technical-requirements` | 130 | Salva il capitolato |
+Una rotta sola con un parametro che dice **cosa** si confronta. Sostituisce `/compare` (99
+righe), `/compare-products` (156), `/technical-compare` (229) e `/technical-requirements` (130):
+614 righe che diventano una griglia con quattro contenuti.
 
-`/compare-products` ha già lo stato vuoto giusto: «Seleziona almeno due prodotti». Va tenuto.
+Forma: `CompareGrid` a colonne di larghezza **fissa**, righe che differiscono in testa, le
+identiche compresse in una riga sola, una colonna dichiarata riferimento.
 
-`/technical-compare` ha 2 azioni: `runTechnicalComparison` non è una scelta dell'utente, è
-quello che la pagina fa aprendosi. Sparisce come bottone.
+| Modo | Cosa mette a confronto | Primaria | Profili |
+| --- | --- | --- | --- |
+| `prezzi` | lo stesso prodotto presso più fornitori | Sostituisci nei riordini | PROCUREMENT_MANAGER |
+| `prodotti` | prodotti diversi fra loro | Sostituisci nei riordini | direttore, area manager, procurement |
+| `tecnico` | attributi tecnici, per decidere un'equivalenza | Conferma l'equivalenza | procurement |
+| `capitolato` | prodotti contro un requisito dichiarato | Salva il capitolato | procurement |
 
-**Quinta decisione, che non era nel canone §7 e che segnalo adesso:** quattro pagine di
-confronto per un solo `CompareGrid`. *Raccomando* una rotta sola, `/confronto`, con un
-parametro che dice cosa si confronta — prezzi, prodotti, attributi tecnici, capitolato. Quattro
-pagine vogliono dire quattro griglie che divergeranno, ed è la stessa dinamica che ha prodotto
-otto varianti di bottone. Decisione tua; finché non arriva, le disegno con la stessa forma.
+**Cosa va portato dentro, non perso:**
+- Lo stato vuoto di `/compare-products`, che è già quello giusto: «Seleziona almeno due
+  prodotti». Diventa lo stato vuoto di tutti e quattro i modi.
+- `decideTechnicalEquivalence` e la scrittura del capitolato: sono le due azioni che scrivono, e
+  restano, ognuna nel suo modo.
+
+**Cosa sparisce:** `runTechnicalComparison` come bottone. Non è una scelta dell'utente, è quello
+che la pagina fa aprendosi — e nel frattempo mostra una `WorkCard`, perché il confronto tecnico
+su molti attributi non è istantaneo (Legge 4).
+
+**Rischio dichiarato:** quattro modi in una rotta si trasformano facilmente in quattro rami
+`if` dentro un file da 600 righe, che è il difetto di `/` (673 righe per cinque profili). La
+griglia è **una** e i quattro modi le passano soltanto dati: colonne, righe, riferimento. Se in
+attuazione servono quattro layout diversi, la decisione va riaperta invece di aggirata.
 
 ---
 
@@ -315,11 +346,27 @@ la fattura verrà confrontata sul ricevuto.
 
 ---
 
-## G · Quadro — 3 pagine
+## G · Quadro — 3 pagine, più la home del controllo di gestione
+
+### `/` nella variante FINANCE_CONTROLLER — deciso il 25/09/2026 (§7.1)
+
+Il profilo oggi ha una sola voce di navigazione, «Home», e nessuna pagina propria
+([roles.ts:67](src/lib/roles.ts:67)). Diventa **una pagina sola**, archetipo G, e **404 su tutto
+il resto**: un perimetro piccolo e vero invece di sei voci che portano a pagine mezze vuote.
+
+**La domanda a cui risponde, e l'unica:** stiamo spendendo come previsto?
+**Primaria:** una porta verso la struttura che sta fuori traiettoria.
+**Appare:** il verdetto in una frase; tre `Metric` con provenienza — spesa contro budget
+cumulato, scostamento per struttura, quota di spesa fuori accordo; un andamento a otto
+trimestri; al massimo due cose che meritano attenzione.
+**Vuoto:** primo trimestre senza storico → «Non ho ancora un trimestre chiuso da confrontare.»
+**Da fare in attuazione:** la navigazione di questo profilo va scritta davvero in
+`navigationByRole`, e le altre rotte devono rispondere 404 per lui, non 500 e non una pagina
+vuota. ⟨da verificare in attuazione⟩
 
 ### `/control-tower` — EXECUTIVE_SPONSOR · 174 righe, 3 sezioni, 0 form
 **Primaria:** una porta sola, «Dettaglio per struttura», e apre **solo** ciò che il profilo può
-aprire (Legge 5 — collegata alla decisione §7.2).
+aprire (Legge 5, e decisione §7.2 presa il 25/09/2026).
 **Appare:** un verdetto in una frase, prima di qualsiasi numero; tre `Metric` con provenienza;
 un andamento; al massimo **due** cose che meritano attenzione.
 **Sparisce:** la sezione «Anteo e Coopselios» — i nomi dei clienti in una pagina di prodotto
@@ -362,8 +409,17 @@ Non alfabetico: per quanto rende, diviso per quanto costa.
 7. Il resto per archetipo, mai per pagina singola: chi fa B3 fa tutte e sette insieme, così la
    forma non divergerà.
 
-## Cosa questo documento non fa
+## Un requisito trasversale, che non è di una pagina sola
 
-Non è un permesso a partire con il codice. Prima vanno le cinque decisioni — le quattro del
-canone §7 più quella sulle pagine di confronto qui sopra — perché cambiano il numero di pagine,
-non solo il loro aspetto.
+Decisione §7.2: **la ricerca globale `⌘K` restituisce solo ciò che il profilo può aprire.** Non
+è una pagina, è il componente di ricerca, e vale per tutti e sei i profili. Va scritto una volta
+e provato per ruolo, altrimenti la Legge 5 si viola al primo tasto premuto — indipendentemente
+da quanto bene sono disegnate le 42 pagine.
+
+## Le decisioni sono prese
+
+Le cinque decisioni che bloccavano l'attuazione sono state prese dal committente il **25
+settembre 2026** e sono nel canone §7. Conseguenza: **42 pagine invece di 47**, quattro rotte
+che scompaiono e una che diventa un redirect.
+
+Da qui si può partire con il codice, nell'ordine consigliato qui sopra.

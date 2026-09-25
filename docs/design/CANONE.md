@@ -296,8 +296,8 @@ Vieta: riquadri di cortesia, contatori che non portano da nessuna parte, più di
 | `/` | AREA_MANAGER | le decisioni delle sue strutture, in una coda sola |
 | `/` | PROCUREMENT_MANAGER | i listini scaduti e le variazioni da accettare |
 | `/` | PROCUREMENT_ADMIN | ciò che blocca gli altri: deleghe scadute, utenti senza potere |
-| `/` | FINANCE_CONTROLLER | **decisione aperta** — §7 |
-| `/control-tower` | EXECUTIVE_SPONSOR | archetipo G, non A: non conferma, legge |
+| `/` | FINANCE_CONTROLLER | archetipo **G**, non A: non conferma, legge (§7.1) |
+| `/control-tower` | EXECUTIVE_SPONSOR | archetipo **G**, non A: non conferma, legge |
 
 ### B1 — Ricerca *(cerchi una cosa fra tante, e sai più o meno cosa)*
 
@@ -308,8 +308,8 @@ Prezzi normalizzati all'unità. Nessuna paginazione: si carica scorrendo.
 Vieta: 98 pagine di catalogo; una colonna di filtri a sinistra; un risultato senza prezzo
 unitario confrontabile.
 
-`/cerca` · `/catalog` · `/products` · `/suppliers` · `/price-lists` · `/technical-documents`
-— *tela: Cercare, non sfogliare*
+`/cerca` · `/products` · `/suppliers` · `/price-lists` · `/technical-documents`
+— *tela: Cercare, non sfogliare*. `/catalog` è un redirect verso `/cerca` (§7.3).
 
 > Correzione del 25/09/2026: `/technical-products` era assegnato qui leggendo solo la rotta.
 > Il codice dice altro — filtra `status: { not: "COMPLETE" }` e ordina per completezza
@@ -333,8 +333,8 @@ sola azione primaria in testa. Non è una ricerca e non è una coda: è manutenz
 
 Vieta: trasformarlo in ricerca; nascondere le azioni dentro un menu a tendina annidato.
 
-`/categorie` · `/facilities` · `/users` · `/deleghe` · `/organization` · `/liste` ·
-`/preferiti` — *artboard da disegnare: **Registro***
+`/categorie` · `/facilities` · `/users` · `/deleghe` · `/organization` · `/liste`
+— *tela: Registro*. `/preferiti` è fuso in `/liste` (§7.5): è una lista come le altre.
 
 ### C — Scheda *(il passaporto di una entità)*
 
@@ -368,8 +368,9 @@ e lo dice.
 Vieta: colonne che si autodimensionano; differenze segnalate solo dal colore; testo che va a
 capo in tre righe in una cella (difetto misurato allo step 4).
 
-`/compare` · `/compare-products` · `/technical-compare` · `/technical-requirements`
-— *artboard da disegnare: **Confronto***
+**`/confronto`**, una rotta sola con un parametro che dice cosa si confronta — prezzi, prodotti,
+attributi tecnici, capitolato (§7.4). Sostituisce `/compare`, `/compare-products`,
+`/technical-compare` e `/technical-requirements`. — *tela: Confronto*
 
 ### F — Procedura *(più passi, e alla fine si scrive qualcosa)*
 
@@ -392,7 +393,8 @@ tre `Metric` con provenienza, un andamento, e **una** porta verso il dettaglio.
 Vieta: griglie di KPI senza verdetto; un grafico senza la frase che lo spiega; link verso
 pagine che il profilo non può aprire (Legge 5).
 
-`/control-tower` · `/budget` · `/demo-roadmap` — *artboard da disegnare: **Quadro***
+`/control-tower` · `/budget` · `/demo-roadmap` · e **`/` nella variante FINANCE_CONTROLLER**
+(§7.1) — *tela: Quadro*
 
 ### H — Accesso
 
@@ -401,7 +403,15 @@ restare poche.
 
 ### Copertura
 
-47 pagine: A 1 · B1 6 · B2 7 · B3 7 · C 8 · D 3 · E 4 · F 7 · G 3 · H 1 = **47**.
+**Prima delle decisioni del §7:** 47 pagine — A 1 · B1 6 · B2 7 · B3 7 · C 8 · D 3 · E 4 ·
+F 7 · G 3 · H 1.
+
+**Dopo:** **42 pagine** — A 1 · B1 5 · B2 7 · B3 6 · C 8 · D 3 · E 1 · F 7 · G 3 · H 1,
+più `/catalog` che resta solo come redirect. Somma 42.
+
+La variante `/` di FINANCE_CONTROLLER conta in G e non in A, ma è la stessa rotta: le sei
+varianti di `/` sono sei file, non sei indirizzi.
+
 Nessuna pagina fuori. Ogni pagina futura dichiara il suo archetipo prima di essere scritta.
 
 ---
@@ -422,26 +432,34 @@ Non è una rifinitura: è una condizione di consegna.
 
 ---
 
-## 7. QUATTRO DECISIONI CHE SONO TUE
+## 7. LE CINQUE DECISIONI, PRESE
 
-Il canone non le decide perché sono scelte di prodotto, non di grafica. Ognuna ha una
-raccomandazione.
+Decise dal committente il **25 settembre 2026**. Non sono più aperte: sono vincolanti come il
+resto del canone.
 
-1. **Il perimetro di FINANCE_CONTROLLER.** Oggi la sua navigazione è una sola voce, «Home»
-   ([roles.ts:67](src/lib/roles.ts:67)): un profilo che esiste e non ha dove andare.
-   *Raccomando:* una pagina sola, dell'archetipo G, che risponda «stiamo spendendo come
-   previsto?», e 404 su tutto il resto — meglio un perimetro piccolo e vero che sei voci vuote.
-2. **La ricerca globale di EXECUTIVE_SPONSOR.** `⌘K` può restituire cose che il profilo non
-   può aprire. *Raccomando:* la ricerca mostra solo ciò che il profilo può aprire, altrimenti
-   viola la Legge 5 al primo tasto.
-3. **`/catalog` e `/cerca` sono due porte per la stessa stanza.** *Raccomando:* una sola,
-   `/cerca`, con B1; `/catalog` reindirizza. Due porte vogliono dire due manutenzioni e due
-   grafiche che divergono, che è esattamente come siamo arrivati a otto varianti di bottone.
-4. **`/liste` e `/preferiti`, idem.** *Raccomando:* «Preferiti» diventa una lista come le
-   altre, con un'icona diversa. Una struttura, non due.
+1. **Il perimetro di FINANCE_CONTROLLER: una pagina sola, archetipo G.** Un quadro che risponde
+   «stiamo spendendo come previsto?», e **404 su tutto il resto**. Meglio un perimetro piccolo e
+   vero che sei voci che portano a pagine mezze vuote. La sua home (`/`, invariata in
+   [roles.ts](src/lib/roles.ts)) è un file di archetipo G, non A: questo profilo non conferma
+   niente, legge.
+2. **La ricerca globale filtra sul permesso.** `⌘K` restituisce **solo** ciò che il profilo può
+   aprire, per ogni profilo e in particolare per `EXECUTIVE_SPONSOR`. Vale come requisito, non
+   come cortesia: senza il filtro la Legge 5 si viola al primo tasto premuto.
+3. **`/catalog` diventa un redirect verso `/cerca`.** Una porta sola per «trovare un prodotto».
+4. **Le quattro pagine di confronto diventano `/confronto`,** una rotta con un parametro che
+   dice cosa si confronta: prezzi, prodotti, attributi tecnici, capitolato. Una griglia, non
+   quattro che divergeranno.
+5. **`/preferiti` viene fuso in `/liste`.** «Preferiti» è una lista come le altre, con un'icona
+   diversa: una struttura dati e una pagina, non due che fanno la stessa cosa.
 
-Finché non decidi, disegno entrambe le porte con la stessa forma, così la scelta resta
-economica in qualunque momento.
+**Conseguenza sul perimetro:** cinque pagine escono dalla superficie da progettare — `/catalog`
+(resta come redirect), `/preferiti`, `/compare`, `/compare-products`, `/technical-compare` e
+`/technical-requirements` fuse in una. **42 pagine invece di 47**, e quattro rotte in meno da
+mantenere per sempre.
+
+Le motivazioni delle tre fusioni sono la stessa: ogni porta doppia è due manutenzioni e due
+grafiche che divergono. È esattamente così che il prodotto è arrivato a otto varianti di
+bottone, 29 misure di testo e tre vocabolari di colore.
 
 ---
 

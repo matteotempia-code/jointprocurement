@@ -497,27 +497,37 @@ Riferimento visivo: tela «Sorgence ripensato», dodici schermate.
 La legge 4 non sostituisce la regola «ogni attesa è spiegata e stimata» qui sopra: la richiama
 e le aggiunge un obbligo, cioè dire anche **cosa si può fare nel frattempo**.
 
-**Le 47 pagine si riducono a nove archetipi.** Nessuna pagina sta fuori, e ogni pagina futura
+**Le pagine si riducono a nove archetipi.** Nessuna pagina sta fuori, e ogni pagina futura
 dichiara il suo archetipo prima di essere scritta.
 
 | Archetipo | Cosa fa | Pagine |
 | --------- | ------- | ------ |
 | A · Proposta | la home di ogni profilo: ciò che ti tocca fare, già preparato | 1 |
-| B1 · Ricerca | cerchi una cosa fra tante e sai più o meno cosa | 7 |
-| B2 · Coda di lavoro | un elenco di cose che aspettano una tua decisione | 6 |
-| B3 · Registro | amministri un insieme finito e lo tieni in ordine | 7 |
+| B1 · Ricerca | cerchi una cosa fra tante e sai più o meno cosa | 5 |
+| B2 · Coda di lavoro | un elenco di cose che aspettano una tua decisione | 7 |
+| B3 · Registro | amministri un insieme finito e lo tieni in ordine | 6 |
 | C · Scheda | il passaporto di una entità | 8 |
 | D · Decisione | una cosa, due risposte, una schermata | 3 |
-| E · Confronto | due o più cose, attributo per attributo, differenze prima | 4 |
+| E · Confronto | due o più cose, attributo per attributo, differenze prima | 1 |
 | F · Procedura | più passi, e alla fine si scrive qualcosa | 7 |
 | G · Quadro | si legge, non si clicca: un verdetto e una porta | 3 |
 | H · Accesso | `/login` | 1 |
 
-**Quattro decisioni restano del committente** (canone §7, con una raccomandazione ciascuna):
-il perimetro di `FINANCE_CONTROLLER`, che oggi ha una sola voce di navigazione
-([roles.ts:67](src/lib/roles.ts:67)); se la ricerca globale di `EXECUTIVE_SPONSOR` possa
-restituire cose che il profilo non può aprire; se `/catalog` e `/cerca` restino due porte per
-la stessa stanza; e lo stesso per `/liste` e `/preferiti`.
+Totale **42 pagine**, più `/catalog` che resta solo come redirect.
+
+**Le cinque decisioni di perimetro sono state prese** dal committente il 25/09/2026 (canone §7):
+
+1. `FINANCE_CONTROLLER` ha **una pagina sola**, archetipo G, e 404 su tutto il resto. Oggi ha
+   una sola voce di navigazione e nessuna pagina propria ([roles.ts:67](src/lib/roles.ts:67)).
+2. La **ricerca globale filtra sul permesso** per tutti i profili: restituisce solo ciò che il
+   profilo può aprire. Requisito trasversale, non di una pagina.
+3. `/catalog` diventa un **redirect** verso `/cerca`.
+4. Le quattro pagine di confronto diventano **`/confronto`**, una rotta con un parametro.
+5. `/preferiti` è **fuso in `/liste`**: è una lista come le altre.
+
+Conseguenza: 47 pagine → **42**, quattro rotte in meno da mantenere e una che diventa un
+redirect. Il dettaglio di cosa va portato dentro in ogni fusione — e cosa si perde se non lo si
+fa — sta in `docs/design/PAGINE.md`.
 
 **Perché è una regola e non uno stile:** le otto varianti di bottone, le 29 misure di testo e i
 tre vocabolari di colore che il rilevamento ha trovato non sono nati da una scelta sbagliata,
