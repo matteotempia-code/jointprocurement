@@ -308,8 +308,12 @@ Prezzi normalizzati all'unità. Nessuna paginazione: si carica scorrendo.
 Vieta: 98 pagine di catalogo; una colonna di filtri a sinistra; un risultato senza prezzo
 unitario confrontabile.
 
-`/cerca` · `/catalog` · `/products` · `/technical-products` · `/suppliers` · `/price-lists` ·
-`/technical-documents` — *tela: Cercare, non sfogliare*
+`/cerca` · `/catalog` · `/products` · `/suppliers` · `/price-lists` · `/technical-documents`
+— *tela: Cercare, non sfogliare*
+
+> Correzione del 25/09/2026: `/technical-products` era assegnato qui leggendo solo la rotta.
+> Il codice dice altro — filtra `status: { not: "COMPLETE" }` e ordina per completezza
+> crescente: è una coda di lavoro, non una ricerca. Spostato in B2.
 
 ### B2 — Coda di lavoro *(un elenco di cose che aspettano una tua decisione)*
 
@@ -319,8 +323,8 @@ senza tornare all'elenco.
 
 Vieta: una tabella da cui bisogna uscire per agire; un contatore senza la coda dietro.
 
-`/approvals` · `/richieste` · `/non-conformita` · `/consegne` · `/imports` · `/orders`
-— *tela: Risparmi (la stessa forma, contenuto diverso)*
+`/approvals` · `/richieste` · `/non-conformita` · `/consegne` · `/imports` · `/orders` ·
+`/technical-products` — *tela: Risparmi (la stessa forma, contenuto diverso)*
 
 ### B3 — Registro *(amministri un insieme finito e lo tieni in ordine)*
 
@@ -397,7 +401,7 @@ restare poche.
 
 ### Copertura
 
-47 pagine: A 1 · B1 7 · B2 6 · B3 7 · C 8 · D 3 · E 4 · F 7 · G 3 · H 1 = **47**.
+47 pagine: A 1 · B1 6 · B2 7 · B3 7 · C 8 · D 3 · E 4 · F 7 · G 3 · H 1 = **47**.
 Nessuna pagina fuori. Ogni pagina futura dichiara il suo archetipo prima di essere scritta.
 
 ---
