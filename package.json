@@ -42,7 +42,8 @@
     "db:seed": "prisma db seed",
     "demo:imports": "tsx scripts/generate-demo-imports.ts",
     "demo:procurement:refresh": "tsx scripts/demo/refresh-procurement.ts",
-    "demo:procurement:refresh:apply": "tsx scripts/demo/refresh-procurement.ts --apply"
+    "demo:procurement:refresh:apply": "tsx scripts/demo/refresh-procurement.ts --apply",
+    "qa:walk": "node tests/visual-walk.mjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.80",

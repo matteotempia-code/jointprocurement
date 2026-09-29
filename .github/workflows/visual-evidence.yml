@@ -59,10 +59,20 @@ jobs:
       # che viene caricato o e' fresco o non c'e'.
       - name: Clear the stale screenshots before capturing
         run: |
-          rm -rf artifacts/final-mvp-review artifacts/style-audit artifacts/ux-final-review \
-                 artifacts/smart-import-review artifacts/smart-import-ux-final
+          rm -rf artifacts/canone-walk artifacts/final-mvp-review artifacts/style-audit \
+                 artifacts/ux-final-review artifacts/smart-import-review \
+                 artifacts/smart-import-ux-final
 
-      - name: Walk the pages and capture them
+      # La passata del canone e' la prova che conta: visita e fotografa, non verifica,
+      # e arriva in fondo anche se una pagina e' rotta.
+      - name: Walk every page of every persona
+        run: npm run qa:walk
+
+      # Il viaggio dentro il ciclo di acquisto da' qualche schermata in piu di stati
+      # intermedi, ma si ferma legittimamente quando uno stato non torna: non deve
+      # far mancare le prove raccolte dal passo precedente.
+      - name: Also capture the purchase journey, if it runs
+        continue-on-error: true
         run: npm run qa:browser
 
       # Sempre: una passata che si interrompe a meta lascia comunque le pagine gia
@@ -75,6 +85,7 @@ jobs:
           # Solo le cinque cartelle che tests/browser-qa.mjs scrive. Non "artifacts/"
           # intero, che contiene anche 28 MB di schermate vecchie gia versionate.
           path: |
+            artifacts/canone-walk/
             artifacts/final-mvp-review/
             artifacts/style-audit/
             artifacts/ux-final-review/
