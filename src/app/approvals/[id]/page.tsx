@@ -10,7 +10,7 @@ import {
 } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatDate, formatMoney } from "@/lib/pricing";
+import { formatDate, formatMoney, formatPercent } from "@/lib/pricing";
 import { statusLabel } from "@/lib/presentation/status";
 import { approvalSla } from "@/lib/procurement/approval-sla";
 import { getSupplierMetrics } from "@/lib/procurement/metrics";
@@ -127,7 +127,7 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
               <strong>{supplier.name}</strong>
               <small>
                 {metrics.delivered >= 5
-                  ? `${metrics.onTimeRate.toFixed(1)}% puntuali · ${metrics.completeRate.toFixed(1)}% complete`
+                  ? `${formatPercent(metrics.onTimeRate)} puntuali · ${formatPercent(metrics.completeRate)} complete`
                   : `Dati insufficienti · ${metrics.delivered} consegne`}{" "}
                 · {metrics.issues} problemi
               </small>
@@ -214,7 +214,7 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
           <i>
             <b style={{ width: `${Math.min(100, utilization)}%` }} />
           </i>
-          <small>{utilization.toFixed(1)}% utilizzato dopo la decisione</small>
+          <small>{formatPercent(utilization)} utilizzato dopo la decisione</small>
         </aside>
       </div>
       {signals.length > 0 && (
@@ -243,7 +243,7 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
                 <strong>{supplier.name}</strong>
                 <small>
                   {metrics.delivered >= 5
-                    ? `${metrics.onTimeRate.toFixed(1)}% puntuali · ${metrics.completeRate.toFixed(1)}% complete`
+                    ? `${formatPercent(metrics.onTimeRate)} puntuali · ${formatPercent(metrics.completeRate)} complete`
                     : `Dati insufficienti · ${metrics.delivered} consegne`}{" "}
                   · {metrics.issues} problemi
                 </small>

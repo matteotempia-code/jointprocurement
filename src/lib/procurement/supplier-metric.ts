@@ -1,3 +1,4 @@
+import { formatPercent } from "@/lib/pricing";
 export const SUPPLIER_METRIC_MIN_OBSERVATIONS = 5;
 export type SupplierMetricResult = {
   observations: number;
@@ -17,7 +18,7 @@ export function supplierMetric(
     evaluable,
     value: evaluable ? value : null,
     label: evaluable
-      ? `${value.toFixed(1)}%`
+      ? formatPercent(value)
       : `Dati insufficienti · ${observations} ${observations === 1 ? "consegna" : "consegne"}`,
   };
 }

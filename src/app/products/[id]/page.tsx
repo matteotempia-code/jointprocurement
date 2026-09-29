@@ -6,7 +6,13 @@ import { ProductActionsMenu } from "@/components/product-actions-menu";
 import { DataTable, Metric, PageHeader } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { compareOffers, formatDate, formatMoney, getPreferredOffer } from "@/lib/pricing";
+import {
+  compareOffers,
+  formatDate,
+  formatMoney,
+  getPreferredOffer,
+  formatPercent,
+} from "@/lib/pricing";
 import { formatCurrency, normalizeOfferPrice } from "@/lib/pricing/normalization";
 import { presentTechnicalAttributes } from "@/lib/presentation/technical-attributes";
 import { statusLabel } from "@/lib/presentation/status";
@@ -292,7 +298,7 @@ export default async function Product360({
             {preferred
               ? comparison.preferredDelta === 0
                 ? "Miglior prezzo"
-                : `+${comparison.preferredDelta.toFixed(1)}%`
+                : `+${formatPercent(comparison.preferredDelta)}`
               : "Non convenzionata"}
           </strong>
           <small>
@@ -463,7 +469,7 @@ export default async function Product360({
         <summary>
           <span>Confronto offerte dello stesso prodotto</span>
           <small>
-            {comparison.sorted.length} offerte · spread {comparison.spread.toFixed(1)}%
+            {comparison.sorted.length} offerte · spread {formatPercent(comparison.spread)}
           </small>
         </summary>
         <p className="muted">
@@ -513,7 +519,7 @@ export default async function Product360({
                       {comparable
                         ? index === 0
                           ? "Migliore"
-                          : `+${((price.normalizedPrice! / Number(comparison.lowest?.normalizedUnitPrice) - 1) * 100).toFixed(1)}%`
+                          : `+${formatPercent((price.normalizedPrice! / Number(comparison.lowest?.normalizedUnitPrice) - 1) * 100)}`
                         : "UOM da verificare"}
                     </span>
                   </td>

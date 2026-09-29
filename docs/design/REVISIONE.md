@@ -53,23 +53,40 @@ Il registro conta 45 occorrenze nel rilevamento e 51 con il pattern ampio nel so
 davanti al decisore più importante.** Lint, tsc e build non le vedono. Serve la guardia in CI
 del canone §8.7, e serve una bonifica prima della prossima demo.
 
-### R-02 · Lo stesso budget ha due valori diversi in due pagine — **critico**
+### R-02 · Due percentuali di utilizzo, nessuna delle due dice cosa misura — **medio**
 
-Stessa utente, stessa struttura, stesso giorno:
+> **Rettifica del 29/09/2026, scritta qui e non altrove.** Questa voce diceva
+> «lo stesso budget ha tre valori diversi», con la home a 1.240.000 € approvati contro i
+> 240.000 € della pagina Budget. **Era falsa, ed è colpa di un mio errore di metodo:** ho
+> confrontato una home catturata da una passata con una pagina Budget catturata da un'altra,
+> in due momenti e a due SHA diversi. Nella stessa passata le due pagine **coincidono
+> perfettamente** — 240.000 approvati, 140.051,44 disponibili, 41,6% utilizzato — e il
+> database conferma che RSA Aurora ha **un solo** budget, 240.000 approvati e 95.000 spesi.
+> Due fotografie scattate in tempi diversi non sono un confronto.
 
-| Dove                            | Approvato      | Utilizzato | Disponibile  |
-| ------------------------------- | -------------- | ---------- | ------------ |
-| Home direttore                  | 1.240.000,00 € | 88,7%      | 140.139,28 € |
-| Pagina Budget, riquadro in alto | 240.000,00 €   | 41,6%      | 140.051,44 € |
-| Pagina Budget, tabella in basso | 240.000,00 €   | 39,6%      | 145.000,00 € |
+Quello che resta, e che è vero perché sta **su una sola schermata**:
 
-Tre numeri diversi per la stessa cosa, di cui due sulla stessa schermata. Possono essere misure
-tecnicamente diverse — speso contro speso+impegnato, perimetro struttura contro perimetro
-approvato — ma **nessuna delle tre dice cosa misura**, e quindi il direttore non sa a quale
-credere. È la Legge 3 violata nel punto in cui fa più danno: il numero su cui si decide.
+| Dove nella pagina Budget | Percentuale | Cosa calcola davvero              |
+| ------------------------ | ----------- | --------------------------------- |
+| Riquadro in alto         | 41,6%       | `(speso + impegnato) / approvato` |
+| Colonna della tabella    | 39,6%       | `speso / approvato`               |
 
-Va indagato in codice prima di ridisegnare: se è un difetto di calcolo è un difetto di calcolo,
-e nessuna grafica lo sistema.
+Entrambe corrette, misure diverse, e **nessuna delle due lo dichiarava**. Chi legge vede due
+numeri diversi per «utilizzo» e non sa a quale credere: Legge 3, nel punto in cui fa più danno.
+
+**Chiuso:** il riquadro ora dice «del budget approvato, speso e impegnato insieme» e la colonna
+si chiama «Solo speso su approvato».
+
+### R-02b · Tre convenzioni per le percentuali nello stesso prodotto — **medio**
+
+Trovato indagando il precedente. Il prodotto formattava le percentuali in tre modi:
+`toFixed(1)` col punto inglese in **21 punti**, `toLocaleString("it-IT")` con la virgola nella
+pagina Budget, e niente di condiviso. Sulla Control Tower `85.5%` conviveva con `34.717,70 €`
+nella stessa schermata.
+
+**Chiuso:** nuova `formatPercent` in `lib/pricing.ts`, sullo stesso modello di `formatMoney`,
+usata in tutti e 21 i punti. L'unico `toFixed(1)` rimasto è su un conteggio, non su una
+percentuale.
 
 ### R-03 · Dati di collaudo visibili in un ambiente mostrato ai clienti — **alto**
 

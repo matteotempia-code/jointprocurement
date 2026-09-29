@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { DataTable, EmptyRow, PageHeader, PriceBlock, StatusChip } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatDate, formatMoney, getComparablePrice } from "@/lib/pricing";
+import { formatDate, formatMoney, getComparablePrice, formatPercent } from "@/lib/pricing";
 import { normalizeOfferPrice } from "@/lib/pricing/normalization";
 import { statusLabel } from "@/lib/presentation/status";
 import { getSupplierMetrics } from "@/lib/procurement/metrics";
@@ -140,7 +140,7 @@ export default async function Supplier360({
           <div>
             <strong>{openIssues ? `${openIssues} non conformità aperte` : dependency}</strong>
             <span>
-              {share.toFixed(1)}% della spesa osservata · {singleSource} prodotti a fonte unica.
+              {formatPercent(share)} della spesa osservata · {singleSource} prodotti a fonte unica.
             </span>
           </div>
           <StatusChip variant={openIssues ? "warn" : "neutral"}>{dependency}</StatusChip>
@@ -150,19 +150,19 @@ export default async function Supplier360({
         <div>
           <span>Spesa osservata</span>
           <strong>{formatMoney(spend)}</strong>
-          <small>{share.toFixed(1)}% del totale</small>
+          <small>{formatPercent(share)} del totale</small>
         </div>
         <div>
           <span>Puntualità</span>
           <strong>
-            {metrics.delivered >= 5 ? `${metrics.onTimeRate.toFixed(1)}%` : "Dati insufficienti"}
+            {metrics.delivered >= 5 ? formatPercent(metrics.onTimeRate) : "Dati insufficienti"}
           </strong>
           <small>{metrics.delivered} consegne concluse</small>
         </div>
         <div>
           <span>Completezza</span>
           <strong>
-            {metrics.delivered >= 5 ? `${metrics.completeRate.toFixed(1)}%` : "Dati insufficienti"}
+            {metrics.delivered >= 5 ? formatPercent(metrics.completeRate) : "Dati insufficienti"}
           </strong>
           <small>{metrics.delivered} consegne concluse</small>
         </div>
@@ -312,7 +312,7 @@ export default async function Supplier360({
                       <td>
                         {Math.abs(current - best) < 0.000001
                           ? "Migliore"
-                          : `+${((current / best - 1) * 100).toFixed(1)}%`}
+                          : `+${formatPercent((current / best - 1) * 100)}`}
                       </td>
                       <td>{last ? formatDate(last.issuedAt) : "Mai"}</td>
                       <td className="num-cell">{formatMoney(productSpend)}</td>

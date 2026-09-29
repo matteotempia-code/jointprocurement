@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Metric, PageHeader } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { effectiveCost, formatMoney } from "@/lib/pricing";
+import { effectiveCost, formatMoney, formatPercent } from "@/lib/pricing";
 
 export default async function Categoria({ params }: { params: Promise<{ id: string }> }) {
   const context = await requireRoles(["PROCUREMENT_MANAGER", "PROCUREMENT_ADMIN"]);
@@ -66,7 +66,7 @@ export default async function Categoria({ params }: { params: Promise<{ id: stri
         </header>
         <div>
           <Link href="#opportunita">
-            <strong>{highestSpread.toFixed(1)}%</strong>
+            <strong>{formatPercent(highestSpread)}</strong>
             <span>massima differenza prezzo</span>
             <small>Valuta armonizzazione</small>
           </Link>
@@ -76,12 +76,12 @@ export default async function Categoria({ params }: { params: Promise<{ id: stri
             <small>{averageCoverage < 2 ? "Copertura fragile" : "Copertura adeguata"}</small>
           </Link>
           <Link href="#fornitori">
-            <strong>{compliance.toFixed(1)}%</strong>
+            <strong>{formatPercent(compliance)}</strong>
             <span>offerte convenzionate</span>
             <small>{compliance < 50 ? "Compliance da migliorare" : "Presidio attivo"}</small>
           </Link>
           <Link href="/budget">
-            <strong>{utilization.toFixed(1)}%</strong>
+            <strong>{formatPercent(utilization)}</strong>
             <span>budget utilizzato</span>
             <small>{utilization > 80 ? "Da monitorare" : "Entro soglia"}</small>
           </Link>
@@ -115,7 +115,7 @@ export default async function Categoria({ params }: { params: Promise<{ id: stri
                   fonti
                 </span>
               </div>
-              <b>{spread.toFixed(1)}%</b>
+              <b>{formatPercent(spread)}</b>
             </Link>
           ))}
         </section>

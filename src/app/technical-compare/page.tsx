@@ -1,3 +1,4 @@
+import { formatPercent } from "@/lib/pricing";
 import Link from "next/link";
 import {
   decideTechnicalEquivalence,
@@ -186,7 +187,7 @@ export default async function TechnicalCompare({
                   <b>{saving.type}</b> ·{" "}
                   {saving.savingPercent === null
                     ? "nessun saving difendibile"
-                    : `${Number(saving.savingPercent).toFixed(1)}%`}
+                    : formatPercent(Number(saving.savingPercent))}
                 </p>
               ))}
             </section>

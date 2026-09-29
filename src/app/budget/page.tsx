@@ -1,7 +1,7 @@
 import { DataTable, EmptyRow, Num, PageHeader, Pagination, StatusChip } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatDate } from "@/lib/pricing";
+import { formatDate, formatPercent } from "@/lib/pricing";
 import { resolveScope } from "@/lib/scope";
 
 const PAGE_SIZE = 20;
@@ -72,7 +72,7 @@ export default async function Budget({
             <Num value={actual + committed} kind="currency" />
           </strong>
           <small>
-            {utilization.toLocaleString("it-IT", { maximumFractionDigits: 1 })}% utilizzato
+            {formatPercent(utilization)} del budget approvato, speso e impegnato insieme
           </small>
         </div>
         <div>
@@ -160,7 +160,7 @@ export default async function Budget({
               <th className="num-cell">Approvato</th>
               <th className="num-cell">Speso</th>
               <th className="num-cell">Residuo contabile</th>
-              <th>Utilizzo</th>
+              <th>Solo speso su approvato</th>
             </tr>
           </thead>
           <tbody>

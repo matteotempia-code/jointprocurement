@@ -5,7 +5,7 @@ import { ProductImage } from "@/components/product-image";
 import { Metric, PageHeader } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatDate, formatMoney } from "@/lib/pricing";
+import { formatDate, formatMoney, formatPercent } from "@/lib/pricing";
 import { getFacilityBudget } from "@/lib/procurement/budget";
 import { preferredSpendShare } from "@/lib/procurement/preferred-spend";
 import { statusLabel } from "@/lib/presentation/status";
@@ -250,7 +250,7 @@ async function Director({
           <p>Budget disponibile</p>
           <strong>{formatMoney(budget.available)}</strong>
           <span>
-            su {formatMoney(budget.approved)} approvati · {budget.utilization.toFixed(1)}%
+            su {formatMoney(budget.approved)} approvati · {formatPercent(budget.utilization)}
             utilizzato
           </span>
           <i>
@@ -649,7 +649,7 @@ async function Procurement({ name, organizationId }: { name: string; organizatio
         <Metric label="Spesa osservata da inizio anno" value={formatMoney(observedSpend)} />
         <Metric label="Ordini aperti" value={orders} />
         <Metric label="Fornitori attivi" value={suppliers} />
-        <Metric label="Conformità ai convenzionati" value={`${compliance.toFixed(1)}%`} />
+        <Metric label="Conformità ai convenzionati" value={formatPercent(compliance)} />
       </div>
       <div className="opportunity-links">
         <Link href="/compare">
