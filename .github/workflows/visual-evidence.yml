@@ -1,0 +1,85 @@
+name: Visual evidence
+
+# Fotografa il deployment vero e conserva le schermate come artefatto.
+#
+# Perche esiste: il canone di interfaccia (docs/design/CANONE.md) ha criteri che si
+# verificano solo guardando, e le certificazioni remote scattano le schermate ma le
+# scrivono soltanto quando qualcosa fallisce. Senza questo workflow l'unico modo di
+# vedere una pagina e avere le credenziali locali o il segreto di bypass di Vercel.
+#
+# Si lancia a mano, non a ogni push: le prove servono quando si sta lavorando sul
+# design, e una passata costa diversi minuti.
+#
+#   gh workflow run visual-evidence.yml -f deployment_url=https://...
+#
+# L'indirizzo lo stampa il job "Prepare Vercel develop deployment" della
+# Develop Cloud Certification.
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_url:
+        description: Indirizzo del deployment da fotografare (https://...)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: Cattura le schermate
+    runs-on: ubuntu-latest
+    environment: develop
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+      NODE_ENV: test
+      DEMO_MODE: "true"
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.DEV_VERCEL_AUTOMATION_BYPASS_SECRET }}
+      VERCEL_TARGET: develop
+      QA_BASE_URL: ${{ inputs.deployment_url }}
+    steps:
+      - name: Check out develop commit
+        uses: actions/checkout@v7
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify the deployment address is an address
+        shell: bash
+        run: |
+          if [[ ! "$QA_BASE_URL" =~ ^https:// ]]; then
+            echo "deployment_url deve cominciare con https://. Ricevuto: $QA_BASE_URL"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Walk the pages and capture them
+        run: npm run qa:browser
+
+      # Sempre: una passata che si interrompe a meta lascia comunque le pagine gia
+      # fotografate, e quelle servono lo stesso.
+      - name: Upload the screenshots
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-evidence-${{ github.sha }}
+          # Solo le cinque cartelle che tests/browser-qa.mjs scrive. Non "artifacts/"
+          # intero, che contiene anche 28 MB di schermate vecchie gia versionate.
+          path: |
+            artifacts/final-mvp-review/
+            artifacts/style-audit/
+            artifacts/ux-final-review/
+            artifacts/smart-import-review/
+            artifacts/smart-import-ux-final/
+          if-no-files-found: error
+          retention-days: 14
