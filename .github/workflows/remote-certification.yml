@@ -50,8 +50,11 @@ jobs:
       - name: Run ${{ inputs.certification_name }} certification
         run: ${{ inputs.command }}
 
+      # Le prove si caricano sempre, non solo quando qualcosa si rompe: le schermate
+      # del deployment vero sono l'unico modo di verificare la resa grafica, e una
+      # certificazione verde senza prove non si puo guardare.
       - name: Upload certification evidence
-        if: ${{ failure() }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
           name: remote-certification-${{ inputs.certification_name }}-${{ github.sha }}
