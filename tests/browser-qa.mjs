@@ -209,8 +209,12 @@ try {
   await open("/preferiti");
   await expectText("Catalogo personale");
   await capture("04-preferiti.png");
+  // La stessa azione ha due etichette nel prodotto: "Aggiungi" nel catalogo, nella
+  // home e nei preferiti, "Aggiungi al carrello" nelle liste e nella scheda prodotto.
+  // Il selettore le accetta entrambe perche la passata non deve fermarsi qui; la
+  // incoerenza resta un difetto da chiudere, non da nascondere.
   await page
-    .getByRole("button", { name: /Aggiungi al carrello/i })
+    .getByRole("button", { name: /^Aggiungi( al carrello)?$/i })
     .first()
     .click();
   await page.waitForLoadState("networkidle");
