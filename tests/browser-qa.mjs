@@ -4,6 +4,13 @@ import { chromium } from "playwright";
 
 const qaPort = process.env.QA_PORT ?? "3107";
 const base = process.env.QA_BASE_URL ?? `http://localhost:${qaPort}`;
+// Un deployment Vercel protetto risponde con la pagina di autenticazione a chi non
+// porta questa intestazione. Senza, isExpectedApp() conclude che l'app non esiste e
+// prova ad avviarne una locale: e' il motivo per cui la prima passata di prove visive
+// e' morta prima di scattare una sola schermata.
+const bypassHeaders = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+  ? { "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET }
+  : {};
 const artifacts = "artifacts/final-mvp-review";
 const styleArtifacts = "artifacts/style-audit";
 const uxArtifacts = "artifacts/ux-final-review";
@@ -18,7 +25,7 @@ await mkdir(smartImportUxArtifacts, { recursive: true });
 let localServer;
 async function isExpectedApp() {
   try {
-    const response = await fetch(base);
+    const response = await fetch(base, { headers: bypassHeaders });
     return response.ok && (await response.text()).includes("Joint Procurement");
   } catch {
     return false;
@@ -37,7 +44,10 @@ if (!(await isExpectedApp())) {
 }
 
 const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+const page = await browser.newPage({
+  viewport: { width: 1440, height: 1000 },
+  extraHTTPHeaders: bypassHeaders,
+});
 const browserErrors = [];
 page.on("console", (message) => {
   if (message.type() === "error" && !message.text().includes("tree hydrated"))

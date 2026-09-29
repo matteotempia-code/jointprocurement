@@ -53,6 +53,15 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      # Il checkout porta con se' le schermate vecchie gia versionate in artifacts/.
+      # Se la passata fallisce prima di scattarne una, il caricamento le raccoglie e
+      # sembrano prove nuove: e' successo davvero. Si cancellano prima, cosi' quello
+      # che viene caricato o e' fresco o non c'e'.
+      - name: Clear the stale screenshots before capturing
+        run: |
+          rm -rf artifacts/final-mvp-review artifacts/style-audit artifacts/ux-final-review \
+                 artifacts/smart-import-review artifacts/smart-import-ux-final
+
       - name: Walk the pages and capture them
         run: npm run qa:browser
 
