@@ -178,7 +178,7 @@ export default async function Product360({
     <main className="phase2-page phase2-product-detail">
       {query.error === "technical-evidence" && (
         <p role="alert" className="warning">
-          Il prodotto non Ã¨ approvato per nuovi acquisti: completa o verifica le evidenze tecniche
+          Il prodotto non è approvato per nuovi acquisti: completa o verifica le evidenze tecniche
           obbligatorie.
         </p>
       )}
@@ -198,7 +198,7 @@ export default async function Product360({
         />
         <div className="hero-copy">
           <span>
-            {product.category.name} Â· {product.subcategory}
+            {product.category.name} · {product.subcategory}
           </span>
           <h2>
             {product.brand} <small>di {product.manufacturer}</small>
@@ -214,7 +214,7 @@ export default async function Product360({
               <dd>{product.ean}</dd>
             </div>
             <div>
-              <dt>UnitÃ  dâ€™acquisto</dt>
+              <dt>Unità d’acquisto</dt>
               <dd>{product.purchaseUom}</dd>
             </div>
             <div>
@@ -228,7 +228,7 @@ export default async function Product360({
             {preferred ? "Offerta convenzionata" : "Migliore offerta disponibile"}
           </p>
           <h3>{selectedOffer?.supplier.name ?? "Non disponibile"}</h3>
-          <strong>{preferredPrice ? formatMoney(preferredPrice.purchasePrice) : "â€”"}</strong>
+          <strong>{preferredPrice ? formatMoney(preferredPrice.purchasePrice) : "—"}</strong>
           <span>per {preferredPrice?.purchaseLabel}</span>
           <small>{preferredPrice?.contentLabel}</small>
           <b>
@@ -236,13 +236,13 @@ export default async function Product360({
               ? `${formatCurrency(preferredPrice.normalizedPrice, 4)} / ${preferredPrice.consumptionLabel}`
               : preferredPrice?.normalizedLabel}
           </b>
-          <small>Consegna stimata: {selectedOffer?.leadTimeDays ?? "â€”"} giorni</small>
+          <small>Consegna stimata: {selectedOffer?.leadTimeDays ?? "—"} giorni</small>
           {context.roleCode === "RSA_DIRECTOR" && selectedOffer && (
             <div className="buy-actions">
               <form action={addToCart}>
                 <input type="hidden" name="offerId" value={selectedOffer.id} />
                 <label>
-                  QuantitÃ 
+                  Quantità
                   <input
                     name="quantity"
                     type="number"
@@ -273,16 +273,16 @@ export default async function Product360({
       </section>
       <section className="commercial-summary">
         <div>
-          <span>DisponibilitÃ </span>
+          <span>Disponibilità</span>
           <strong>{statusLabel(selectedOffer?.availabilityStatus ?? "UNAVAILABLE")}</strong>
-          <small>Consegna in {selectedOffer?.leadTimeDays ?? "â€”"} giorni</small>
+          <small>Consegna in {selectedOffer?.leadTimeDays ?? "—"} giorni</small>
         </div>
         <div>
           <span>Migliore disponibile</span>
           <strong>
             {bestPrice?.normalizedPrice != null
               ? formatCurrency(bestPrice.normalizedPrice, 4)
-              : "â€”"}
+              : "—"}
           </strong>
           <small>{comparison.lowest?.supplier.name}</small>
         </div>
@@ -300,7 +300,7 @@ export default async function Product360({
               ? comparison.preferredDelta === 0
                 ? "Nessun differenziale"
                 : "Da valutare"
-              : "Verificare la policy prima dellâ€™acquisto"}
+              : "Verificare la policy prima dell’acquisto"}
           </small>
         </div>
       </section>
@@ -332,7 +332,7 @@ export default async function Product360({
           <span>Evidenze tecniche</span>
           <small>
             {technicalState
-              ? `${technicalState.completenessPercent}% Â· ${technicalState.status}`
+              ? `${technicalState.completenessPercent}% · ${technicalState.status}`
               : "Profilo non valutato"}
           </small>
         </summary>
@@ -340,8 +340,8 @@ export default async function Product360({
           <div>
             <strong>{technicalState?.status ?? "INCOMPLETE"}</strong>
             <span>
-              {technicalState?.missingCount ?? 0} evidenze mancanti Â·{" "}
-              {technicalState?.conflictCount ?? 0} conflitti Â· {technicalState?.expiredCount ?? 0}{" "}
+              {technicalState?.missingCount ?? 0} evidenze mancanti ·{" "}
+              {technicalState?.conflictCount ?? 0} conflitti · {technicalState?.expiredCount ?? 0}{" "}
               scadute
             </span>
           </div>
@@ -359,7 +359,7 @@ export default async function Product360({
                 <strong>
                   {item.requiredField ?? item.requiredDocumentType ?? "Evidenza tecnica"}
                 </strong>{" "}
-                â€” {item.reason}
+                — {item.reason}
                 <span>{item.suggestedEvidence}</span>
               </p>
             ))}
@@ -373,8 +373,8 @@ export default async function Product360({
             >
               <strong>{association.technicalDocument.title}</strong>
               <span>
-                {association.technicalDocument.documentType} Â· v
-                {association.technicalDocument.currentVersion?.versionNumber} Â·{" "}
+                {association.technicalDocument.documentType} · v
+                {association.technicalDocument.currentVersion?.versionNumber} ·{" "}
                 {Math.round(Number(association.confidence) * 100)}%
               </span>
             </Link>
@@ -454,8 +454,8 @@ export default async function Product360({
           </DataTable>
         ) : (
           <p className="muted">
-            Nessuna equivalenza tecnica valutata. Le alternative commerciali restano separate
-            finchÃ© le evidenze non sono sufficienti.
+            Nessuna equivalenza tecnica valutata. Le alternative commerciali restano separate finché
+            le evidenze non sono sufficienti.
           </p>
         )}
       </details>
@@ -463,11 +463,11 @@ export default async function Product360({
         <summary>
           <span>Confronto offerte dello stesso prodotto</span>
           <small>
-            {comparison.sorted.length} offerte Â· spread {comparison.spread.toFixed(1)}%
+            {comparison.sorted.length} offerte · spread {comparison.spread.toFixed(1)}%
           </small>
         </summary>
         <p className="muted">
-          Il confronto riguarda lo stesso prodotto canonico. Prezzi non normalizzabili o unitÃ 
+          Il confronto riguarda lo stesso prodotto canonico. Prezzi non normalizzabili o unità
           incompatibili non vengono ordinati come equivalenti.
         </p>
         <DataTable label="Confronto offerte fornitori">
@@ -478,7 +478,7 @@ export default async function Product360({
               <th>Economia</th>
               <th>Condizioni commerciali</th>
               <th>Pagamento / consegna</th>
-              <th>ValiditÃ </th>
+              <th>Validità</th>
               <th>Fonte</th>
             </tr>
           </thead>
@@ -588,7 +588,7 @@ export default async function Product360({
           </span>
           <small>
             {history.length
-              ? `Min ${formatCurrency(min, 4)} Â· Max ${formatCurrency(max, 4)}`
+              ? `Min ${formatCurrency(min, 4)} · Max ${formatCurrency(max, 4)}`
               : "Nessuno storico disponibile"}
           </small>
         </summary>
@@ -630,10 +630,10 @@ export default async function Product360({
       <details id="utilizzo" className="disclosure-section">
         <summary>
           <span>Utilizzo nel perimetro</span>
-          <small>{quantity} unitÃ  osservate</small>
+          <small>{quantity} unità osservate</small>
         </summary>
         <div className="metrics-grid four">
-          <Metric label="QuantitÃ  acquistata" value={quantity} />
+          <Metric label="Quantità acquistata" value={quantity} />
           <Metric label="Spesa da inizio anno" value={formatMoney(spend)} />
           <Metric
             label="Ultimo acquisto"
@@ -655,7 +655,7 @@ export default async function Product360({
             ["Scheda tecnica", product.datasheetPath],
             ["Scheda di sicurezza", product.safetySheetPath],
             ["Certificazione", product.certificationPath],
-            ["Dichiarazione di conformitÃ ", product.declarationPath],
+            ["Dichiarazione di conformità", product.declarationPath],
           ]
             .filter(([, path]) => path)
             .map(([label, path]) => (
@@ -695,7 +695,7 @@ export default async function Product360({
                 </b>
                 <strong>{alternative.name}</strong>
                 <span>
-                  {offer?.supplier.name} Â· {price?.normalizedLabel}
+                  {offer?.supplier.name} · {price?.normalizedLabel}
                 </span>
                 <small>{statusLabel(offer?.availabilityStatus ?? "UNAVAILABLE")}</small>
               </Link>

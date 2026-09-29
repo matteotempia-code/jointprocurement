@@ -64,7 +64,7 @@ export default async function ConfrontoPrezzi({
                 <div className={index === 0 ? "is-best" : ""} key={offer.id}>
                   <span>
                     {offer.supplier.name}
-                    {offer.preferred ? " Â· convenzionato" : ""}
+                    {offer.preferred ? " · convenzionato" : ""}
                   </span>
                   <strong>
                     <Num
@@ -75,7 +75,7 @@ export default async function ConfrontoPrezzi({
                       kind="currency"
                       digits={4}
                     />{" "}
-                    / unitÃ  normalizzata
+                    / unità normalizzata
                   </strong>
                   <StatusChip variant={index === 0 ? "ok" : "neutral"}>
                     {index === 0

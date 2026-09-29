@@ -83,3 +83,14 @@ export function formatDate(value: Date | null) {
       )
     : "—";
 }
+
+// Le percentuali seguono la stessa convenzione dei prezzi: virgola decimale.
+// toFixed() produce il punto inglese, che sulla Control Tower conviveva con la
+// virgola degli importi nella stessa schermata.
+export function formatPercent(value: number, digits = 1) {
+  return new Intl.NumberFormat("it-IT", {
+    style: "percent",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value / 100);
+}

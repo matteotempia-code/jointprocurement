@@ -82,6 +82,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Lint, tsc e build non vedono la doppia codifica UTF-8. Il 29/09/2026 era
+      # renderizzata sulla Control Tower, davanti allo sponsor direzionale.
+      - name: Check encoding
+        run: npm run qa:encoding
+
       - name: Check formatting
         run: npx prettier --check .
 

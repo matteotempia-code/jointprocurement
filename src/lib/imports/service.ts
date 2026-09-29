@@ -66,7 +66,7 @@ function validateMime(filename: string, mimeType: string) {
   if (!mimeType) return;
   const extension = filename.split(".").pop()?.toLocaleLowerCase("it-IT") ?? "";
   if (!allowedMimeByExtension[extension]?.includes(mimeType.toLocaleLowerCase("it-IT")))
-    throw new Error("Il tipo dichiarato del file non corrisponde allâ€™estensione.");
+    throw new Error("Il tipo dichiarato del file non corrisponde all’estensione.");
 }
 
 function fieldEvidence(input: {
@@ -146,7 +146,7 @@ function exceptionTypeFor(
   if (messages.includes("identificator") || messages.includes("gtin") || messages.includes("ean"))
     return "IDENTIFIER_CONFLICT";
   if (normalized.netPrice == null || messages.includes("prezzo")) return "PRICE_NOT_NORMALIZABLE";
-  if (!normalized.purchaseUom || !normalized.consumptionUom || messages.includes("unitÃ "))
+  if (!normalized.purchaseUom || !normalized.consumptionUom || messages.includes("unità"))
     return "UOM_AMBIGUOUS";
   if (!normalized.unitsPerPackage || !normalized.comparable || messages.includes("confezion"))
     return best.packagingCompatibility === false ? "PACKAGE_CHANGE" : "PACKAGE_AMBIGUOUS";
@@ -240,7 +240,7 @@ export async function ingestDocument(input: {
   organizationId: string;
   userId: string;
 }) {
-  if (!input.buffer.length) throw new Error("Il file Ã¨ vuoto.");
+  if (!input.buffer.length) throw new Error("Il file è vuoto.");
   if (input.buffer.length > MAX_IMPORT_BYTES) throw new Error("Il file supera il limite di 8 MB.");
   const filename = safeFilename(input.filename);
   validateMime(filename, input.mimeType);
@@ -1071,7 +1071,7 @@ export async function publishImport(jobId: string, actorUserId: string, organiza
       const list = await tx.priceList.create({
         data: {
           organizationId,
-          name: `${job.sourceDocument.originalFilename.replace(/\.[^.]+$/, "")} Â· v${(previous?.version ?? 0) + 1}`,
+          name: `${job.sourceDocument.originalFilename.replace(/\.[^.]+$/, "")} · v${(previous?.version ?? 0) + 1}`,
           supplierId: job.sourceDocument.supplierId,
           sourceFile: job.sourceDocument.originalFilename,
           sourceDocumentId: job.sourceDocument.id,

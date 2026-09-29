@@ -65,7 +65,7 @@ export async function stageTechnicalFile(input: {
   userId: string;
   batchId: string;
 }) {
-  if (!input.buffer.length) throw new Error("Il documento ÃƒÂ¨ vuoto.");
+  if (!input.buffer.length) throw new Error("Il documento è vuoto.");
   if (input.buffer.length > MAX_TECHNICAL_FILE_BYTES) throw new Error("Il documento supera 12 MB.");
   const filename = sanitizeDocumentFilename(input.filename),
     ext = technicalExtension(filename);
@@ -307,7 +307,7 @@ function associationDecision(
     confidence = 0.99;
     type = "MANUFACTURER_SKU_EXACT";
     evidence.push(`SKU produttore ${data.manufacturerSku}`);
-  } else evidence.push(`SimilaritÃƒÂ  descrizione ${(confidence * 100).toFixed(0)}%`);
+  } else evidence.push(`Similarità descrizione ${(confidence * 100).toFixed(0)}%`);
   const status =
     confidence >= TECHNICAL_MATCH_THRESHOLDS.deterministicAutoConfirm
       ? "AUTO_CONFIRMED"
@@ -327,7 +327,7 @@ export async function ingestTechnicalFile(input: {
   sourceDocumentId?: string;
   aiEnabled?: boolean;
 }) {
-  if (!input.buffer.length) throw new Error("Il documento ÃƒÂ¨ vuoto.");
+  if (!input.buffer.length) throw new Error("Il documento è vuoto.");
   if (input.buffer.length > MAX_TECHNICAL_FILE_BYTES) throw new Error("Il documento supera 12 MB.");
   const filename = sanitizeDocumentFilename(input.filename),
     ext = technicalExtension(filename);
@@ -513,7 +513,7 @@ async function proposeAssociations(
         confidence: decision.confidence,
         status: decision.status,
         evidence: decision.evidence,
-        explanation: decision.evidence.join(" Ã‚Â· "),
+        explanation: decision.evidence.join(" · "),
         associationType: decision.type,
         decisionSource: "DETERMINISTIC",
         version: { increment: 1 },
@@ -524,7 +524,7 @@ async function proposeAssociations(
         confidence: decision.confidence,
         status: decision.status,
         evidence: decision.evidence,
-        explanation: decision.evidence.join(" Ã‚Â· "),
+        explanation: decision.evidence.join(" · "),
         associationType: decision.type,
         decisionSource: "DETERMINISTIC",
       },
@@ -668,8 +668,7 @@ export async function confirmTechnicalAssociation(input: {
       decisionSource: "HUMAN",
     },
   });
-  if (!updated.count)
-    throw new Error("La proposta ÃƒÂ¨ giÃƒÂ  stata aggiornata. Ricarica la pagina.");
+  if (!updated.count) throw new Error("La proposta è già stata aggiornata. Ricarica la pagina.");
   if (input.decision === "CONFIRM" && association.technicalDocument.currentVersion) {
     const data = association.technicalDocument.currentVersion
       .extractedMetadata as unknown as TechnicalInterpretation;
@@ -1029,7 +1028,7 @@ export async function assessEquivalence(
         comparedProductId: b,
         assessmentId: assessment.id,
         requiredField: key,
-        reason: `${key} ÃƒÂ¨ necessario per stabilire l'equivalenza`,
+        reason: `${key} è necessario per stabilire l'equivalenza`,
         suggestedEvidence: `Scheda tecnica con ${key}`,
       },
     });
@@ -1053,9 +1052,7 @@ export async function decideEquivalence(input: {
   if (assessment.evidenceFingerprint !== input.evidenceFingerprint)
     throw new Error("Le evidenze sono cambiate: rivaluta prima di decidere.");
   if (assessment.result !== "FUNCTIONALLY_EQUIVALENT")
-    throw new Error(
-      "Solo una proposta di equivalenza funzionale puÃƒÂ² essere approvata o respinta.",
-    );
+    throw new Error("Solo una proposta di equivalenza funzionale può essere approvata o respinta.");
   const updated = await prisma.productEquivalenceAssessment.updateMany({
     where: {
       id: assessment.id,
@@ -1070,7 +1067,7 @@ export async function decideEquivalence(input: {
       reviewedAt: new Date(),
     },
   });
-  if (!updated.count) throw new Error("La valutazione ÃƒÂ¨ giÃƒÂ  stata decisa o aggiornata.");
+  if (!updated.count) throw new Error("La valutazione è già stata decisa o aggiornata.");
   await rememberEquivalence({
     ...input,
     productAId: assessment.productAId,

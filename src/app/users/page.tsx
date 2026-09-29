@@ -10,6 +10,7 @@ import {
   StatusIndicator,
 } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
+import { roleNameLabel } from "@/lib/presentation/role";
 import { prisma } from "@/lib/prisma";
 const PAGE_SIZE = 20;
 export default async function UsersPage({
@@ -75,7 +76,7 @@ export default async function UsersPage({
         <select name="roleId" defaultValue={values?.roleId}>
           {roles.map((role) => (
             <option key={role.id} value={role.id}>
-              {role.name}
+              {roleNameLabel(role.name)}
             </option>
           ))}
         </select>
@@ -104,7 +105,7 @@ export default async function UsersPage({
   return (
     <main className="phase2-page phase2-admin">
       <PageHeader
-        eyebrow="Identita e poteri"
+        eyebrow="Identità e poteri"
         title="Utenti"
         description="Anagrafica applicativa, ruolo e perimetro operativo nel tenant corrente."
         action={
@@ -145,7 +146,7 @@ export default async function UsersPage({
                   <strong>{assignment.user.name}</strong>
                   <small className="cell-detail">{assignment.user.email}</small>
                 </td>
-                <td>{assignment.role.name}</td>
+                <td>{roleNameLabel(assignment.role.name)}</td>
                 <td>
                   <ScopeBadge
                     type={assignment.scopeType}

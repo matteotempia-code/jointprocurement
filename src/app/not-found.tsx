@@ -2,13 +2,14 @@ import Link from "next/link";
 export default function NotFound() {
   return (
     <main className="not-found">
-      <p className="eyebrow">Unavailable</p>
-      <h1>This view is outside your current role or scope.</h1>
+      <p className="eyebrow">Non disponibile</p>
+      <h1>Questa pagina non rientra nel tuo ruolo.</h1>
       <p>
-        The demo applies the same role and scope boundaries that future authentication will enforce.
+        Il tuo profilo non ha accesso a questa sezione. Se ti serve, chiedilo a chi amministra
+        l&rsquo;organizzazione: può assegnartelo senza farti cambiare utenza.
       </p>
-      <Link href="/" className="primary-cta">
-        Return home
+      <Link href="/" data-primary="true" className="primary-cta">
+        Torna alla tua pagina
       </Link>
     </main>
   );

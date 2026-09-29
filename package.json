@@ -43,7 +43,8 @@
     "demo:imports": "tsx scripts/generate-demo-imports.ts",
     "demo:procurement:refresh": "tsx scripts/demo/refresh-procurement.ts",
     "demo:procurement:refresh:apply": "tsx scripts/demo/refresh-procurement.ts --apply",
-    "qa:walk": "node tests/visual-walk.mjs"
+    "qa:walk": "node tests/visual-walk.mjs",
+    "qa:encoding": "node scripts/qa/check-encoding.mjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.80",

@@ -235,7 +235,7 @@ export async function seedSmartImports(args: {
             consumptionUom: product.consumptionUom ?? "PIECE",
             normalizedPrice,
             comparable: !newProduct,
-            normalizedLabel: `${normalizedPrice.toFixed(4)} â‚¬ / ${product.consumptionUomLabel ?? "pezzo"}`,
+            normalizedLabel: `${normalizedPrice.toFixed(4)} € / ${product.consumptionUomLabel ?? "pezzo"}`,
             validationErrors: newProduct ? ["Nessun prodotto canonico affidabile"] : [],
             warnings: packageChanged ? ["Confezione differente dal prodotto canonico"] : [],
           },

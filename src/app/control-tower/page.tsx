@@ -1,7 +1,7 @@
 import { Metric, PageHeader } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { compareOffers, formatMoney } from "@/lib/pricing";
+import { compareOffers, formatMoney, formatPercent } from "@/lib/pricing";
 import { preferredSpendShare } from "@/lib/procurement/preferred-spend";
 
 export default async function ControlTower() {
@@ -77,27 +77,27 @@ export default async function ControlTower() {
       <PageHeader
         eyebrow="Control Tower direzionale"
         title="Performance della rete"
-        description="Valore, affidabilitÃƒÂ  e rischi in una lettura di 30 secondi."
+        description="Valore, affidabilità e rischi in una lettura di 30 secondi."
       />
       <div className="metrics-grid executive">
         <Metric label="Spesa da inizio anno" value={formatMoney(spend)} />
-        <Metric label="Acquisti convenzionati" value={`${compliance.toFixed(1)}%`} />
+        <Metric label="Acquisti convenzionati" value={`${formatPercent(compliance)}`} />
         <Metric
-          label="OpportunitÃƒÂ  osservata"
+          label="Opportunità osservata"
           value={formatMoney(observedOpportunity)}
           detail="Sui volumi presenti"
         />
         <Metric
           label="Rischi operativi"
           value={overdue + issues}
-          detail={`${overdue} ritardi Ã‚Â· ${issues} problemi`}
+          detail={`${overdue} ritardi · ${issues} problemi`}
         />
       </div>
       <div className="executive-brief">
         <section>
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Top 3 opportunitÃƒÂ </p>
+              <p className="eyebrow">Top 3 opportunità</p>
               <h2>Dove creare valore</h2>
             </div>
           </div>
@@ -108,7 +108,7 @@ export default async function ControlTower() {
                 <strong>{product.name}</strong>
                 <small>{product.category.name}</small>
               </div>
-              <b>{comparison.spread.toFixed(1)}%</b>
+              <b>{formatPercent(comparison.spread)}</b>
             </article>
           ))}
         </section>
@@ -131,7 +131,7 @@ export default async function ControlTower() {
             <span>02</span>
             <div>
               <strong>Problemi aperti</strong>
-              <small>Non conformitÃƒÂ  operative</small>
+              <small>Non conformità operative</small>
             </div>
             <b>{issues}</b>
           </article>
@@ -141,7 +141,7 @@ export default async function ControlTower() {
               <strong>Copertura convenzionata</strong>
               <small>Quota della spesa su fornitori convenzionati</small>
             </div>
-            <b>{compliance.toFixed(1)}%</b>
+            <b>{formatPercent(compliance)}</b>
           </article>
         </section>
       </div>
