@@ -325,6 +325,29 @@ senza tornare all'elenco.
 
 Vieta: una tabella da cui bisogna uscire per agire; un contatore senza la coda dietro.
 
+#### Regola del raggruppamento — vincolante, aggiunta il 29/09/2026
+
+**Una coda non elenca record: raggruppa per la cosa che l'utente deve decidere.**
+
+La revisione del prodotto reale ha trovato venti righe identiche nelle richieste, venti nelle
+non conformità, sedici consecutive nelle consegne e otto nelle importazioni
+(`REVISIONE.md` R-05). Venti colli danneggiati dello stesso prodotto, dello stesso fornitore,
+nella stessa consegna **non sono venti problemi: sono un problema**. Quaranta ritardi dello
+stesso fornitore sono una conversazione da avere con quel fornitore.
+
+- **Vieta:** una coda in cui due righe consecutive differiscono solo per l'identificativo; una
+  colonna che ripete la stessa frase in ogni riga; una paginazione che nasconde la ripetizione
+  invece di eliminarla.
+- **Come si raggruppa:** per l'entità su cui si agisce, non per il record. Non conformità → per
+  fornitore e prodotto. Consegne in ritardo → per fornitore. Importazioni → per documento.
+  Richieste → per stato e per chi le deve toccare. Il gruppo mostra il conteggio, la cifra
+  totale, il più vecchio, e si apre solo se serve scendere al singolo.
+- **Prova:** in ogni coda renderizzata, nessun gruppo di due o più righe adiacenti ha lo stesso
+  insieme di valori a meno dell'identificativo e della data.
+
+Il raggruppamento è **funzione, non grafica**: va progettato prima di ridisegnare la pagina,
+altrimenti si ottiene un elenco brutto reso in bei colori.
+
 `/approvals` · `/richieste` · `/non-conformita` · `/consegne` · `/imports` · `/orders` ·
 `/technical-products` — _tela: Risparmi (la stessa forma, contenuto diverso)_
 
@@ -482,14 +505,22 @@ Automatici — se non si possono misurare, non si dichiarano fatti:
    pattern ampio. Un commit «solo formattazione» ne ha **aggiunte** 6: lint, tsc e build non le
    vedono.
 8. Ogni `Metric` ha una provenienza non vuota.
+9. Nessun contatore a zero tenuto in pagina, e nessuna sezione vuota che occupa spazio per dire
+   che è vuota.
+10. Nessuna pagina oltre i 3.000 px di altezza senza raggruppamento: la revisione ne ha trovate
+    tre fra i 4.200 e i 5.000 px.
+11. Nessun dato di collaudo visibile: niente nomi che contengono `cert`, `demo`, `test` o
+    `sporca` nelle pagine mostrate ai clienti.
+12. Una sola etichetta per ogni azione: «Aggiungi» e «Aggiungi al carrello» non possono
+    convivere.
 
 A mano, per ogni pagina, prima di dirla finita:
 
-9. Qual è l'unica cosa che questa pagina serve a fare? Il bottone alto 48 px è quella?
-10. Il compito ricorrente si chiude in ≤ 2 clic dalla home?
-11. Ogni attesa dice cosa fa, quanto manca, e cosa si può fare nel frattempo?
-12. Esiste un percorso che attraversa un confine di ruolo? Se sì, è dichiarato all'inizio?
-13. Cosa vede un utente nuovo, con zero dati? L'`EmptyState` ha tutte tre le parti?
+13. Qual è l'unica cosa che questa pagina serve a fare? Il bottone alto 48 px è quella?
+14. Il compito ricorrente si chiude in ≤ 2 clic dalla home?
+15. Ogni attesa dice cosa fa, quanto manca, e cosa si può fare nel frattempo?
+16. Esiste un percorso che attraversa un confine di ruolo? Se sì, è dichiarato all'inizio?
+17. Cosa vede un utente nuovo, con zero dati? L'`EmptyState` ha tutte tre le parti?
 
 ---
 
