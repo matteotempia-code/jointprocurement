@@ -172,6 +172,17 @@ jobs:
           QA_BASE_URL: ${{ steps.deployment.outputs.url }}
         run: node scripts/qa/assert-remote-database-health.mjs
 
+  # Non e una certificazione: non verifica niente e non fa fallire la pipeline.
+  # Serve a poter guardare le pagine, che e l'unico modo di verificare i criteri
+  # manuali del canone di interfaccia. Gira in parallelo alle altre.
+  visual-evidence:
+    name: Prove visive
+    needs: prepare-deployment
+    uses: ./.github/workflows/visual-evidence.yml
+    with:
+      deployment_url: ${{ needs.prepare-deployment.outputs.deployment_url }}
+    secrets: inherit
+
   lifecycle:
     name: Remote lifecycle and personas
     needs: prepare-deployment
