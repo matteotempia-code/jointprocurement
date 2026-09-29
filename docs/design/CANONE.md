@@ -5,11 +5,11 @@
 
 Questo documento ha la precedenza su ogni altro documento di design. In particolare:
 
-| Documento | Cosa resta valido | Cosa è superato |
-| --- | --- | --- |
-| `docs/design/QUADRO.md` | §3 caratteri (la trappola `--font-sans`), §4 mappatura tipografica, §5 regole 5.1–5.8, §5B stati di attesa, §6 Tailwind, §7 guardie, §10 criteri | §2 **i valori** dei token (sostituiti dalla §2 qui sotto). L'architettura degli slot resta identica. |
-| `docs/design/RILEVAMENTO.md` | tutto: è il rilevamento dei fatti, non una proposta | niente |
-| `docs/design/RIPROGETTAZIONE.md` | i dodici componenti come elenco di lavoro | l'impostazione: era una bonifica del prodotto esistente, non una riprogettazione. Assorbito qui. |
+| Documento                        | Cosa resta valido                                                                                                                                | Cosa è superato                                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `docs/design/QUADRO.md`          | §3 caratteri (la trappola `--font-sans`), §4 mappatura tipografica, §5 regole 5.1–5.8, §5B stati di attesa, §6 Tailwind, §7 guardie, §10 criteri | §2 **i valori** dei token (sostituiti dalla §2 qui sotto). L'architettura degli slot resta identica. |
+| `docs/design/RILEVAMENTO.md`     | tutto: è il rilevamento dei fatti, non una proposta                                                                                              | niente                                                                                               |
+| `docs/design/RIPROGETTAZIONE.md` | i dodici componenti come elenco di lavoro                                                                                                        | l'impostazione: era una bonifica del prodotto esistente, non una riprogettazione. Assorbito qui.     |
 
 Riferimento visivo: la tela **Sorgence ripensato**, otto schermate.
 Dove il canone e la tela divergono, vince il canone, perché la tela usa misure ottiche
@@ -67,7 +67,7 @@ Vincolo di prodotto già in registro (UX-05). Nessuna attesa è muta. Nessuna at
   lavoro lungo che non si possa lasciare e riprendere.
 - **Prova:** i tre componenti di `QUADRO.md` §5B (bottone in attesa 1–10 s, scheda di lavoro
   oltre 10 s, barra con stima) coprono il 100% delle attese. Oltre i 10 secondi la schermata
-  dice anche **cosa si può già fare nel frattempo** — vedi la tela, *L'attesa che si spiega*:
+  dice anche **cosa si può già fare nel frattempo** — vedi la tela, _L'attesa che si spiega_:
   le 12 righe dubbie si decidono mentre le altre 3.168 stanno ancora girando.
 
 ### Legge 5 — Niente cambi di profilo per finire una cosa cominciata
@@ -99,58 +99,66 @@ letterale fuori da questi due blocchi.
 ### 2.1 Tema chiaro — `:root`
 
 ```css
---bg:              #FBFAF7;   /* avorio caldo: il fondo di tutto */
---surface:         #FFFFFF;   /* schede, righe, campi */
---surface-alt:     #F4F1EA;   /* pannelli quieti, intestazioni di gruppo */
---surface-ink:     #141618;   /* pannello invertito: un solo uso per schermata */
+--bg: #fbfaf7; /* avorio caldo: il fondo di tutto */
+--surface: #ffffff; /* schede, righe, campi */
+--surface-alt: #f4f1ea; /* pannelli quieti, intestazioni di gruppo */
+--surface-ink: #141618; /* pannello invertito: un solo uso per schermata */
 
---text:            #141618;
---text-secondary:  #545B63;   /* 6,8:1 su --bg */
---text-muted:      #6E767E;   /* 4,6:1 su --bg — ammesso solo ≥ 13 px e mai per dati */
---text-on-ink:     #FBFAF7;
---text-on-ink-2:   #C9C5BC;
+--text: #141618;
+--text-secondary: #545b63; /* 6,8:1 su --bg */
+--text-muted: #6e767e; /* 4,6:1 su --bg — ammesso solo ≥ 13 px e mai per dati */
+--text-on-ink: #fbfaf7;
+--text-on-ink-2: #c9c5bc;
 
---border:          #E6E2DA;
---border-strong:   #D5CFC4;
+--border: #e6e2da;
+--border-strong: #d5cfc4;
 
---accent:          #0B5D51;   /* l'azione. bianco sopra: 7,7:1 */
---accent-hover:    #094C43;
---accent-soft:     #E7F0ED;
---accent-on-soft:  #0B5D51;
+--accent: #0b5d51; /* l'azione. bianco sopra: 7,7:1 */
+--accent-hover: #094c43;
+--accent-soft: #e7f0ed;
+--accent-on-soft: #0b5d51;
 
---ok:              #1F6B45;   --ok-soft:      #E4F0E8;
---warn:            #8A4B0F;   --warn-soft:    #F7EDE0;
---danger:          #8C2F23;   --danger-soft:  #F8E9E6;
---info:            #1B4D7A;   --info-soft:    #E5EDF5;
+--ok: #1f6b45;
+--ok-soft: #e4f0e8;
+--warn: #8a4b0f;
+--warn-soft: #f7ede0;
+--danger: #8c2f23;
+--danger-soft: #f8e9e6;
+--info: #1b4d7a;
+--info-soft: #e5edf5;
 ```
 
 ### 2.2 Tema scuro — `:root[data-theme="dark"]` e `@media (prefers-color-scheme: dark)`
 
 ```css
---bg:              #141310;
---surface:         #1C1A17;
---surface-alt:     #24221E;
---surface-ink:     #F2F0EA;
+--bg: #141310;
+--surface: #1c1a17;
+--surface-alt: #24221e;
+--surface-ink: #f2f0ea;
 
---text:            #F2F0EA;
---text-secondary:  #A8A49B;
---text-muted:      #8B877E;
---text-on-ink:     #141310;
---text-on-ink-2:   #4A463F;
+--text: #f2f0ea;
+--text-secondary: #a8a49b;
+--text-muted: #8b877e;
+--text-on-ink: #141310;
+--text-on-ink-2: #4a463f;
 
---border:          #302D28;
---border-strong:   #4A463F;
+--border: #302d28;
+--border-strong: #4a463f;
 
---accent:          #5FC8B4;   /* 9,5:1 su --bg */
---accent-hover:    #7BD8C6;
---accent-soft:     #0E2B26;
---accent-on-soft:  #5FC8B4;
---accent-on:       #062B25;   /* testo sopra un riempimento --accent */
+--accent: #5fc8b4; /* 9,5:1 su --bg */
+--accent-hover: #7bd8c6;
+--accent-soft: #0e2b26;
+--accent-on-soft: #5fc8b4;
+--accent-on: #062b25; /* testo sopra un riempimento --accent */
 
---ok:              #6FCB8E;   --ok-soft:      #10281A;
---warn:            #E3A867;   --warn-soft:    #2C2013;
---danger:          #F08A7D;   --danger-soft:  #301A17;
---info:            #7FB4EE;   --info-soft:    #12253A;
+--ok: #6fcb8e;
+--ok-soft: #10281a;
+--warn: #e3a867;
+--warn-soft: #2c2013;
+--danger: #f08a7d;
+--danger-soft: #301a17;
+--info: #7fb4ee;
+--info-soft: #12253a;
 ```
 
 > **Trappola nota, già verificata sul campo:** i token dichiarati dentro `@theme` di Tailwind v4
@@ -168,8 +176,8 @@ Ombre — **una regola, non un gusto**: il bordo sta sotto l'ombra, non al suo p
 (`QUADRO.md` §5.2).
 
 ```css
---shadow-1: 0 1px 2px rgba(20, 22, 24, 0.04);   /* schede: bordo + questa, o solo bordo */
---shadow-2: 0 8px 24px rgba(20, 22, 24, 0.10);  /* solo menu, popover, dialoghi */
+--shadow-1: 0 1px 2px rgba(20, 22, 24, 0.04); /* schede: bordo + questa, o solo bordo */
+--shadow-2: 0 8px 24px rgba(20, 22, 24, 0.1); /* solo menu, popover, dialoghi */
 ```
 
 In codice gli slot esistenti si chiamano `--elev-1` e `--elev-2` e portano questi due valori.
@@ -181,7 +189,8 @@ ha ancora guardato.
 Movimento:
 
 ```css
---motion-fast: 120ms;   --motion-base: 200ms;
+--motion-fast: 120ms;
+--motion-base: 200ms;
 --motion-ease: cubic-bezier(0.2, 0, 0, 1);
 ```
 
@@ -203,30 +212,30 @@ Caricamento: entrambi con `next/font`, esposti come `--font-display` e `--font-b
 
 ### Gradini
 
-| Token | Valore | Uso |
-| --- | --- | --- |
-| `--text-fs-100` | 12 px | etichetta, nota a margine, provenienza |
-| `--text-fs-200` | 14 px | dettaglio, fornitore, confezione, meta di riga |
-| `--text-fs-300` | 16 px | corpo, nome del prodotto, voce di elenco |
-| `--text-fs-400` | 18 px | titolo di scheda |
-| `--text-fs-500` | 23 px | titolo di sezione |
-| `--text-fs-600` | 30 px | titolo di pagina, display |
-| `--text-fs-700` | 42 px | **nuovo** — display, un solo uso per schermata |
+| Token           | Valore | Uso                                            |
+| --------------- | ------ | ---------------------------------------------- |
+| `--text-fs-100` | 12 px  | etichetta, nota a margine, provenienza         |
+| `--text-fs-200` | 14 px  | dettaglio, fornitore, confezione, meta di riga |
+| `--text-fs-300` | 16 px  | corpo, nome del prodotto, voce di elenco       |
+| `--text-fs-400` | 18 px  | titolo di scheda                               |
+| `--text-fs-500` | 23 px  | titolo di sezione                              |
+| `--text-fs-600` | 30 px  | titolo di pagina, display                      |
+| `--text-fs-700` | 42 px  | **nuovo** — display, un solo uso per schermata |
 
 ### Come leggere la tela
 
 La tela usa misure intermedie per ragioni ottiche. In codice si riportano così, e non si
 inseguono i decimali:
 
-| Sulla tela | In codice |
-| --- | --- |
+| Sulla tela     | In codice            |
+| -------------- | -------------------- |
 | 11,5 – 12,5 px | `--text-fs-100` (12) |
-| 13 – 14,5 px | `--text-fs-200` (14) |
-| 15 – 16 px | `--text-fs-300` (16) |
-| 18 – 22 px | `--text-fs-400` (18) |
-| 23 – 30 px | `--text-fs-500` (23) |
-| 30 – 38 px | `--text-fs-600` (30) |
-| 40 – 44 px | `--text-fs-700` (42) |
+| 13 – 14,5 px   | `--text-fs-200` (14) |
+| 15 – 16 px     | `--text-fs-300` (16) |
+| 18 – 22 px     | `--text-fs-400` (18) |
+| 23 – 30 px     | `--text-fs-500` (23) |
+| 30 – 38 px     | `--text-fs-600` (30) |
+| 40 – 44 px     | `--text-fs-700` (42) |
 
 **Conseguenza da governare, non da subire:** le righe dati diventano 1–2 px più alte della
 tela, perché il meta passa da 12,5 a 14. È previsto. Non si compensa riducendo il padding
@@ -241,6 +250,7 @@ Raggi, allo stesso modo: `6–9 → sm`, `10–14 → md`, `15–19 → lg`, pil
 Questi, e nessun altro. Un bisogno nuovo si risolve **prima** discutendo se è davvero nuovo.
 
 **Azione**
+
 1. `Button` — quattro varianti e tre sole altezze: `primary` 48, `secondary` 44, `quiet` 36,
    `danger` 44. Un solo `primary` per schermata (Legge 1).
 2. `IconButton` — 44 × 44 minimo, `aria-label` obbligatorio.
@@ -248,38 +258,24 @@ Questi, e nessun altro. Un bisogno nuovo si risolve **prima** discutendo se è d
    `Invio`). **Mai** un `Menu` dentro un `Menu`: una voce che apre altro apre un `Sheet`.
 4. `Sheet` / `Dialog` — `--shadow-2`, un solo livello, `Esc` chiude, focus intrappolato.
 
-**Dati**
-5. `DataRow` — la riga di elenco: mediana 40 px, identità, meta, chip, numeri allineati a
-   destra su colonne di larghezza fissa. È **una griglia**, non otto flex indipendenti. Il
-   difetto strutturale di oggi: nel catalogo renderizzato non esiste nessun `<table>` e ogni
-   riga è un contenitore a sé, per questo le colonne non si allineano.
-6. `DataTable` — un solo componente condiviso, quello di
-   [ui.tsx:227](src/components/ui.tsx:227), il cui `<table>` è l'unico vero del prodotto.
-   Ordinamento sul database, non nel browser.
-7. `Chip` — variazione e stato su fondo tenue, mai testo colorato nudo (`QUADRO.md` §5.4).
-8. `Metric` — cifra display + etichetta + **provenienza** (Legge 3). Senza provenienza non si
-   monta.
-9. `Sparkline` — andamento a 12 punti, `role="img"` con `aria-label` che dice il fatto in
-   parole.
-10. `PriceBlock` — i due livelli di prezzo in un'area propria (`QUADRO.md` §5.5): prezzo unitario
-    normalizzato in evidenza, prezzo di confezione sotto, IVA e detraibilità dichiarate.
-11. `CompareGrid` — griglia a colonne fisse, mai colonne che si autodimensionano
-    (`QUADRO.md` §5.6).
+**Dati** 5. `DataRow` — la riga di elenco: mediana 40 px, identità, meta, chip, numeri allineati a
+destra su colonne di larghezza fissa. È **una griglia**, non otto flex indipendenti. Il
+difetto strutturale di oggi: nel catalogo renderizzato non esiste nessun `<table>` e ogni
+riga è un contenitore a sé, per questo le colonne non si allineano. 6. `DataTable` — un solo componente condiviso, quello di
+[ui.tsx:227](src/components/ui.tsx:227), il cui `<table>` è l'unico vero del prodotto.
+Ordinamento sul database, non nel browser. 7. `Chip` — variazione e stato su fondo tenue, mai testo colorato nudo (`QUADRO.md` §5.4). 8. `Metric` — cifra display + etichetta + **provenienza** (Legge 3). Senza provenienza non si
+monta. 9. `Sparkline` — andamento a 12 punti, `role="img"` con `aria-label` che dice il fatto in
+parole. 10. `PriceBlock` — i due livelli di prezzo in un'area propria (`QUADRO.md` §5.5): prezzo unitario
+normalizzato in evidenza, prezzo di confezione sotto, IVA e detraibilità dichiarate. 11. `CompareGrid` — griglia a colonne fisse, mai colonne che si autodimensionano
+(`QUADRO.md` §5.6).
 
-**Attesa e vuoto**
-12. `PendingButton` — 1–10 s (`QUADRO.md` §5B.2).
-13. `WorkCard` — oltre 10 s: passi, percentuale, stima, «puoi chiudere questa pagina», e
-    l'elenco di cosa si può già fare (`QUADRO.md` §5B.3–5B.5).
-14. `EmptyState` — tre parti obbligatorie: cosa manca, perché è normale, l'unica azione per
-    uscirne. Nessun vuoto senza azione.
-15. `ErrorState` — cosa è andato storto, se i dati sono salvi, cosa fare adesso. L'errore è
-    parte del componente di attesa, non una pagina a parte (`QUADRO.md` §5B.7).
+**Attesa e vuoto** 12. `PendingButton` — 1–10 s (`QUADRO.md` §5B.2). 13. `WorkCard` — oltre 10 s: passi, percentuale, stima, «puoi chiudere questa pagina», e
+l'elenco di cosa si può già fare (`QUADRO.md` §5B.3–5B.5). 14. `EmptyState` — tre parti obbligatorie: cosa manca, perché è normale, l'unica azione per
+uscirne. Nessun vuoto senza azione. 15. `ErrorState` — cosa è andato storto, se i dati sono salvi, cosa fare adesso. L'errore è
+parte del componente di attesa, non una pagina a parte (`QUADRO.md` §5B.7).
 
-**Struttura**
-16. `Rail` — navigazione a icone 76 px, `aria-label` su ogni voce, pallino di notifica.
-17. `PageHeader` — contesto a sinistra, ricerca `⌘K` a destra, **niente** titolo ripetuto se la
-    pagina ha già un display.
-18. `ProposalCard` — il pannello di conferma: totale, confronto, budget, primario, reversibilità.
+**Struttura** 16. `Rail` — navigazione a icone 76 px, `aria-label` su ogni voce, pallino di notifica. 17. `PageHeader` — contesto a sinistra, ricerca `⌘K` a destra, **niente** titolo ripetuto se la
+pagina ha già un display. 18. `ProposalCard` — il pannello di conferma: totale, confronto, budget, primario, reversibilità.
 
 ---
 
@@ -288,7 +284,7 @@ Questi, e nessun altro. Un bisogno nuovo si risolve **prima** discutendo se è d
 Ogni pagina appartiene a **un** archetipo. Una pagina che non ci sta dentro non è un nuovo
 archetipo: è una pagina da ripensare.
 
-### A — Proposta *(la home di ogni profilo)*
+### A — Proposta _(la home di ogni profilo)_
 
 La cosa che oggi ti tocca fare, già preparata, con un bottone per confermarla. Struttura:
 display di una riga che dice il fatto → le 3–5 righe che cambiano, ognuna con il suo perché →
@@ -296,16 +292,16 @@ display di una riga che dice il fatto → le 3–5 righe che cambiano, ognuna co
 
 Vieta: riquadri di cortesia, contatori che non portano da nessuna parte, più di due inviti.
 
-| Pagina | Profilo | Cosa diventa |
-| --- | --- | --- |
-| `/` | RSA_DIRECTOR | il riordino del mese da confermare — *tela: Oggi* |
-| `/` | AREA_MANAGER | le decisioni delle sue strutture, in una coda sola |
-| `/` | PROCUREMENT_MANAGER | i listini scaduti e le variazioni da accettare |
-| `/` | PROCUREMENT_ADMIN | ciò che blocca gli altri: deleghe scadute, utenti senza potere |
-| `/` | FINANCE_CONTROLLER | archetipo **G**, non A: non conferma, legge (§7.1) |
-| `/control-tower` | EXECUTIVE_SPONSOR | archetipo **G**, non A: non conferma, legge |
+| Pagina           | Profilo             | Cosa diventa                                                   |
+| ---------------- | ------------------- | -------------------------------------------------------------- |
+| `/`              | RSA_DIRECTOR        | il riordino del mese da confermare — _tela: Oggi_              |
+| `/`              | AREA_MANAGER        | le decisioni delle sue strutture, in una coda sola             |
+| `/`              | PROCUREMENT_MANAGER | i listini scaduti e le variazioni da accettare                 |
+| `/`              | PROCUREMENT_ADMIN   | ciò che blocca gli altri: deleghe scadute, utenti senza potere |
+| `/`              | FINANCE_CONTROLLER  | archetipo **G**, non A: non conferma, legge (§7.1)             |
+| `/control-tower` | EXECUTIVE_SPONSOR   | archetipo **G**, non A: non conferma, legge                    |
 
-### B1 — Ricerca *(cerchi una cosa fra tante, e sai più o meno cosa)*
+### B1 — Ricerca _(cerchi una cosa fra tante, e sai più o meno cosa)_
 
 Campo grande in alto, filtri come pillole su una riga (non una colonna), risultati **in tre
 gruppi**: «quello che comprate di solito» → «equivalenti più convenienti» → «tutto il resto».
@@ -315,13 +311,13 @@ Vieta: 98 pagine di catalogo; una colonna di filtri a sinistra; un risultato sen
 unitario confrontabile.
 
 `/cerca` · `/products` · `/suppliers` · `/price-lists` · `/technical-documents`
-— *tela: Cercare, non sfogliare*. `/catalog` è un redirect verso `/cerca` (§7.3).
+— _tela: Cercare, non sfogliare_. `/catalog` è un redirect verso `/cerca` (§7.3).
 
 > Correzione del 25/09/2026: `/technical-products` era assegnato qui leggendo solo la rotta.
 > Il codice dice altro — filtra `status: { not: "COMPLETE" }` e ordina per completezza
 > crescente: è una coda di lavoro, non una ricerca. Spostato in B2.
 
-### B2 — Coda di lavoro *(un elenco di cose che aspettano una tua decisione)*
+### B2 — Coda di lavoro _(un elenco di cose che aspettano una tua decisione)_
 
 Due pannelli: la coda a sinistra (pallino di non letto, titolo, la cifra che conta, età), la
 cosa aperta a destra con le sue prove e le sue azioni. Si lavora dall'alto verso il basso
@@ -330,9 +326,9 @@ senza tornare all'elenco.
 Vieta: una tabella da cui bisogna uscire per agire; un contatore senza la coda dietro.
 
 `/approvals` · `/richieste` · `/non-conformita` · `/consegne` · `/imports` · `/orders` ·
-`/technical-products` — *tela: Risparmi (la stessa forma, contenuto diverso)*
+`/technical-products` — _tela: Risparmi (la stessa forma, contenuto diverso)_
 
-### B3 — Registro *(amministri un insieme finito e lo tieni in ordine)*
+### B3 — Registro _(amministri un insieme finito e lo tieni in ordine)_
 
 `DataTable` vero, colonne fisse, ordinamento sul database, una riga di azioni per riga, una
 sola azione primaria in testa. Non è una ricerca e non è una coda: è manutenzione.
@@ -340,9 +336,9 @@ sola azione primaria in testa. Non è una ricerca e non è una coda: è manutenz
 Vieta: trasformarlo in ricerca; nascondere le azioni dentro un menu a tendina annidato.
 
 `/categorie` · `/facilities` · `/users` · `/deleghe` · `/organization` · `/liste`
-— *tela: Registro*. `/preferiti` è fuso in `/liste` (§7.5): è una lista come le altre.
+— _tela: Registro_. `/preferiti` è fuso in `/liste` (§7.5): è una lista come le altre.
 
-### C — Scheda *(il passaporto di una entità)*
+### C — Scheda _(il passaporto di una entità)_
 
 Identità in alto con la cifra che conta in display, `PriceBlock`, poi tre colonne: andamento
 nel tempo · alternative · chi la usa e i documenti. Pannello di azione a destra, con la
@@ -352,9 +348,9 @@ Vieta: accordion impilati; documenti nascosti in fondo; il costo senza IVA e det
 
 `/products/[id]` · `/suppliers/[id]` · `/price-lists/[id]` · `/facilities/[id]` ·
 `/technical-documents/[id]` · `/categorie/[id]` · `/liste/[id]` · `/orders/[id]`
-— *tela: Il passaporto del prodotto*
+— _tela: Il passaporto del prodotto_
 
-### D — Decisione *(una cosa, due risposte)*
+### D — Decisione _(una cosa, due risposte)_
 
 Una schermata sola: chi chiede, cosa, **con le sue parole**, cosa cambia se dici sì (budget,
 costo effettivo, data in reparto), l'alternativa se esiste, e in fondo due bottoni e una
@@ -363,9 +359,9 @@ scorciatoia da tastiera.
 Vieta: 7 clic; un cambio profilo; una decisione che richieda di aprire altre tre pagine.
 
 `/approvals/[id]` · `/requisitions/[id]` · `/imports/[id]/records/[recordId]`
-— *tela: Una decisione, una schermata*
+— _tela: Una decisione, una schermata_
 
-### E — Confronto *(due o più cose, attributo per attributo)*
+### E — Confronto _(due o più cose, attributo per attributo)_
 
 `CompareGrid` a colonne di larghezza fissa. Le righe che **differiscono** vengono prima; quelle
 identiche si comprimono in una riga sola «21 attributi identici». Una colonna è il riferimento
@@ -376,9 +372,9 @@ capo in tre righe in una cella (difetto misurato allo step 4).
 
 **`/confronto`**, una rotta sola con un parametro che dice cosa si confronta — prezzi, prodotti,
 attributi tecnici, capitolato (§7.4). Sostituisce `/compare`, `/compare-products`,
-`/technical-compare` e `/technical-requirements`. — *tela: Confronto*
+`/technical-compare` e `/technical-requirements`. — _tela: Confronto_
 
-### F — Procedura *(più passi, e alla fine si scrive qualcosa)*
+### F — Procedura _(più passi, e alla fine si scrive qualcosa)_
 
 Passi visibili sempre, con quello corrente aperto e i successivi stimati. Si può uscire e
 riprendere. L'ultimo passo dice cosa succede quando si conferma e fino a quando si disdice.
@@ -387,11 +383,11 @@ Vieta: un passo che non dice quanto dura; un carrello che si costruisce a mano q
 sistema sa già cosa serve; un wizard che perde il lavoro se chiudi.
 
 `/imports/new` · `/imports/[id]` · `/imports/[id]/mapping` · `/imports/[id]/changes` ·
-`/imports/[id]/summary` — *tela: L'attesa che si spiega*
+`/imports/[id]/summary` — _tela: L'attesa che si spiega_
 `/cart` — assorbito dall'archetipo A: il carrello non si costruisce, si corregge
-`/orders/[id]/receive` — *artboard da disegnare: **Ricevimento**, e nasce sul telefono*
+`/orders/[id]/receive` — _artboard da disegnare: **Ricevimento**, e nasce sul telefono_
 
-### G — Quadro *(si legge, non si clicca)*
+### G — Quadro _(si legge, non si clicca)_
 
 Per chi guarda dieci secondi e vuole sapere se c'è un problema. Una frase che dà il verdetto,
 tre `Metric` con provenienza, un andamento, e **una** porta verso il dettaglio.
@@ -400,7 +396,7 @@ Vieta: griglie di KPI senza verdetto; un grafico senza la frase che lo spiega; l
 pagine che il profilo non può aprire (Legge 5).
 
 `/control-tower` · `/budget` · `/demo-roadmap` · e **`/` nella variante FINANCE_CONTROLLER**
-(§7.1) — *tela: Quadro*
+(§7.1) — _tela: Quadro_
 
 ### H — Accesso
 

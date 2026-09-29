@@ -21,12 +21,12 @@ il censimento non vede, la riga lo dice con `⟨da verificare in attuazione⟩`.
 
 ## Il punto di partenza, misurato oggi
 
-| Misura | Valore |
-| --- | --- |
-| Pagine | 47 |
-| `<form>` nelle pagine | 78 |
-| `<details>` nelle pagine | 46, distribuiti su 25 pagine |
-| Pagine con **2 o più azioni server distinte** — violano la Legge 1 | **14** |
+| Misura                                                             | Valore                       |
+| ------------------------------------------------------------------ | ---------------------------- |
+| Pagine                                                             | 47                           |
+| `<form>` nelle pagine                                              | 78                           |
+| `<details>` nelle pagine                                           | 46, distribuiti su 25 pagine |
+| Pagine con **2 o più azioni server distinte** — violano la Legge 1 | **14**                       |
 
 Le quattordici, in ordine di gravità: `imports/[id]` e `cart` (5 azioni ciascuna) ·
 `imports/[id]/records/[recordId]` e `liste/[id]` (4) · `liste` e `preferiti` (3) ·
@@ -54,13 +54,13 @@ prodotto sa cosa ricompri. Non va aggiunta: va **promossa a protagonista**.
 
 **Primaria, per profilo:**
 
-| Profilo | Azione primaria |
-| --- | --- |
-| RSA_DIRECTOR | Conferma e invia ai fornitori |
-| AREA_MANAGER | Approva le N decisioni delle tue strutture |
-| PROCUREMENT_MANAGER | Accetta le variazioni dei listini scaduti |
-| PROCUREMENT_ADMIN | Sblocca le N deleghe scadute |
-| FINANCE_CONTROLLER | nessuna: la sua `/` è **archetipo G** (§7.1), vedi in fondo |
+| Profilo             | Azione primaria                                             |
+| ------------------- | ----------------------------------------------------------- |
+| RSA_DIRECTOR        | Conferma e invia ai fornitori                               |
+| AREA_MANAGER        | Approva le N decisioni delle tue strutture                  |
+| PROCUREMENT_MANAGER | Accetta le variazioni dei listini scaduti                   |
+| PROCUREMENT_ADMIN   | Sblocca le N deleghe scadute                                |
+| FINANCE_CONTROLLER  | nessuna: la sua `/` è **archetipo G** (§7.1), vedi in fondo |
 
 **Sparisce:** «Prossima attivazione» (è marketing dentro il prodotto), «Ultimi aggiornamenti»
 (un registro di eventi non è un compito), la griglia di riquadri.
@@ -102,14 +102,17 @@ semantica — altrimenti il redirect toglie una funzione invece di spostarla.
 **Vuoto:** «Nessun prodotto canonico. Importa un listino e li creiamo dai suoi articoli.»
 
 ### `/suppliers` — 171 righe, `manageSupplier`
+
 **Primaria:** «Nuovo fornitore». **Appare:** spesa a 12 mesi e non conformità aperte per riga.
 **Vuoto:** «Nessun fornitore. Il primo nasce dal primo listino importato.»
 
 ### `/price-lists` — 156 righe, sezione «Versioni commerciali»
+
 **Primaria:** «Importa un listino». **Appare:** scadenza in evidenza — un listino scaduto è la
 causa più frequente di acquisti fuori accordo. **Vuoto:** porta a `/imports/new`.
 
 ### `/technical-documents` — 232 righe, `retryTechnicalBatch`
+
 **Primaria:** «Carica documenti». **Appare:** lo stato del lotto come `WorkCard` (Legge 4): il
 batch da cento documenti impiega circa otto minuti e mezzo e oggi non lo dice.
 
@@ -121,29 +124,36 @@ Forma comune: coda a sinistra, cosa aperta a destra. **L'elenco non ha primaria:
 sta nel dettaglio.** Si lavora dall'alto in basso senza tornare all'elenco.
 
 ### `/approvals` — AREA_MANAGER, PROCUREMENT_MANAGER · 190 righe
+
 **Primaria (nel dettaglio):** «Approva € X». **Sparisce:** il salto a `/approvals/[id]` come
 pagina separata — diventa il pannello destro. **Vuoto:** «Niente da approvare. Ti avviso io.»
 
 ### `/richieste` — 255 righe, `createOutOfCatalogRequest`
-**Primaria:** «Chiedi un prodotto fuori catalogo» — qui l'elenco *ha* una primaria, perché
+
+**Primaria:** «Chiedi un prodotto fuori catalogo» — qui l'elenco _ha_ una primaria, perché
 questa pagina serve anche a creare. **Appare:** l'età della richiesta, che oggi non si vede.
 
 ### `/non-conformita` — 190 righe, `resolveQualityIssue`
+
 **Primaria (nel dettaglio):** «Risolvi». **Appare:** la foto del ricevimento accanto alla riga,
 non dietro un link.
 
 ### `/consegne` — 150 righe, `draftSupplierReminder`, metadata «In ritardo»
+
 **Primaria (nel dettaglio):** «Sollecita il fornitore» con il testo già scritto.
 **Appare:** quanti giorni di ritardo e cosa blocca in reparto.
 
 ### `/imports` — 255 righe, sezioni «Da gestire» e «Import recenti»
+
 **Primaria:** «Importa un listino». «Da gestire» è già la coda: diventa il pannello sinistro.
 
 ### `/orders` — 185 righe
+
 **Primaria:** nessuna sull'elenco; sul dettaglio dipende dallo stato (vedi `/orders/[id]`).
 **Appare:** gli ordini in arrivo oggi in testa, non l'ordine cronologico inverso.
 
 ### `/technical-products` — 58 righe
+
 Assegnato a B1 per errore leggendo la rotta; il codice filtra `status: { not: "COMPLETE" }` e
 ordina per completezza crescente. È una coda.
 **Primaria (nel dettaglio):** «Carica l'evidenza che manca».
@@ -156,14 +166,14 @@ ordina per completezza crescente. È una coda.
 Forma comune: `DataTable` vero, colonne fisse, ordinamento sul database, **le righe non in
 ordine per prime**, una sola primaria in testa, azioni di riga in un `Menu` vero.
 
-| Pagina | Righe | Primaria | Cosa mostra per prima |
-| --- | --- | --- | --- |
-| `/categorie` | 100 | Nuova categoria | categorie senza fornitori qualificati |
-| `/facilities` | 146 | Aggiungi una struttura | strutture senza direttore, budget scaduti |
-| `/users` | 199 | Invita una persona | persone senza ruolo, o con delega scaduta |
-| `/deleghe` | 145 | Nuova delega | deleghe scadute o che scadono entro 30 giorni |
-| `/organization` | 129 | Aggiungi un ente giuridico | enti senza partita IVA o senza sede |
-| `/liste` | 128 | Nuova lista | liste mai usate da oltre 6 mesi |
+| Pagina          | Righe | Primaria                   | Cosa mostra per prima                         |
+| --------------- | ----- | -------------------------- | --------------------------------------------- |
+| `/categorie`    | 100   | Nuova categoria            | categorie senza fornitori qualificati         |
+| `/facilities`   | 146   | Aggiungi una struttura     | strutture senza direttore, budget scaduti     |
+| `/users`        | 199   | Invita una persona         | persone senza ruolo, o con delega scaduta     |
+| `/deleghe`      | 145   | Nuova delega               | deleghe scadute o che scadono entro 30 giorni |
+| `/organization` | 129   | Aggiungi un ente giuridico | enti senza partita IVA o senza sede           |
+| `/liste`        | 128   | Nuova lista                | liste mai usate da oltre 6 mesi               |
 
 **`/organization` ha 2 azioni** (`updateOrganization`, `manageLegalEntity`): la pagina è il
 registro degli enti giuridici, primaria «Aggiungi un ente giuridico»; i dati dell'organizzazione
@@ -194,14 +204,16 @@ Forma comune: identità con la cifra in display, `PriceBlock`, poi **tre colonne
 alternative · chi la usa e i documenti. Pannello di azione a destra.
 
 ### `/products/[id]` — 708 righe, **8 `<details>`, 7 tabelle**, 2 azioni
+
 La pagina peggiore del prodotto: otto accordion impilati.
 **Primaria:** «Aggiungi al riordino», con la quantità già proposta e il motivo della proposta.
 **Sparisce:** tutti e otto i `<details>`. **Appare:** le tre colonne; `Sparkline` a 12 mesi; i
 documenti come due link visibili, non dietro un accordion; il costo effettivo con IVA e
 detraibilità dichiarate. `toggleFavorite` scende a icona, non è una seconda primaria.
-**Riferimento:** tela, *Il passaporto del prodotto*.
+**Riferimento:** tela, _Il passaporto del prodotto_.
 
 ### `/suppliers/[id]` — 481 righe, 7 sezioni, **0 form**
+
 Sette sezioni e nessuna azione: una pagina che si legge e non serve a niente.
 **Primaria:** «Importa il suo listino» ⟨da verificare in attuazione: se il fornitore ha già un
 listino corrente, la primaria diventa «Confronta i suoi prezzi»⟩.
@@ -209,28 +221,34 @@ listino corrente, la primaria diventa «Confronta i suoi prezzi»⟩.
 `Sparkline` con provenienza.
 
 ### `/price-lists/[id]` — 258 righe, `confirmPriceListCondition`, 5 tabelle
+
 **Primaria:** «Conferma le condizioni». **Appare:** la scadenza in display, perché è il numero
 che decide. **Vuoto:** listino senza articoli abbinati → porta alla procedura F.
 
 ### `/facilities/[id]` — 181 righe, 3 `<details>`, 3 tabelle
+
 **Primaria dipendente dallo stato:** senza direttore → «Assegna un direttore»; altrimenti →
 «Apri il budget del trimestre». **Sparisce:** i tre `<details>`.
 
 ### `/technical-documents/[id]` — 201 righe, 2 azioni
+
 **Primaria:** «Associa al prodotto» — è una decisione, e le due azioni del codice
 (`associateTechnicalProduct`, `decideTechnicalAssociation`) sono la stessa decisione in due
 pezzi: vanno unite. **Appare:** metadati estratti accanto al documento, non sotto.
 
 ### `/categorie/[id]` — 162 righe, 0 form
+
 **Primaria:** «Confronta i prodotti della categoria» → archetipo E.
 **Appare:** quanto pesa la categoria sulla spesa, con provenienza.
 
 ### `/liste/[id]` — 183 righe, **4 azioni**
+
 **Primaria:** «Aggiungi tutto al riordino». Le altre tre (`moveShoppingListItem`,
 `updateShoppingList`, `updateShoppingListItem`) diventano controlli in riga e un `Sheet` per
 nome e descrizione. **Sparisce:** la sezione «Nome e descrizione» come blocco a sé.
 
 ### `/orders/[id]` — 400 righe, `acknowledgeOrder` + `buyAgain`, 3 sezioni
+
 **Primaria dipendente dallo stato:** in arrivo → «Conferma il ricevimento» (porta a F);
 chiuso → «Ricompra». **Appare:** «Audit e cronologia» resta, ma chiuso in uno `Sheet`: è
 tracciabilità, non un compito.
@@ -240,12 +258,14 @@ tracciabilità, non un compito.
 ## D · Decisione — 3 pagine
 
 ### `/approvals/[id]` — 317 righe, `decideApproval`, 3 tabelle
+
 **Primaria:** «Approva € X». Secondaria: «Chiedi una modifica». Distruttiva: rifiuta.
 **Appare:** le parole di chi chiede, cosa cambia se dici sì (budget dopo, costo effettivo, data
 in reparto), l'alternativa equivalente se esiste, scorciatoie da tastiera.
-**Riferimento:** tela, *Una decisione, una schermata*.
+**Riferimento:** tela, _Una decisione, una schermata_.
 
 ### `/requisitions/[id]` — 197 righe, `answerClarification`
+
 **Questa pagina viola la Legge 5** ed è il motivo per cui la legge esiste: il chiarimento oggi
 costa 7 clic **e un cambio profilo** (`RILEVAMENTO.md` §C4).
 **Primaria:** «Rispondi e rimanda in approvazione».
@@ -253,13 +273,14 @@ costa 7 clic **e un cambio profilo** (`RILEVAMENTO.md` §C4).
 persona, il prodotto lo dice **all'inizio**, con nome e cognome, e le passa la palla.
 
 ### `/imports/[id]/records/[recordId]` — 576 righe, **6 form, 4 `<details>`, 4 azioni**
+
 Il peggior caso di Legge 1: quattro azioni pari («accetta», «accetta correggendo», «crea
 prodotto nuovo», «segna») in sei form.
 **Diventano tre, una primaria:** «Sì, è questo» · «Ne scelgo un altro» · «È un prodotto nuovo».
 `markRecord` non è una decisione, è un rimando: diventa «Decido dopo», silenzioso.
 **Appare:** la riga del file fra virgolette, il candidato con la sua somiglianza, e la frase che
 conta: ogni scelta insegna, alla prossima importazione righe così si abbinano da sole.
-**Riferimento:** tela, *L'attesa che si spiega*, pannello destro.
+**Riferimento:** tela, _L'attesa che si spiega_, pannello destro.
 
 ---
 
@@ -274,14 +295,15 @@ righe), `/compare-products` (156), `/technical-compare` (229) e `/technical-requ
 Forma: `CompareGrid` a colonne di larghezza **fissa**, righe che differiscono in testa, le
 identiche compresse in una riga sola, una colonna dichiarata riferimento.
 
-| Modo | Cosa mette a confronto | Primaria | Profili |
-| --- | --- | --- | --- |
-| `prezzi` | lo stesso prodotto presso più fornitori | Sostituisci nei riordini | PROCUREMENT_MANAGER |
-| `prodotti` | prodotti diversi fra loro | Sostituisci nei riordini | direttore, area manager, procurement |
-| `tecnico` | attributi tecnici, per decidere un'equivalenza | Conferma l'equivalenza | procurement |
-| `capitolato` | prodotti contro un requisito dichiarato | Salva il capitolato | procurement |
+| Modo         | Cosa mette a confronto                         | Primaria                 | Profili                              |
+| ------------ | ---------------------------------------------- | ------------------------ | ------------------------------------ |
+| `prezzi`     | lo stesso prodotto presso più fornitori        | Sostituisci nei riordini | PROCUREMENT_MANAGER                  |
+| `prodotti`   | prodotti diversi fra loro                      | Sostituisci nei riordini | direttore, area manager, procurement |
+| `tecnico`    | attributi tecnici, per decidere un'equivalenza | Conferma l'equivalenza   | procurement                          |
+| `capitolato` | prodotti contro un requisito dichiarato        | Salva il capitolato      | procurement                          |
 
 **Cosa va portato dentro, non perso:**
+
 - Lo stato vuoto di `/compare-products`, che è già quello giusto: «Seleziona almeno due
   prodotti». Diventa lo stato vuoto di tutti e quattro i modi.
 - `decideTechnicalEquivalence` e la scrittura del capitolato: sono le due azioni che scrivono, e
@@ -301,33 +323,39 @@ attuazione servono quattro layout diversi, la decisione va riaperta invece di ag
 ## F · Procedura — 7 pagine
 
 ### `/imports/new` — 59 righe
+
 **Primaria:** «Carica il file». **Appare:** cosa succederà e quanto ci vorrà, **prima** di
 caricare. La sezione «Un percorso controllato» che c'è già è la cosa giusta.
 
 ### `/imports/[id]` — 727 righe, **5 form, 5 `<details>`, 5 azioni**
+
 La pagina più grande del prodotto. Ha già l'idea giusta e il nome giusto: una sezione si chiama
 «La prossima decisione» e un'azione si chiama letteralmente `primaryAction`.
 **Primaria:** la prossima decisione, qualunque sia — una sola, sempre in quel posto.
 **Sparisce:** i cinque `<details>`. **Appare:** la `WorkCard`: passi, percentuale, stima,
 «puoi chiudere questa pagina», e **cosa si può già fare nel frattempo**.
 `retryImport` non è una primaria: è parte dell'`ErrorState`.
-**Riferimento:** tela, *L'attesa che si spiega*.
+**Riferimento:** tela, _L'attesa che si spiega_.
 
 ### `/imports/[id]/mapping` — 182 righe, 2 azioni
+
 **Primaria:** «Confermo l'abbinamento delle colonne». `resetColumnMapping` è silenziosa.
 **Tengo:** «Documento → dato procurement» spiega il passo in tre parole.
 
 ### `/imports/[id]/changes` — 558 righe, 5 tabelle
+
 **Primaria:** «Accetta le variazioni».
 **Tengo, ed è la Legge 3 già applicata bene:** il titolo «Il prezzo confezione non racconta la
 variazione reale». Va promosso, non tolto.
 **Appare:** variazioni come `Chip` su fondo tenue, mai testo colorato nudo.
 
 ### `/imports/[id]/summary` — 157 righe
+
 **Primaria:** «Conferma la nuova versione». La sezione «Completa le decisioni rimaste» diventa
 un blocco che **impedisce** la conferma finché ci sono righe aperte, dicendo quante sono.
 
 ### `/cart` — RSA_DIRECTOR · 433 righe, **5 form, 3 `<details>`, 5 azioni**
+
 **Destinazione: assorbito dall'archetipo A.** Il carrello non si costruisce, si corregge: è la
 proposta di riordino in forma modificabile.
 **Finché resta:** primaria «Invia la richiesta», e le altre quattro diventano controlli di riga.
@@ -337,12 +365,13 @@ disabilita all'istante, sotto il secondo.
 **Tengo:** il titolo «Decisione d'acquisto» — dice esattamente cos'è.
 
 ### `/orders/[id]/receive` — 215 righe, `receiveOrder`
+
 **Primaria:** «Conferma il ricevimento».
 **Nasce sul telefono**, non sul desktop: si fa in piedi, accanto al bancale.
 **Appare:** tocca solo dove qualcosa non torna; foto e motivo per le differenze; e la frase che
 dice cosa comporta — le righe mancanti diventano una non conformità intestata al fornitore, e
 la fattura verrà confrontata sul ricevuto.
-**Riferimento:** tela, *Ricevimento merce, in piedi*.
+**Riferimento:** tela, _Ricevimento merce, in piedi_.
 
 ---
 
@@ -365,21 +394,24 @@ trimestri; al massimo due cose che meritano attenzione.
 vuota. ⟨da verificare in attuazione⟩
 
 ### `/control-tower` — EXECUTIVE_SPONSOR · 174 righe, 3 sezioni, 0 form
+
 **Primaria:** una porta sola, «Dettaglio per struttura», e apre **solo** ciò che il profilo può
 aprire (Legge 5, e decisione §7.2 presa il 25/09/2026).
 **Appare:** un verdetto in una frase, prima di qualsiasi numero; tre `Metric` con provenienza;
 un andamento; al massimo **due** cose che meritano attenzione.
 **Sparisce:** la sezione «Anteo e Coopselios» — i nomi dei clienti in una pagina di prodotto
-sono materiale di vendita. **Riferimento:** tela, *Quadro*.
+sono materiale di vendita. **Riferimento:** tela, _Quadro_.
 
 ### `/budget` — RSA_DIRECTOR, AREA_MANAGER, PROCUREMENT_MANAGER · 210 righe, 5 tabelle, 0 form
+
 **Primaria:** una porta verso la struttura in difficoltà.
 **Appare:** il verdetto in una frase. **Tengo:** «Limiti di acquisto applicabili» — è la regola
 che governa, e va detta prima dei numeri.
 
 ### `/demo-roadmap` — EXECUTIVE_SPONSOR · 75 righe
+
 È materiale di vendita dentro il prodotto: «Estensioni pianificate, non ancora operative».
-*Raccomando:* fuori dal prodotto. Se resta, archetipo G con un verdetto, e mai raggiungibile da
+_Raccomando:_ fuori dal prodotto. Se resta, archetipo G con un verdetto, e mai raggiungibile da
 una navigazione che un cliente vero usa ogni giorno.
 
 ---
@@ -387,6 +419,7 @@ una navigazione che un cliente vero usa ogni giorno.
 ## H · Accesso — 1 pagina
 
 ### `/login` — 41 righe, `login`
+
 **Primaria:** «Accedi». **Appare:** un errore che dice cosa fare, non cosa è andato storto.
 Quarantuno righe, e devono restare poche.
 
