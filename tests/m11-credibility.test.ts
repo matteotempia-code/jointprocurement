@@ -32,7 +32,8 @@ test("condizioni commerciali distinguono minimo, franco e costo totale", () => {
 
 test("metriche fornitore non mostrano percentuali con campione insufficiente", () => {
   assert.match(supplierMetric(100, 4, "Puntualità").label, /Dati insufficienti/);
-  assert.equal(supplierMetric(80, 5, "Puntualità").label, "80.0%");
+  // Il formato e italiano: virgola decimale, come gli importi. Vedi formatPercent.
+  assert.equal(supplierMetric(80, 5, "Puntualità").label, "80,0%");
 });
 
 test("SLA approvazioni e plurali sono deterministici", () => {
