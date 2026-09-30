@@ -97,8 +97,20 @@ percentuale.
   `CERT M11 Limited Product`, `CERT M11 Lifecycle Supplier`.
 - Importazioni datate **05 ott 2026**, cioè nel futuro rispetto al giorno della passata.
 
-Le certificazioni remote scrivono nel database di sviluppo e non ripuliscono tutto. Esiste già
-`qa:certification:cleanup`: va esteso e reso obbligatorio a fine pipeline.
+**Aggiornamento del 30/09/2026, dopo aver indagato invece di eseguire.** Metà del problema si
+è già risolta da sola: l'utente di certificazione non esiste più, lo ha rimosso
+`qa:certification:cleanup`. L'altra metà **non è un lavoro di cancellazione**, ed è il motivo
+per cui mi sono fermato prima di farla.
+
+Restano 189 documenti sorgente, 189 lavori di importazione e 2.602 record importati con nomi da
+collaudo. Ma lo schema dice che **portano peso**: `SupplierOffer` referenzia
+`importedRecordId`, `PriceList` referenzia `importJobId` e `sourceDocumentId`, e
+`TechnicalDocument` ha `onDelete: Restrict` sul documento sorgente. Cancellarli romperebbe i
+listini e le offerte che il catalogo mostra: quelle importazioni **hanno prodotto il catalogo**.
+
+La strada giusta non è ripulire a valle ma non sporcare a monte: le certificazioni remote
+devono creare i loro dati in un perimetro separato, oppure le pagine devono escluderli dalla
+vista. È un lavoro di QA, non di interfaccia, e va programmato invece che improvvisato.
 
 ### R-04 · L'inglese affiora nei punti peggiori — **alto**
 

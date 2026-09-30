@@ -70,6 +70,64 @@ export async function addToCart(formData: FormData) {
   revalidatePath("/catalog");
   revalidatePath("/cart");
 }
+// La proposta di riordino della home entra nel carrello in un colpo solo.
+// I controlli sono gli stessi di addToCart, ma una riga non acquistabile non
+// interrompe le altre: viene contata e dichiarata all'arrivo, perche il canone
+// vieta un'azione che fallisce in silenzio e vieta anche di far ricominciare
+// tutto da capo per una riga.
+export async function addProposalToCart(formData: FormData) {
+  const context = await requireRoles(["RSA_DIRECTOR"]);
+  const scope = await resolveScope(context.assignment);
+  const offerIds = formData.getAll("offerId").map((value) => actionId(value, "offerId"));
+  const quantities = formData.getAll("quantity").map((value) => actionQuantity(value ?? 1));
+  if (!offerIds.length) redirect("/cart");
+  const now = new Date();
+
+  const offers = await prisma.supplierOffer.findMany({
+    where: { id: { in: offerIds }, organizationId: context.organization.id, active: true },
+    include: { canonicalProduct: true, supplier: { select: { active: true } } },
+  });
+  const technicalStates = await prisma.productTechnicalState.findMany({
+    where: {
+      organizationId: context.organization.id,
+      canonicalProductId: { in: offers.map((offer) => offer.canonicalProductId) },
+    },
+  });
+  const stateByProduct = new Map(
+    technicalStates.map((state) => [state.canonicalProductId, state] as const),
+  );
+
+  const buyable = offers.filter(
+    (offer) =>
+      offer.supplier?.active &&
+      offerAvailability(offer, now).purchasable &&
+      isTechnicallyApproved(stateByProduct.get(offer.canonicalProductId) ?? null),
+  );
+  const skipped = offerIds.length - buyable.length;
+  if (!buyable.length) redirect(`/cart?saltate=${skipped}`);
+
+  const cart = await prisma.cart.upsert({
+    where: { userId_facilityId: { userId: context.user.id, facilityId: scope.id } },
+    create: { userId: context.user.id, facilityId: scope.id },
+    update: {},
+  });
+  for (const offer of buyable) {
+    const quantity = quantities[offerIds.indexOf(offer.id)] ?? 1;
+    await prisma.cartLine.upsert({
+      where: { cartId_supplierOfferId: { cartId: cart.id, supplierOfferId: offer.id } },
+      create: {
+        cartId: cart.id,
+        supplierOfferId: offer.id,
+        canonicalProductId: offer.canonicalProductId,
+        quantity,
+      },
+      update: { quantity: { increment: quantity } },
+    });
+  }
+  revalidatePath("/cart");
+  redirect(skipped ? `/cart?saltate=${skipped}` : "/cart");
+}
+
 export async function updateCartLine(formData: FormData) {
   const c = await requireRoles(["RSA_DIRECTOR"]);
   const id = actionId(formData.get("lineId"), "lineId"),

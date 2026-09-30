@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { addToCart } from "@/app/buying-actions";
+import { addProposalToCart } from "@/app/buying-actions";
 import { ArrowIcon } from "@/components/icons";
 import { ProductImage } from "@/components/product-image";
 import { Metric, PageHeader } from "@/components/ui";
@@ -18,7 +18,6 @@ export default async function Home() {
     return (
       <Director
         name={context.user.name}
-        userId={context.user.id}
         organizationId={context.organization.id}
         facilityId={scope.id}
         facility={scope.label}
@@ -104,13 +103,11 @@ export default async function Home() {
 
 async function Director({
   name,
-  userId,
   organizationId,
   facilityId,
   facility,
 }: {
   name: string;
-  userId: string;
   organizationId: string;
   facilityId: string;
   facility: string;
@@ -119,7 +116,7 @@ async function Director({
   const today = new Date();
   const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const dayEnd = new Date(dayStart.getTime() + 86400000);
-  const [requests, pending, todayDeliveries, late, issues, recent, frequent] = await Promise.all([
+  const [requests, pending, todayDeliveries, late, issues, frequent] = await Promise.all([
     prisma.purchaseRequisition.count({
       where: {
         facilityId,
@@ -151,28 +148,15 @@ async function Director({
         status: { in: ["OPEN", "UNDER_REVIEW"] },
       },
     }),
-    prisma.auditEvent.findMany({
-      where: { organizationId, actorUserId: userId },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
     prisma.purchaseRequisitionLine.groupBy({
       by: ["canonicalProductId"],
       where: { requisition: { facilityId, status: "APPROVED" } },
       _count: true,
+      _sum: { quantity: true },
       orderBy: { _count: { canonicalProductId: "desc" } },
-      take: 5,
+      take: 8,
     }),
   ]);
-  const recentUnique = recent
-    .filter(
-      (event, index, events) =>
-        events.findIndex(
-          (candidate) =>
-            candidate.action === event.action && candidate.entityType === event.entityType,
-        ) === index,
-    )
-    .slice(0, 6);
   const tasks = [
     { value: pending, label: "richieste in approvazione", href: "/richieste" },
     {
@@ -197,54 +181,127 @@ async function Director({
       },
     },
   });
+
+  // CANONE.md Legge 2: la home propone, non chiede. La proposta nasce da quello che
+  // questa struttura ha gia riordinato: quante volte, e in che quantita tipica. Non e
+  // una previsione, e una media dichiarata — Legge 3, ogni numero dice da dove viene.
+  const proposal = frequent
+    .map((row) => {
+      const product = products.find(({ id }) => id === row.canonicalProductId);
+      const offer = product?.offers[0];
+      if (!product || !offer) return null;
+      const times = typeof row._count === "number" ? row._count : 0;
+      const totalQuantity = Number(row._sum.quantity ?? 0);
+      const quantity = Math.max(1, Math.round(totalQuantity / Math.max(1, times)));
+      const unitPrice = Number(offer.unitPrice);
+      return { product, offer, times, quantity, unitPrice, lineTotal: unitPrice * quantity };
+    })
+    .filter((line): line is NonNullable<typeof line> => line !== null);
+  const proposalTotal = proposal.reduce((sum, line) => sum + line.lineTotal, 0);
+  const month = today.toLocaleDateString("it-IT", { month: "long" });
+  // Al massimo due: il canone vieta piu di due inviti su una pagina che ne ha gia uno.
+  const decisions = tasks.slice(0, 2);
   return (
     <main className="phase1-page phase1-home">
-      <section className="director-welcome phase1-director-welcome">
-        <div className="director-search">
-          <p>{facility}</p>
-          <h1>Cosa ti serve oggi, {name.split(" ")[0]}?</h1>
-          <form action="/catalog">
-            <input
-              name="q"
-              placeholder="Cerca un prodotto o descrivi ciò che ti serve…"
-              autoFocus
-            />
-            <button>Cerca nel catalogo</button>
-          </form>
+      <section className="proposta">
+        <div className="proposta-corpo">
+          <p className="eyebrow">
+            {facility} · riordino di {month}
+          </p>
+          <h1>
+            {proposal.length
+              ? `Il tuo riordino di ${month} è pronto, ${name.split(" ")[0]}.`
+              : `Non ho ancora abbastanza storico per proporti un riordino.`}
+          </h1>
+          {proposal.length ? (
+            <>
+              <p className="proposta-sommario">
+                {proposal.length} articoli, costruiti su quello che {facility} ha già riordinato e
+                fatto approvare. Ogni riga dice quante volte e in che quantità.
+              </p>
+              <ul className="proposta-righe">
+                {proposal.map((line) => (
+                  <li key={line.product.id}>
+                    <ProductImage
+                      name={line.product.name}
+                      categoryCode={line.product.category.code}
+                    />
+                    <div className="proposta-identita">
+                      <Link href={`/products/${line.product.id}`}>{line.product.name}</Link>
+                      <small>
+                        {line.product.brand} · {line.product.packageDescription}
+                      </small>
+                    </div>
+                    <span className="proposta-perche">
+                      ordinato {line.times} volte · di solito {line.quantity}
+                    </span>
+                    <span className="proposta-quantita">{line.quantity}</span>
+                    <span className="proposta-importo">{formatMoney(line.lineTotal)}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p className="proposta-sommario">
+              Servono alcune richieste approvate prima che possa riconoscere cosa riordini. Nel
+              frattempo cerca quello che ti serve: da lì in avanti imparo.
+            </p>
+          )}
         </div>
-        <nav aria-label="Scorciatoie di acquisto">
-          <Link href="/preferiti">
-            <span>Prodotti salvati</span>
-            <strong>Preferiti</strong>
+
+        <aside className="proposta-scheda">
+          <p>Totale della proposta</p>
+          <strong>{formatMoney(proposalTotal)}</strong>
+          <dl>
+            <div>
+              <dt>Righe</dt>
+              <dd>{proposal.length}</dd>
+            </div>
+            <div>
+              <dt>Budget disponibile</dt>
+              <dd>{formatMoney(budget.available)}</dd>
+            </div>
+          </dl>
+          {proposal.length ? (
+            <form action={addProposalToCart}>
+              {proposal.map((line) => (
+                <div key={line.offer.id} hidden>
+                  <input type="hidden" name="offerId" value={line.offer.id} />
+                  <input type="hidden" name="quantity" value={line.quantity} />
+                </div>
+              ))}
+              <button data-primary="true" className="primary-cta">
+                Prepara il riordino
+              </button>
+            </form>
+          ) : (
+            <Link href="/catalog" data-primary="true" className="primary-cta">
+              Cerca un prodotto
+            </Link>
+          )}
+          <Link href="/catalog" className="proposta-secondaria">
+            Scegli riga per riga
           </Link>
-          <Link href="/liste">
-            <span>Riordino rapido</span>
-            <strong>Liste ricorrenti</strong>
-          </Link>
-          <Link href="/richieste#fuori-catalogo">
-            <span>Esigenza non coperta</span>
-            <strong>Fuori catalogo</strong>
-          </Link>
-        </nav>
+          <small>
+            Nulla parte da qui: la proposta finisce nel carrello, e la richiesta la invii tu dopo
+            averla rivista.
+          </small>
+        </aside>
       </section>
-      <section className={`today-panel ${tasks.length ? "" : "all-clear"}`}>
-        <header>
-          <p className="eyebrow">Da gestire oggi</p>
-          <h2>{tasks.length ? "La tua giornata operativa" : "Tutto sotto controllo"}</h2>
-        </header>
-        {tasks.length ? (
-          <div>
-            {tasks.map((task) => (
-              <Link href={task.href} key={task.label}>
-                <strong>{task.value}</strong>
-                <span>{task.label}</span>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p>Non ci sono consegne, ritardi o problemi che richiedono un intervento immediato.</p>
-        )}
-      </section>
+
+      {decisions.length > 0 && (
+        <section className="decisioni">
+          <p className="eyebrow">Serve una tua decisione</p>
+          {decisions.map((task) => (
+            <Link href={task.href} key={task.label}>
+              <strong>
+                {task.value} {task.label}
+              </strong>
+              <ArrowIcon />
+            </Link>
+          ))}
+        </section>
+      )}
       <section className="budget-cockpit">
         <div>
           <p>Budget disponibile</p>
@@ -254,7 +311,10 @@ async function Director({
             utilizzato
           </span>
           <i>
-            <b style={{ width: `${Math.min(100, budget.utilization)}%` }} />
+            <b
+              data-livello={budget.utilization >= 80 ? "attenzione" : "normale"}
+              style={{ width: `${Math.min(100, budget.utilization)}%` }}
+            />
           </i>
         </div>
         <dl>
@@ -276,73 +336,6 @@ async function Director({
           </div>
         </dl>
       </section>
-      <div className="quick-actions italian">
-        <Link href="/catalog">
-          Nuovo acquisto <ArrowIcon />
-        </Link>
-        <Link href="/orders">
-          Controlla ordini <ArrowIcon />
-        </Link>
-        <Link href="/consegne">
-          Registra consegna <ArrowIcon />
-        </Link>
-        <Link href="/budget">
-          Analizza budget <ArrowIcon />
-        </Link>
-      </div>
-      <section className="frequent-section">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Acquisti frequenti</p>
-            <h2>Le scorte che riordini più spesso</h2>
-          </div>
-          <Link href="/catalog">Vedi catalogo</Link>
-        </div>
-        <div className="frequent-products">
-          {products.slice(0, 3).map((product) => {
-            const offer = product.offers[0];
-            return (
-              <article key={product.id}>
-                <ProductImage name={product.name} categoryCode={product.category.code} />
-                <div>
-                  <span>{product.brand}</span>
-                  <Link href={`/products/${product.id}`}>
-                    <h3>{product.name}</h3>
-                  </Link>
-                  <p>{product.packageDescription}</p>
-                </div>
-                <footer>
-                  <strong>{offer ? formatMoney(Number(offer.unitPrice)) : "—"}</strong>
-                  {offer && (
-                    <form action={addToCart}>
-                      <input type="hidden" name="offerId" value={offer.id} />
-                      <input type="hidden" name="quantity" value="1" />
-                      <button>Aggiungi</button>
-                    </form>
-                  )}
-                </footer>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-      <details className="recent-timeline phase1-archive">
-        <summary>Attività recente · {recentUnique.length} aggiornamenti</summary>
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Attività recente</p>
-            <h2>Ultimi aggiornamenti</h2>
-          </div>
-        </div>
-        {recentUnique.map((event) => (
-          <div key={event.id}>
-            <i />
-            <span>{formatDate(event.createdAt)}</span>
-            <strong>{statusLabel(event.action)}</strong>
-            <small>{statusLabel(event.entityType)}</small>
-          </div>
-        ))}
-      </details>
     </main>
   );
 }
