@@ -153,9 +153,7 @@ async function certifyRoutes(name, allowed, denied) {
       [200, 404].includes(response?.status() ?? 0),
       `denied GET ${route} has an explicit response`,
     );
-    await page
-      .getByRole("heading", { name: "This view is outside your current role or scope." })
-      .waitFor();
+    await page.locator("[data-scope='denied']").waitFor();
     assert.equal(
       new URL(page.url()).pathname,
       route,

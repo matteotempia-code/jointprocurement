@@ -710,21 +710,15 @@ try {
     "empty cart cannot be submitted",
   );
   await open(`/orders/${poId}/receive`);
-  await page
-    .getByRole("heading", { name: "This view is outside your current role or scope." })
-    .waitFor();
+  await page.locator("[data-scope='denied']").waitFor();
   const missing = await page.goto(new URL(`/orders/${randomUUID()}`, base).toString(), {
     waitUntil: "networkidle",
   });
   assert.ok([200, 404].includes(missing?.status() ?? 0));
-  await page
-    .getByRole("heading", { name: "This view is outside your current role or scope." })
-    .waitFor();
+  await page.locator("[data-scope='denied']").waitFor();
   await switchTo("Davide Romano");
   await open("/cart");
-  await page
-    .getByRole("heading", { name: "This view is outside your current role or scope." })
-    .waitFor();
+  await page.locator("[data-scope='denied']").waitFor();
 
   const criticalErrors = browserErrors.filter(
     (message) => !/Unsupported file type|not valid|server components/i.test(message),

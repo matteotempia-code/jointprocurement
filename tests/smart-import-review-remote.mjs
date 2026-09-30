@@ -286,7 +286,7 @@ try {
   await open("/imports");
   assert.match(
     await page.locator("main").innerText(),
-    /outside your current role|fuori dal perimetro/i,
+    /non rientra nel tuo ruolo|outside your current role|fuori dal perimetro/i,
   );
   await switchTo("Giulia Bianchi");
   checkpoint = "xlsx-upload";

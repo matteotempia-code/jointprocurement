@@ -275,9 +275,7 @@ try {
   checkpoint = "authorization";
   await switchTo("Lucia Ferri");
   await open("/technical-documents");
-  await page
-    .getByRole("heading", { name: "This view is outside your current role or scope." })
-    .waitFor();
+  await page.locator("[data-scope='denied']").waitFor();
   await switchTo("Giulia Bianchi");
   await open("/technical-documents");
   assert.equal(

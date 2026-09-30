@@ -185,6 +185,9 @@ async function Director({
   // CANONE.md Legge 2: la home propone, non chiede. La proposta nasce da quello che
   // questa struttura ha gia riordinato: quante volte, e in che quantita tipica. Non e
   // una previsione, e una media dichiarata — Legge 3, ogni numero dice da dove viene.
+  // Un prodotto ordinato una volta sola non e un riordino abituale: e un acquisto
+  // straordinario, e proporne diciassette ogni mese sarebbe un danno. Serve una storia.
+  const MINIMO_RIORDINI = 3;
   const proposal = frequent
     .map((row) => {
       const product = products.find(({ id }) => id === row.canonicalProductId);
@@ -196,7 +199,8 @@ async function Director({
       const unitPrice = Number(offer.unitPrice);
       return { product, offer, times, quantity, unitPrice, lineTotal: unitPrice * quantity };
     })
-    .filter((line): line is NonNullable<typeof line> => line !== null);
+    .filter((line): line is NonNullable<typeof line> => line !== null)
+    .filter((line) => line.times >= MINIMO_RIORDINI);
   const proposalTotal = proposal.reduce((sum, line) => sum + line.lineTotal, 0);
   const month = today.toLocaleDateString("it-IT", { month: "long" });
   // Al massimo due: il canone vieta piu di due inviti su una pagina che ne ha gia uno.
@@ -216,8 +220,9 @@ async function Director({
           {proposal.length ? (
             <>
               <p className="proposta-sommario">
-                {proposal.length} articoli, costruiti su quello che {facility} ha già riordinato e
-                fatto approvare. Ogni riga dice quante volte e in che quantità.
+                {proposal.length} articoli, presi da quello che {facility} ha riordinato almeno{" "}
+                {MINIMO_RIORDINI} volte con richieste approvate. Ogni riga dice quante volte e in
+                che quantità tipica.
               </p>
               <ul className="proposta-righe">
                 {proposal.map((line) => (
@@ -225,6 +230,7 @@ async function Director({
                     <ProductImage
                       name={line.product.name}
                       categoryCode={line.product.category.code}
+                      className="product-packshot-riga"
                     />
                     <div className="proposta-identita">
                       <Link href={`/products/${line.product.id}`}>{line.product.name}</Link>
@@ -233,7 +239,8 @@ async function Director({
                       </small>
                     </div>
                     <span className="proposta-perche">
-                      ordinato {line.times} volte · di solito {line.quantity}
+                      ordinato {line.times} {line.times === 1 ? "volta" : "volte"} · di solito{" "}
+                      {line.quantity}
                     </span>
                     <span className="proposta-quantita">{line.quantity}</span>
                     <span className="proposta-importo">{formatMoney(line.lineTotal)}</span>
@@ -307,7 +314,7 @@ async function Director({
           <p>Budget disponibile</p>
           <strong>{formatMoney(budget.available)}</strong>
           <span>
-            su {formatMoney(budget.approved)} approvati · {formatPercent(budget.utilization)}
+            su {formatMoney(budget.approved)} approvati · {formatPercent(budget.utilization)}{" "}
             utilizzato
           </span>
           <i>

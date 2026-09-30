@@ -7406,3 +7406,11 @@ tbody tr:hover {
     grid-column: 2 / -1;
   }
 }
+
+/* L'immagine dentro una riga di proposta sta nella sua colonna: il valore
+   predefinito e min-width 68px e sfondava la griglia da 40. */
+.product-packshot-riga {
+  width: 40px;
+  min-width: 40px;
+  border-radius: var(--radius-sm);
+}

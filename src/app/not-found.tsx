@@ -1,7 +1,10 @@
 import Link from "next/link";
 export default function NotFound() {
   return (
-    <main className="not-found">
+    // L'appiglio per le certificazioni e questo attributo, non il testo: la copia
+    // cambia quando il prodotto migliora, e un collaudo che si rompe a ogni parola
+    // riscritta smette di essere un collaudo e diventa un ostacolo.
+    <main className="not-found" data-scope="denied">
       <p className="eyebrow">Non disponibile</p>
       <h1>Questa pagina non rientra nel tuo ruolo.</h1>
       <p>
