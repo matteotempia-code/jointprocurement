@@ -109,14 +109,26 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
           {signals.length ? `${signals.length} verifiche` : "Coerente"}
         </StatusChip>
       </section>
-      <div className="phase1-reliability-strip">
-        <div>
-          <span>Richiedente e perimetro</span>
-          <strong>{request.requester.name}</strong>
+      {/* CANONE.md archetipo D: chi chiede, e con le sue parole, prima di ogni
+          altra cosa. La motivazione stava in fondo alla pagina, dentro il secondo
+          di due blocchi che ripetevano lo stesso contenuto. */}
+      <section className="decisione-richiedente">
+        <div className="decisione-chi">
+          <span>{request.requester.name}</span>
           <small>
-            {request.facility.name} · {request.costCenter.name}
+            {request.facility.name} · {request.facility.area.name} · {request.costCenter.name}
           </small>
         </div>
+        {request.justification ? (
+          <blockquote>«{request.justification}»</blockquote>
+        ) : (
+          <p className="decisione-senza-motivo">
+            La richiesta non porta una motivazione scritta. Se non è evidente dalle righe, chiedila
+            prima di decidere.
+          </p>
+        )}
+      </section>
+      <div className="decisione-fornitori">
         {supplierContexts.map(({ supplierId, metrics }) => {
           const supplier = request.lines.find(
             (line) => line.supplierOffer.supplierId === supplierId,
@@ -127,8 +139,8 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
               <strong>{supplier.name}</strong>
               <small>
                 {metrics.delivered >= 5
-                  ? `${formatPercent(metrics.onTimeRate)} puntuali · ${formatPercent(metrics.completeRate)} complete`
-                  : `Dati insufficienti · ${metrics.delivered} consegne`}{" "}
+                  ? `${formatPercent(metrics.onTimeRate)} puntuali · ${formatPercent(metrics.completeRate)} complete su ${metrics.delivered} consegne`
+                  : `Dati insufficienti: solo ${metrics.delivered} consegne osservate`}{" "}
                 · {metrics.issues} problemi
               </small>
             </div>
@@ -212,9 +224,18 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
             </div>
           </dl>
           <i>
-            <b style={{ width: `${Math.min(100, utilization)}%` }} />
+            <b
+              data-livello={utilization >= 80 ? "attenzione" : "normale"}
+              style={{ width: `${Math.min(100, utilization)}%` }}
+            />
           </i>
-          <small>{formatPercent(utilization)} utilizzato dopo la decisione</small>
+          <small>{formatPercent(utilization)} del budget utilizzato dopo la decisione</small>
+          {/* CANONE.md archetipo D: cosa cambia se approvi. Il budget non basta:
+              conta anche quando la merce arriva in reparto. */}
+          <small className="decisione-consegna">
+            Consegna richiesta per il {formatDate(request.requiredByDate)}. Ogni giorno di attesa la
+            sposta di un giorno.
+          </small>
         </aside>
       </div>
       {signals.length > 0 && (
@@ -223,35 +244,6 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
           <span>{signals.join(" ")}</span>
         </section>
       )}
-      <div className="phase1-context-cards">
-        <section>
-          <span>Richiedente e perimetro</span>
-          <h3>{request.requester.name}</h3>
-          <p>
-            {request.facility.area.name} · {request.costCenter.name}
-          </p>
-          {request.justification && <blockquote>“{request.justification}”</blockquote>}
-        </section>
-        <section>
-          <span>Affidabilità fornitori</span>
-          {supplierContexts.map(({ supplierId, metrics }) => {
-            const supplier = request.lines.find(
-              (line) => line.supplierOffer.supplierId === supplierId,
-            )!.supplierOffer.supplier;
-            return (
-              <div className="phase1-supplier-context" key={supplierId}>
-                <strong>{supplier.name}</strong>
-                <small>
-                  {metrics.delivered >= 5
-                    ? `${formatPercent(metrics.onTimeRate)} puntuali · ${formatPercent(metrics.completeRate)} complete`
-                    : `Dati insufficienti · ${metrics.delivered} consegne`}{" "}
-                  · {metrics.issues} problemi
-                </small>
-              </div>
-            );
-          })}
-        </section>
-      </div>
       <details className="phase1-archive">
         <summary>Audit e storico della richiesta</summary>
         <div>
@@ -276,7 +268,10 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
           <input type="hidden" name="approvalId" value={approval.id} />
           <label>
             Nota alla decisione
-            <textarea name="note" placeholder="Obbligatoria per rifiutare o chiedere chiarimenti" />
+            <textarea
+              name="note"
+              placeholder={`Serve per rifiutare o per chiedere una modifica a ${request.requester.name.split(" ")[0]}. Per approvare non è necessaria.`}
+            />
           </label>
         </form>
       )}
@@ -286,11 +281,22 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
             <>
               <strong>{formatMoney(Number(request.total))}</strong>
               <span>
-                {sla.ageDays} gg di attesa · residuo {formatMoney(after)}
+                {sla.ageDays} gg di attesa · dopo la decisione restano {formatMoney(after)}
               </span>
             </>
           }
         >
+          {/* L'ordine non e casuale: prima l'alternativa legittima, poi quella
+              distruttiva, e ultima la primaria, che dice quanto sta approvando.
+              Prima 'Rifiuta' era il primo bottone che si leggeva. */}
+          <button
+            form="approval-decision"
+            name="decision"
+            value="CLARIFICATION_REQUESTED"
+            className="secondary-cta"
+          >
+            Chiedi una modifica a {request.requester.name.split(" ")[0]}
+          </button>
           <button
             form="approval-decision"
             name="decision"
@@ -302,13 +308,11 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
           <button
             form="approval-decision"
             name="decision"
-            value="CLARIFICATION_REQUESTED"
-            className="secondary-cta"
+            value="APPROVED"
+            data-primary="true"
+            className="primary-cta"
           >
-            Chiedi chiarimenti
-          </button>
-          <button form="approval-decision" name="decision" value="APPROVED" className="primary-cta">
-            Approva
+            Approva {formatMoney(Number(request.total))}
           </button>
         </StickyActionBar>
       )}
