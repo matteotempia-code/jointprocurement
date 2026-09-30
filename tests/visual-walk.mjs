@@ -80,7 +80,21 @@ for (const persona of personas) {
   const routes = ["/", ...hrefs.filter((h) => h && h !== "/")];
   console.log(`${persona.label}: ${routes.length} rotte`);
 
-  for (const href of routes) await visit(directory, href);
+  for (const href of routes) {
+    await visit(directory, href);
+
+    // Gli archetipi C (scheda) e D (decisione) vivono solo dietro un
+    // identificativo: senza questo passo non finiscono mai nelle prove, ed e' la
+    // lacuna che la revisione aveva dovuto dichiarare. Dall'elenco appena
+    // fotografato si prende il primo dettaglio e si fotografa anche quello.
+    if (href === "/") continue;
+    const detail = await page
+      .locator(`a[href^="${href}/"]`)
+      .first()
+      .getAttribute("href")
+      .catch(() => null);
+    if (detail && detail !== href) await visit(directory, detail);
+  }
 }
 
 // Il telefono solo per la persona che lo usa davvero: il direttore di struttura.
