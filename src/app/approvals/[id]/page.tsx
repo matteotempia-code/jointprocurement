@@ -60,9 +60,23 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
     : 0;
   const sla = approvalSla(approval.requestedAt);
   const nonPreferred = request.lines.filter((line) => !line.supplierOffer.preferred).length;
+  // Un fornitore si giudica solo con abbastanza consegne alle spalle. Sotto il 60%
+  // di puntualita non e un dettaglio da leggere in grigio: e un motivo per fermarsi.
+  const PUNTUALITA_MINIMA = 60;
+  const inaffidabili = supplierContexts.filter(
+    ({ metrics }) => metrics.delivered >= 5 && metrics.onTimeRate < PUNTUALITA_MINIMA,
+  );
   const signals = [
+    // L'attesa e un segnale quanto il budget: una richiesta ferma da due mesi non
+    // puo essere dichiarata «coerente» solo perche i conti tornano.
+    sla.state === "overdue"
+      ? `Ferma da ${sla.ageDays} giorni, contro un obiettivo di ${sla.targetDays}.`
+      : null,
     after < 0 ? "Il budget disponibile diventerebbe negativo." : null,
     nonPreferred ? `${nonPreferred} righe non convenzionate richiedono verifica.` : null,
+    inaffidabili.length
+      ? `${inaffidabili.length === 1 ? "Un fornitore consegna" : `${inaffidabili.length} fornitori consegnano`} in orario meno del ${PUNTUALITA_MINIMA}% delle volte.`
+      : null,
   ].filter(Boolean);
   return (
     <main className="phase1-page phase1-cockpit">
@@ -133,8 +147,9 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
           const supplier = request.lines.find(
             (line) => line.supplierOffer.supplierId === supplierId,
           )!.supplierOffer.supplier;
+          const scarso = metrics.delivered >= 5 && metrics.onTimeRate < PUNTUALITA_MINIMA;
           return (
-            <div key={supplierId}>
+            <div key={supplierId} data-affidabilita={scarso ? "scarsa" : "normale"}>
               <span>Affidabilità fornitore</span>
               <strong>{supplier.name}</strong>
               <small>
@@ -153,8 +168,8 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
             <div>
               <h2>Cosa si sta acquistando</h2>
               <p>
-                {request.lines.length} righe · consegna richiesta{" "}
-                {formatDate(request.requiredByDate)}
+                {request.lines.length} {request.lines.length === 1 ? "riga" : "righe"} · consegna
+                richiesta {formatDate(request.requiredByDate)}
               </p>
             </div>
           </div>
@@ -281,6 +296,7 @@ export default async function ApprovalCockpit({ params }: { params: Promise<{ id
             <>
               <strong>{formatMoney(Number(request.total))}</strong>
               <span>
+                {" · "}
                 {sla.ageDays} gg di attesa · dopo la decisione restano {formatMoney(after)}
               </span>
             </>

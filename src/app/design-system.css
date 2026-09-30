@@ -7489,3 +7489,13 @@ tbody tr:hover {
   border-top: var(--border-width) solid var(--border);
   color: var(--text-secondary);
 }
+
+/* Un fornitore che consegna in orario meno del 60% delle volte non si legge in
+   grigio come un dato qualunque: e un motivo per fermarsi. */
+.decisione-fornitori > div[data-affidabilita="scarsa"] {
+  border-color: var(--warn);
+  background: var(--warn-soft);
+}
+.decisione-fornitori > div[data-affidabilita="scarsa"] small {
+  color: var(--warn);
+}
