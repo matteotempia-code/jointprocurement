@@ -64,8 +64,17 @@ let lastActionStatus = 0;
 let lastActionFailure = "none";
 
 page.on("console", (message) => {
-  if (message.type() === "error" && !message.text().includes("tree hydrated"))
-    browserErrors.push(message.text().slice(0, 300));
+  if (message.type() === "error" && !message.text().includes("tree hydrated")) {
+    // Il testo di Chrome per un 404 non dice QUALE risorsa manca: l'indirizzo sta
+    // nella location. Senza, il collaudo fallisce e non dice dove guardare, che e
+    // il modo piu veloce di far perdere il tempo che dovrebbe far risparmiare.
+    const dove = message.location()?.url;
+    browserErrors.push(`${message.text()}${dove ? ` [${dove}]` : ""}`.slice(0, 300));
+  }
+});
+// Un 404 si vede meglio dalla risposta che dalla console: qui l'indirizzo c'e sempre.
+page.on("response", (response) => {
+  if (response.status() === 404) browserErrors.push(`404 su ${response.url()}`.slice(0, 300));
 });
 page.on("pageerror", (error) => browserErrors.push(error.message.slice(0, 300)));
 page.on("response", (response) => {

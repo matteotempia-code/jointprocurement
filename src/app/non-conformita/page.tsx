@@ -17,6 +17,9 @@ const TETTO_CASI = 500;
 
 const gravita = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 } as Record<string, number>;
 
+const nomiDistinti = (allegati: { originalFilename: string }[]) =>
+  new Set(allegati.map((allegato) => allegato.originalFilename)).size;
+
 export default async function Problemi({
   searchParams,
 }: {
@@ -233,12 +236,23 @@ export default async function Problemi({
                 </div>
                 {allegati.length > 0 && (
                   <div className="phase2-attachments">
-                    {allegati.slice(0, 4).map((attachment) => (
-                      <Link key={attachment.id} href={`/attachments/${attachment.id}`}>
-                        {attachment.originalFilename}
+                    {/* I nomi erano tutti uguali: quattro chip identiche piu un
+                        contatore non sono informazione, sono la stessa ripetizione
+                        in piccolo. O si mostrano i nomi distinti, o il conteggio. */}
+                    {nomiDistinti(allegati) <= 3 ? (
+                      <>
+                        {allegati.slice(0, 3).map((attachment) => (
+                          <Link key={attachment.id} href={`/attachments/${attachment.id}`}>
+                            {attachment.originalFilename}
+                          </Link>
+                        ))}
+                        {allegati.length > 3 && <span>e altre {allegati.length - 3}</span>}
+                      </>
+                    ) : (
+                      <Link href={`/attachments/${allegati[0].id}`}>
+                        {allegati.length} evidenze allegate
                       </Link>
-                    ))}
-                    {allegati.length > 4 && <span>e altre {allegati.length - 4} evidenze</span>}
+                    )}
                   </div>
                 )}
                 {context.roleCode === "PROCUREMENT_MANAGER" && gruppo.aperti > 0 && (
