@@ -7528,3 +7528,13 @@ tbody tr:hover {
   font-size: var(--fs-200);
   color: var(--text-secondary);
 }
+
+/* Il convenzionato piu caro del migliore non e una nota a margine. */
+.scheda-scarto {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--warn-soft);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius-md);
+  line-height: var(--lh-body);
+}

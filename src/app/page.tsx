@@ -157,15 +157,23 @@ async function Director({
       take: 8,
     }),
   ]);
+  // Terzo difetto di plurale trovato in tre pagine: '1 richieste', '1 volte',
+  // '1 righe'. L'etichetta porta entrambe le forme invece di arrangiarsi con la s.
   const tasks = [
-    { value: pending, label: "richieste in approvazione", href: "/richieste" },
+    {
+      value: pending,
+      one: "richiesta in approvazione",
+      many: "richieste in approvazione",
+      href: "/richieste",
+    },
     {
       value: todayDeliveries,
-      label: "consegne previste oggi",
+      one: "consegna prevista oggi",
+      many: "consegne previste oggi",
       href: "/consegne",
     },
-    { value: late, label: "ordini in ritardo", href: "/consegne" },
-    { value: issues, label: "problemi aperti", href: "/non-conformita" },
+    { value: late, one: "ordine in ritardo", many: "ordini in ritardo", href: "/consegne" },
+    { value: issues, one: "problema aperto", many: "problemi aperti", href: "/non-conformita" },
   ].filter(({ value }) => value > 0);
   const products = await prisma.canonicalProduct.findMany({
     where: {
@@ -300,9 +308,9 @@ async function Director({
         <section className="decisioni">
           <p className="eyebrow">Serve una tua decisione</p>
           {decisions.map((task) => (
-            <Link href={task.href} key={task.label}>
+            <Link href={task.href} key={task.many}>
               <strong>
-                {task.value} {task.label}
+                {task.value} {task.value === 1 ? task.one : task.many}
               </strong>
               <ArrowIcon />
             </Link>

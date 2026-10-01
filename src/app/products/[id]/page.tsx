@@ -170,6 +170,10 @@ export default async function Product360({
   const equivalence = "equivalence" in technicalData ? technicalData.equivalence : [];
   const preferredPrice = selectedOffer ? normalizeOfferPrice(product, selectedOffer) : null;
   const bestPrice = comparison.lowest ? normalizeOfferPrice(product, comparison.lowest) : null;
+  // Oltre questo scarto il convenzionato non e piu una scelta ovvia: va detto, non
+  // lasciato dedurre da due numeri distanti sulla pagina.
+  const SCARTO_RILEVANTE = 15;
+  const scartoRilevante = Boolean(preferred) && comparison.preferredDelta >= SCARTO_RILEVANTE;
   const attributes = presentTechnicalAttributes(product.category.code, product.technicalAttributes);
   const quantity = usage.reduce((sum, line) => sum + Number(line.quantity), 0);
   const spend = usage.reduce((sum, line) => sum + Number(line.lineTotal), 0);
@@ -301,15 +305,29 @@ export default async function Product360({
                 : `+${formatPercent(comparison.preferredDelta)}`
               : "Non convenzionata"}
           </strong>
+          {/* CANONE.md Legge 3: un numero porta il suo significato. Pagare il 182%
+              in piu del migliore non e «da valutare», e il fatto piu importante
+              della pagina, e la pagina lo scriveva in grigio. */}
           <small>
             {preferred
               ? comparison.preferredDelta === 0
                 ? "Nessun differenziale"
-                : "Da valutare"
+                : comparison.preferredDelta >= SCARTO_RILEVANTE
+                  ? `Costa ${formatPercent(comparison.preferredDelta)} più di ${comparison.lowest?.supplier.name}`
+                  : "Scarto contenuto sul migliore"
               : "Verificare la policy prima dell’acquisto"}
           </small>
         </div>
       </section>
+      {scartoRilevante && (
+        <p className="scheda-scarto" role="status">
+          <strong>Il convenzionato non è il più conveniente.</strong> Su questo prodotto{" "}
+          {preferred?.supplier.name} costa {formatPercent(comparison.preferredDelta)} più di{" "}
+          {comparison.lowest?.supplier.name}. Vale la pena verificare se la convenzione copre
+          qualcosa che il prezzo non dice — consegna, condizioni, continuità — o se è il momento di
+          rinegoziarla.
+        </p>
+      )}
       <section id="specifiche" className="scheda-blocco">
         <header>
           <h2>Specifiche tecniche</h2>
