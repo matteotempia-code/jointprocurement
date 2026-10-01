@@ -5,36 +5,41 @@ import { prisma } from "@/lib/prisma";
 import { normalizeOfferPrice } from "@/lib/pricing/normalization";
 import { statusLabel } from "@/lib/presentation/status";
 import { resolveScope } from "@/lib/scope";
+import { canSearch } from "@/lib/roles";
 
 export default async function Cerca({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const context = await getCurrentUser(),
     scope = await resolveScope(context.assignment),
     q = (await searchParams).q?.trim() ?? "";
-  const privileged = context.roleCode !== "RSA_DIRECTOR";
+  // CANONE.md §7.2: si cerca solo cio che si puo aprire. Un risultato che porta a
+  // una pagina di rifiuto e peggio di nessun risultato.
+  const puo = (kind: Parameters<typeof canSearch>[1]) => canSearch(context.roleCode, kind);
   const [products, suppliers, orders, requests, facilities] = q
     ? await Promise.all([
-        prisma.canonicalProduct.findMany({
-          where: {
-            organizationId: context.organization.id,
-            active: true,
-            OR: [
-              { name: { contains: q, mode: "insensitive" } },
-              { brand: { contains: q, mode: "insensitive" } },
-              { manufacturerSku: { contains: q, mode: "insensitive" } },
-            ],
-          },
-          include: {
-            category: true,
-            offers: {
-              where: { active: true },
-              include: { supplier: true },
-              orderBy: { preferred: "desc" },
-              take: 1,
-            },
-          },
-          take: 8,
-        }),
-        privileged
+        puo("products")
+          ? prisma.canonicalProduct.findMany({
+              where: {
+                organizationId: context.organization.id,
+                active: true,
+                OR: [
+                  { name: { contains: q, mode: "insensitive" } },
+                  { brand: { contains: q, mode: "insensitive" } },
+                  { manufacturerSku: { contains: q, mode: "insensitive" } },
+                ],
+              },
+              include: {
+                category: true,
+                offers: {
+                  where: { active: true },
+                  include: { supplier: true },
+                  orderBy: { preferred: "desc" },
+                  take: 1,
+                },
+              },
+              take: 8,
+            })
+          : [],
+        puo("suppliers")
           ? prisma.supplier.findMany({
               where: {
                 organizationId: context.organization.id,
@@ -43,29 +48,33 @@ export default async function Cerca({ searchParams }: { searchParams: Promise<{ 
               take: 6,
             })
           : [],
-        prisma.purchaseOrder.findMany({
-          where: {
-            facilityId: { in: scope.facilityIds },
-            OR: [
-              { poNumber: { contains: q, mode: "insensitive" } },
-              { supplier: { name: { contains: q, mode: "insensitive" } } },
-            ],
-          },
-          include: { supplier: true, facility: true },
-          take: 6,
-        }),
-        prisma.purchaseRequisition.findMany({
-          where: {
-            facilityId: { in: scope.facilityIds },
-            OR: [
-              { requisitionNumber: { contains: q, mode: "insensitive" } },
-              { justification: { contains: q, mode: "insensitive" } },
-            ],
-          },
-          include: { facility: true },
-          take: 6,
-        }),
-        context.roleCode === "AREA_MANAGER"
+        puo("orders")
+          ? prisma.purchaseOrder.findMany({
+              where: {
+                facilityId: { in: scope.facilityIds },
+                OR: [
+                  { poNumber: { contains: q, mode: "insensitive" } },
+                  { supplier: { name: { contains: q, mode: "insensitive" } } },
+                ],
+              },
+              include: { supplier: true, facility: true },
+              take: 6,
+            })
+          : [],
+        puo("requests")
+          ? prisma.purchaseRequisition.findMany({
+              where: {
+                facilityId: { in: scope.facilityIds },
+                OR: [
+                  { requisitionNumber: { contains: q, mode: "insensitive" } },
+                  { justification: { contains: q, mode: "insensitive" } },
+                ],
+              },
+              include: { facility: true },
+              take: 6,
+            })
+          : [],
+        puo("facilities")
           ? prisma.facility.findMany({
               where: { id: { in: scope.facilityIds }, name: { contains: q, mode: "insensitive" } },
               include: { area: true },
