@@ -505,12 +505,9 @@ async function decide(approvalId, decision, note = "") {
   await switchTo("Andrea Riva");
   await open(`/approvals/${approvalId}`);
   if (note) await page.locator('#approval-decision textarea[name="note"]').fill(note);
-  const labels = {
-    APPROVED: "Approva",
-    REJECTED: "Rifiuta",
-    CLARIFICATION_REQUESTED: "Chiedi chiarimenti",
-  };
-  await page.getByRole("button", { name: labels[decision], exact: true }).click();
+  // L'appiglio e il contratto del form - name e value - non la copia del bottone,
+  // che dice l'importo e il nome di chi ha chiesto, e cambia con la riprogettazione.
+  await page.locator(`button[name="decision"][value="${decision}"]`).click();
   await page.waitForURL(/\/approvals\?decision=/, { timeout: 60_000 });
   const approval = await db.approvalRequest.findUniqueOrThrow({
     where: { id: approvalId },

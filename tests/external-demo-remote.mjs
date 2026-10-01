@@ -550,9 +550,9 @@ try {
       waitUntil: "networkidle",
     }),
   ]);
-  await page.getByRole("button", { name: "Approva" }).click();
+  await page.locator('button[name="decision"][value="APPROVED"]').click();
   await page.waitForURL(/\/approvals\?decision=approved/);
-  await stalePage.getByRole("button", { name: "Approva" }).click();
+  await stalePage.locator('button[name="decision"][value="APPROVED"]').click();
   await stalePage.waitForURL(/decision=already-decided/);
   assert.equal(
     await db.purchaseOrder.count({ where: { requisitionId: edgeReqId } }),
