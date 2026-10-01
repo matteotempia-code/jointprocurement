@@ -310,11 +310,11 @@ export default async function Product360({
           </small>
         </div>
       </section>
-      <details id="specifiche" className="disclosure-section">
-        <summary>
-          <span>Specifiche tecniche</span>
+      <section id="specifiche" className="scheda-blocco">
+        <header>
+          <h2>Specifiche tecniche</h2>
           <small>{attributes.length} caratteristiche</small>
-        </summary>
+        </header>
         <div className="spec-grid">
           {attributes.map((attribute) => (
             <div key={attribute.key}>
@@ -323,25 +323,21 @@ export default async function Product360({
             </div>
           ))}
         </div>
-      </details>
+      </section>
       {technicalLoadError && (
         <p role="alert" className="warning">
           Le evidenze tecniche non sono temporaneamente disponibili. Codice: {technicalLoadError}
         </p>
       )}
-      <details
-        id="evidenze-tecniche"
-        className="disclosure-section"
-        open={technicalState?.status !== "COMPLETE"}
-      >
-        <summary>
-          <span>Evidenze tecniche</span>
+      <section id="evidenze-tecniche" className="scheda-blocco">
+        <header>
+          <h2>Evidenze tecniche</h2>
           <small>
             {technicalState
               ? `${technicalState.completenessPercent}% · ${technicalState.status}`
               : "Profilo non valutato"}
           </small>
-        </summary>
+        </header>
         <div className="technical-product-status">
           <div>
             <strong>{technicalState?.status ?? "INCOMPLETE"}</strong>
@@ -410,12 +406,12 @@ export default async function Product360({
             </tbody>
           </DataTable>
         )}
-      </details>
-      <details id="equivalenti" className="disclosure-section">
-        <summary>
-          <span>Prodotti equivalenti</span>
+      </section>
+      <section id="equivalenti" className="scheda-blocco">
+        <header>
+          <h2>Prodotti equivalenti</h2>
           <small>{equivalence.length} valutazioni basate su evidenze</small>
-        </summary>
+        </header>
         {equivalence.length ? (
           <DataTable label="Valutazioni di equivalenza">
             <thead>
@@ -464,14 +460,14 @@ export default async function Product360({
             le evidenze non sono sufficienti.
           </p>
         )}
-      </details>
-      <details id="offerte" className="disclosure-section" open>
-        <summary>
-          <span>Confronto offerte dello stesso prodotto</span>
+      </section>
+      <section id="offerte" className="scheda-blocco">
+        <header>
+          <h2>Confronto offerte dello stesso prodotto</h2>
           <small>
             {comparison.sorted.length} offerte · spread {formatPercent(comparison.spread)}
           </small>
-        </summary>
+        </header>
         <p className="muted">
           Il confronto riguarda lo stesso prodotto canonico. Prezzi non normalizzabili o unità
           incompatibili non vengono ordinati come equivalenti.
@@ -584,20 +580,20 @@ export default async function Product360({
             })}
           </tbody>
         </DataTable>
-      </details>
-      <details id="storico" className="disclosure-section">
-        <summary>
-          <span>
+      </section>
+      <section id="storico" className="scheda-blocco">
+        <header>
+          <h2>
             {history.length >= 12
               ? "Andamento del prezzo negli ultimi 12 mesi"
               : "Ultime variazioni di prezzo"}
-          </span>
+          </h2>
           <small>
             {history.length
               ? `Min ${formatCurrency(min, 4)} · Max ${formatCurrency(max, 4)}`
               : "Nessuno storico disponibile"}
           </small>
-        </summary>
+        </header>
         {history.length > 1 && (
           <>
             <svg
@@ -632,12 +628,12 @@ export default async function Product360({
             </div>
           </>
         )}
-      </details>
-      <details id="utilizzo" className="disclosure-section">
-        <summary>
-          <span>Utilizzo nel perimetro</span>
+      </section>
+      <section id="utilizzo" className="scheda-blocco">
+        <header>
+          <h2>Utilizzo nel perimetro</h2>
           <small>{quantity} unità osservate</small>
-        </summary>
+        </header>
         <div className="metrics-grid four">
           <Metric label="Quantità acquistata" value={quantity} />
           <Metric label="Spesa da inizio anno" value={formatMoney(spend)} />
@@ -650,12 +646,12 @@ export default async function Product360({
             value={new Set(usage.map((line) => line.purchaseOrder.facilityId)).size}
           />
         </div>
-      </details>
-      <details id="documenti" className="disclosure-section">
-        <summary>
-          <span>Documenti verificabili</span>
+      </section>
+      <section id="documenti" className="scheda-blocco">
+        <header>
+          <h2>Documenti verificabili</h2>
           <small>Schede e certificazioni</small>
-        </summary>
+        </header>
         <div className="document-list">
           {[
             ["Scheda tecnica", product.datasheetPath],
@@ -671,12 +667,12 @@ export default async function Product360({
               </Link>
             ))}
         </div>
-      </details>
-      <details id="alternative" className="disclosure-section">
-        <summary>
-          <span>Alternative commerciali</span>
+      </section>
+      <section id="alternative" className="scheda-blocco">
+        <header>
+          <h2>Alternative commerciali</h2>
           <small>{alternatives.length} prodotti da valutare</small>
-        </summary>
+        </header>
         <div className="disclosure-actions">
           <Link
             className="secondary-cta"
@@ -708,7 +704,7 @@ export default async function Product360({
             );
           })}
         </div>
-      </details>
+      </section>
     </main>
   );
 }

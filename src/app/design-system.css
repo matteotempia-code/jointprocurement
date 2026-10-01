@@ -7499,3 +7499,32 @@ tbody tr:hover {
 .decisione-fornitori > div[data-affidabilita="scarsa"] small {
   color: var(--warn);
 }
+
+/* ── Scheda prodotto: sezioni, non accordion ────────────────────────────────
+   CANONE.md archetipo C vieta gli accordion impilati. La scheda ne aveva otto:
+   il contenuto c'era, ma bisognava cercarlo cliccando. Ora si legge. */
+.scheda-blocco {
+  margin-bottom: var(--space-5);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.scheda-blocco > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-width) solid var(--border);
+}
+.scheda-blocco > header h2 {
+  margin: 0;
+  font-size: var(--fs-400);
+}
+.scheda-blocco > header small {
+  flex: none;
+  font-size: var(--fs-200);
+  color: var(--text-secondary);
+}
