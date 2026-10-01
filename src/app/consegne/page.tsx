@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { draftSupplierReminder } from "@/app/buying-actions";
+import { draftSupplierReminder, draftSupplierReminderGroup } from "@/app/buying-actions";
 import { Num, PageHeader, StatusChip } from "@/components/ui";
 import { requireRoles } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +7,47 @@ import { formatDate } from "@/lib/pricing";
 import { startOfDay } from "@/lib/procurement/kpi-definitions";
 import { statusLabel } from "@/lib/presentation/status";
 import { resolveScope } from "@/lib/scope";
+
+// Sopra questa soglia il fornitore smette di essere una riga e diventa un gruppo:
+// due ritardi si leggono, sedici no.
+const RITARDI_PER_RAGGRUPPARE = 2;
+
+type Ordine = {
+  id: string;
+  poNumber: string;
+  expectedDeliveryDate: Date;
+  total: unknown;
+  supplierId: string;
+  supplier: { name: string };
+};
+
+function perFornitore<T extends Ordine>(ordini: T[]) {
+  const per = new Map<string, T[]>();
+  for (const ordine of ordini) {
+    const lista = per.get(ordine.supplierId) ?? [];
+    lista.push(ordine);
+    per.set(ordine.supplierId, lista);
+  }
+  const bundle = [];
+  const singoli: T[] = [];
+  for (const [supplierId, lista] of per) {
+    if (lista.length > RITARDI_PER_RAGGRUPPARE) {
+      const ordinati = [...lista].sort(
+        (a, b) => a.expectedDeliveryDate.getTime() - b.expectedDeliveryDate.getTime(),
+      );
+      bundle.push({
+        supplierId,
+        supplier: ordinati[0].supplier.name,
+        orders: ordinati,
+        total: ordinati.reduce((somma, ordine) => somma + Number(ordine.total), 0),
+      });
+    } else {
+      singoli.push(...lista);
+    }
+  }
+  bundle.sort((a, b) => b.orders.length - a.orders.length);
+  return { bundle, singoli };
+}
 
 export default async function Consegne() {
   const context = await requireRoles(["RSA_DIRECTOR", "AREA_MANAGER"]),
@@ -69,61 +110,101 @@ export default async function Consegne() {
           <small>Archivio secondario</small>
         </div>
       </section>
-      {groups.map((group) => (
-        <section className="phase2-queue" key={group.key}>
-          <div className="section-heading">
-            <div>
-              <h2>{group.title}</h2>
-              <p>
-                {group.key === "overdue"
-                  ? "Contatta il fornitore o registra la merce già arrivata."
-                  : group.key === "today"
-                    ? "Conferma l’arrivo appena verificato."
-                    : "Consegne pianificate in ordine cronologico."}
-              </p>
+      {groups
+        .filter((group) => group.items.length > 0)
+        .map((group) => (
+          <section className="phase2-queue" key={group.key}>
+            <div className="section-heading">
+              <div>
+                <h2>{group.title}</h2>
+                <p>
+                  {group.key === "overdue"
+                    ? "Contatta il fornitore o registra la merce già arrivata."
+                    : group.key === "today"
+                      ? "Conferma l’arrivo appena verificato."
+                      : "Consegne pianificate in ordine cronologico."}
+                </p>
+              </div>
+              <StatusChip variant={group.variant}>{group.items.length}</StatusChip>
             </div>
-            <StatusChip variant={group.variant}>{group.items.length}</StatusChip>
-          </div>
-          <div className="phase2-operational-rows">
-            {group.items.length ? (
-              group.items.map((order) => (
-                <article key={order.id}>
-                  <Link href={`/orders/${order.id}`}>
-                    <strong>{order.poNumber}</strong>
-                    <span>{order.supplier.name}</span>
+            <div className="phase2-operational-rows">
+              {/* CANONE.md archetipo B2: quaranta ritardi dello stesso fornitore sono
+                una conversazione con quel fornitore, non quaranta righe. Sopra due
+                ordini il fornitore diventa una riga sola. */}
+              {perFornitore(group.items).bundle.map((bundle) => (
+                <article key={`b-${bundle.supplierId}`} className="phase2-bundle">
+                  <div>
+                    <strong>{bundle.supplier}</strong>
+                    <span>
+                      {bundle.orders.length} consegne in ritardo, dal{" "}
+                      {formatDate(bundle.orders[0].expectedDeliveryDate)}
+                    </span>
                     <small>
-                      {order.facility.name} · {order._count.lines} righe
+                      {bundle.orders
+                        .slice(0, 5)
+                        .map((order) => order.poNumber)
+                        .join(" · ")}
+                      {bundle.orders.length > 5 ? ` e altri ${bundle.orders.length - 5}` : ""}
                     </small>
-                  </Link>
-                  <div className="num-cell">
-                    <strong>{formatDate(order.expectedDeliveryDate)}</strong>
-                    <Num value={Number(order.total)} kind="currency" />
                   </div>
-                  <StatusChip variant={group.variant}>{statusLabel(order.status)}</StatusChip>
+                  <div className="num-cell">
+                    <Num value={bundle.total} kind="currency" />
+                  </div>
+                  <StatusChip variant={group.variant}>{bundle.orders.length}</StatusChip>
                   <div className="phase2-row-actions">
                     {group.key === "overdue" && (
-                      <form action={draftSupplierReminder}>
-                        <input type="hidden" name="poId" value={order.id} />
-                        <button className="secondary-cta">Prepara sollecito</button>
+                      <form action={draftSupplierReminderGroup}>
+                        {bundle.orders.map((order) => (
+                          <input key={order.id} type="hidden" name="poId" value={order.id} />
+                        ))}
+                        <button className="secondary-cta">
+                          Sollecita {bundle.supplier} per tutte e {bundle.orders.length}
+                        </button>
                       </form>
-                    )}
-                    {context.roleCode === "RSA_DIRECTOR" && (
-                      <Link
-                        className={group.key === "overdue" ? "ghost-cta" : "secondary-cta"}
-                        href={`/orders/${order.id}/receive`}
-                      >
-                        Ricevi
-                      </Link>
                     )}
                   </div>
                 </article>
-              ))
-            ) : (
-              <p className="quiet-empty">Nessuna consegna in questa sezione.</p>
-            )}
-          </div>
-        </section>
-      ))}
+              ))}
+              {perFornitore(group.items).singoli.length ||
+              perFornitore(group.items).bundle.length ? (
+                perFornitore(group.items).singoli.map((order) => (
+                  <article key={order.id}>
+                    <Link href={`/orders/${order.id}`}>
+                      <strong>{order.poNumber}</strong>
+                      <span>{order.supplier.name}</span>
+                      <small>
+                        {order.facility.name} · {order._count.lines} righe
+                      </small>
+                    </Link>
+                    <div className="num-cell">
+                      <strong>{formatDate(order.expectedDeliveryDate)}</strong>
+                      <Num value={Number(order.total)} kind="currency" />
+                    </div>
+                    <StatusChip variant={group.variant}>{statusLabel(order.status)}</StatusChip>
+                    <div className="phase2-row-actions">
+                      {group.key === "overdue" && (
+                        <form action={draftSupplierReminder}>
+                          <input type="hidden" name="poId" value={order.id} />
+                          <button className="secondary-cta">Prepara sollecito</button>
+                        </form>
+                      )}
+                      {context.roleCode === "RSA_DIRECTOR" && (
+                        <Link
+                          className={group.key === "overdue" ? "ghost-cta" : "secondary-cta"}
+                          href={`/orders/${order.id}/receive`}
+                        >
+                          Ricevi
+                        </Link>
+                      )}
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p className="quiet-empty">Nessuna consegna in questa sezione.</p>
+              )}
+            </div>
+          </section>
+        ))}
       <details className="phase2-secondary-section">
         <summary>
           Ricevute recentemente <span>{received.length}</span>

@@ -379,6 +379,117 @@ export async function draftSupplierReminder(formData: FormData) {
   redirect(`/orders/${order.id}?reminder=draft`);
 }
 
+// Quaranta consegne in ritardo dello stesso fornitore sono UNA conversazione da
+// avere con quel fornitore, non quaranta solleciti da preparare. La bozza nomina
+// tutti gli ordini in ritardo, e resta una bozza: non parte niente.
+export async function draftSupplierReminderGroup(formData: FormData) {
+  const context = await requireRoles(["RSA_DIRECTOR", "AREA_MANAGER", "PROCUREMENT_MANAGER"]);
+  const scope = await resolveScope(context.assignment);
+  const ids = formData.getAll("poId").map((value) => actionId(value, "poId"));
+  if (!ids.length) redirect("/consegne");
+
+  const orders = await prisma.purchaseOrder.findMany({
+    where: {
+      id: { in: ids },
+      organizationId: context.organization.id,
+      ...(context.roleCode !== "PROCUREMENT_MANAGER"
+        ? { facilityId: { in: scope.facilityIds } }
+        : {}),
+    },
+    include: { supplier: true },
+    orderBy: { expectedDeliveryDate: "asc" },
+  });
+  if (!orders.length) redirect("/consegne");
+
+  const supplier = orders[0].supplier;
+  const contact = (supplier.orderContact ?? {}) as { email?: string; name?: string };
+  const elenco = orders
+    .map(
+      (order) =>
+        `${order.poNumber} (attesa il ${order.expectedDeliveryDate.toLocaleDateString("it-IT")})`,
+    )
+    .join(", ");
+  const subject =
+    orders.length === 1
+      ? `Sollecito consegna ${orders[0].poNumber}`
+      : `Sollecito ${orders.length} consegne in ritardo`;
+  const body =
+    orders.length === 1
+      ? `Buongiorno, chiediamo aggiornamento sulla consegna ${elenco}. La comunicazione è una bozza e non è stata inviata.`
+      : `Buongiorno, chiediamo aggiornamento su ${orders.length} consegne in ritardo: ${elenco}. La comunicazione è una bozza e non è stata inviata.`;
+
+  // Un evento per ordine: la tracciabilita resta per riga anche quando la bozza
+  // e una sola.
+  await prisma.auditEvent.createMany({
+    data: orders.map((order) => ({
+      organizationId: context.organization.id,
+      actorUserId: context.user.id,
+      entityType: "PURCHASE_ORDER",
+      entityId: order.id,
+      action: "SUPPLIER_REMINDER_DRAFTED",
+      metadata: {
+        recipient: contact.email ?? supplier.contactEmail ?? null,
+        contactName: contact.name ?? null,
+        subject,
+        body,
+        ordiniNellaBozza: orders.length,
+        deliveryProviderConfigured: false,
+      },
+    })),
+  });
+  revalidatePath("/consegne");
+  redirect(`/orders/${orders[0].id}?reminder=draft`);
+}
+
+// CANONE.md archetipo B2, regola del raggruppamento: venti colli danneggiati dello
+// stesso prodotto, dello stesso fornitore, nella stessa consegna non sono venti
+// problemi. Se la pagina li mostra come uno, devono anche risolversi come uno:
+// altrimenti il raggruppamento e solo cosmetico e l'utente apre venti form.
+export async function resolveQualityIssueGroup(formData: FormData) {
+  const context = await requireRoles(["PROCUREMENT_MANAGER"]);
+  const ids = formData.getAll("issueId").map((value) => actionId(value, "issueId"));
+  const decision = procurementActionSchemas.qualityStatus.parse(formData.get("status"));
+  if (!ids.length) redirect("/non-conformita");
+
+  const issues = await prisma.qualityIssue.findMany({
+    where: {
+      id: { in: ids },
+      purchaseOrderLine: { purchaseOrder: { organizationId: context.organization.id } },
+    },
+    select: { id: true },
+  });
+  if (!issues.length) redirect("/non-conformita");
+
+  const chiuso = decision === "RESOLVED" || decision === "CLOSED";
+  await prisma.$transaction(async (tx) => {
+    await tx.qualityIssue.updateMany({
+      where: { id: { in: issues.map((issue) => issue.id) } },
+      data: {
+        status: decision as "UNDER_REVIEW" | "RESOLVED" | "CLOSED",
+        resolutionType: String(formData.get("resolutionType") || "") || null,
+        resolutionNote: String(formData.get("note") || "") || null,
+        resolvedAt: chiuso ? new Date() : null,
+      },
+    });
+    // Un evento per caso, non uno per gruppo: la tracciabilita resta per riga,
+    // anche quando la decisione e stata presa una volta sola.
+    await tx.auditEvent.createMany({
+      data: issues.map((issue) => ({
+        organizationId: context.organization.id,
+        actorUserId: context.user.id,
+        entityType: "QUALITY_ISSUE",
+        entityId: issue.id,
+        action: `ISSUE_${decision}`,
+        metadata: {
+          resolutionType: String(formData.get("resolutionType") || ""),
+          decisoInGruppo: issues.length,
+        },
+      })),
+    });
+  });
+  revalidatePath("/non-conformita");
+}
+
 export async function resolveQualityIssue(formData: FormData) {
   const c = await requireRoles(["PROCUREMENT_MANAGER"]),
     id = actionId(formData.get("issueId"), "issueId"),
