@@ -193,7 +193,11 @@ export default async function ImportDetailPage({
         <button className="primary-cta">Riprova elaborazione</button>
       </form>
     ) : (
-      <Link className="secondary-cta" href={`/imports/documents/${job.sourceDocument.id}`}>
+      <Link
+        prefetch={false}
+        className="secondary-cta"
+        href={`/imports/documents/${job.sourceDocument.id}`}
+      >
         Apri originale
       </Link>
     );

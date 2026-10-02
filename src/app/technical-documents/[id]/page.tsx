@@ -192,7 +192,9 @@ export default async function TechnicalDocumentDetail({
               v{version.versionNumber} · {version.revision ?? "revisione n.d."}
             </strong>{" "}
             · {version.status} ·{" "}
-            <Link href={`/imports/documents/${version.sourceDocumentId}`}>Apri originale</Link>
+            <Link prefetch={false} href={`/imports/documents/${version.sourceDocumentId}`}>
+              Apri originale
+            </Link>
           </p>
         ))}
       </details>

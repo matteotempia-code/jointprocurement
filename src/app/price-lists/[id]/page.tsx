@@ -123,7 +123,11 @@ export default async function ListinoDetail({
               {list.publishedBy?.name ?? "—"} il {formatDate(list.publishedAt)}.
             </p>
             <div className="cta-row">
-              <Link className="secondary-cta" href={`/imports/documents/${list.sourceDocument.id}`}>
+              <Link
+                prefetch={false}
+                className="secondary-cta"
+                href={`/imports/documents/${list.sourceDocument.id}`}
+              >
                 Apri originale
               </Link>
               {list.importJob && (

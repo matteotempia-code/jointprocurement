@@ -169,6 +169,7 @@ export default async function RecordReviewPage({
           <pre>{record.rawSource}</pre>
           <strong>{sourceLabel}</strong>
           <Link
+            prefetch={false}
             className="text-link"
             href={`/imports/documents/${record.importJob.sourceDocument.id}`}
           >

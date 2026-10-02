@@ -388,6 +388,7 @@ export default async function Product360({
         <div className="document-list">
           {technicalAssociations.map((association) => (
             <Link
+              prefetch={false}
               href={`/imports/documents/${association.technicalDocument.currentVersion?.sourceDocumentId}`}
               key={association.id}
             >
